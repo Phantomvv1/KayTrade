@@ -23,6 +23,7 @@ func main() {
 	r.POST("/login", LogIn)
 	r.GET("/profile", AuthMiddleware, GetCurrentProfile)
 	r.GET("/users", AuthMiddleware, GetAllUsers)
+	r.GET("/users/alpaca", AuthMiddleware, GetAllUsersAlpaca)
 	r.POST("/refresh", AuthMiddleware, Refresh)
 
 	r.Run(":42069")

@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"time"
 
+	. "github.com/Phantomvv1/KayTrade/internal/requests"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
@@ -39,7 +40,7 @@ func GenerateJWT(id string, accountType byte, email string) (string, error) {
 		"id":         id,
 		"type":       accountType,
 		"email":      email,
-		"expiration": time.Now().Add(time.Hour * 24).Unix(),
+		"expiration": time.Now().Add(time.Minute * 15).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -170,6 +171,23 @@ func SignUp(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "There is already a person with this email"})
 		return
 	}
+
+	errs := map[int]string{
+		400: "The post body is not well formed",
+		409: "There is already an existing account registered with the same email address",
+		422: "One of the input values is not a valid value",
+	}
+
+	headers := BasicAuth()
+
+	body, err := SendRequest(http.MethodPost, BaseURL+Accounts, nil, errs, headers)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusFailedDependency, gin.H{"error": err.Error()})
+		return
+	}
+
+	log.Println(body)
 
 	hashedPassword := SHA512(information["password"])
 	_, err = conn.Exec(context.Background(), "insert into authentication (full_name, email, password, type) values ($1, $2, $3, $4)",
@@ -323,6 +341,33 @@ func GetAllUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"users": profiles})
 }
 
+func GetAllUsersAlpaca(c *gin.Context) {
+	acc, _ := c.Get("accountType")
+	accountType := acc.(byte)
+
+	if accountType != Admin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Error only admins can view all of the accounts"})
+		return
+	}
+
+	headers := BasicAuth()
+	log.Println(headers)
+
+	body, err := SendRequest(http.MethodGet, BaseURL+Accounts, nil, nil, headers)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusFailedDependency, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}
+
+func InvalidateRefreshTokens(conn *pgx.Conn, userID string) error {
+	_, err := conn.Exec(context.Background(), "update r_tokens set valid = false where user_id = $1 and valid = false", userID)
+	return err
+}
+
 func Refresh(c *gin.Context) {
 	userId, _ := c.Get("id")
 	id := userId.(string)
@@ -352,21 +397,31 @@ func Refresh(c *gin.Context) {
 		return
 	}
 
+	if !ownerMatch && !valid {
+		err = InvalidateRefreshTokens(conn, id)
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusForbidden, gin.H{"error": "Error stolen token"})
+			return
+		}
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error stolen token"})
+		return
+	}
+
 	if !ownerMatch {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error unathorized"})
 		return
 	}
 
-	//In case of stolen refresh token
 	if !valid {
-		_, err = conn.Exec(context.Background(), "update r_tokens set valid = false where user_id = $1", id)
+		err = InvalidateRefreshTokens(conn, id)
 		if err != nil {
 			log.Println(err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error unable to invalidate the token"})
 			return
 		}
 
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error stolen refresh token"})
+		c.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"error": "Error expried refresh token"})
 		return
 	}
 
