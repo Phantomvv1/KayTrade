@@ -32,7 +32,7 @@ const (
 	Crypto           = "wallets/" // Accounts + :accountId + Crypto
 )
 
-func SendRequest(method, url string, body io.Reader, errs map[int]string, headers map[string]string) (map[string]any, error) {
+func SendRequest(method, url string, body io.Reader, errs map[int]string, headers map[string]string) (any, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func SendRequest(method, url string, body io.Reader, errs map[int]string, header
 		return nil, err
 	}
 
-	var resJson map[string]any
+	var resJson any
 	err = json.Unmarshal(resBody, &resJson)
 	if err != nil {
 		return nil, err
