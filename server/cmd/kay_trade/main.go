@@ -24,7 +24,7 @@ func main() {
 	r.GET("/profile", AuthMiddleware, GetCurrentProfile)
 	r.GET("/users", AuthMiddleware, GetAllUsers)
 	r.GET("/users/alpaca", AuthMiddleware, GetAllUsersAlpaca)
-	r.POST("/refresh", AuthMiddleware, Refresh)
+	r.POST("/refresh", ParserMiddleware, Refresh)
 
 	r.Run(":42069")
 }

@@ -48,7 +48,7 @@ func GenerateJWT(id string, accountType byte, email string) (string, error) {
 	return token.SignedString([]byte(jwtKey))
 }
 
-func ValidateJWT(tokenString string) (string, byte, string, error) {
+func ValidateJWT(tokenString string, force bool) (string, byte, string, error) {
 	claims := &jwt.MapClaims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
@@ -68,7 +68,7 @@ func ValidateJWT(tokenString string) (string, byte, string, error) {
 		return "", 0, "", errors.New("Error parsing the expiration date of the token")
 	}
 
-	if int64(expiration) < time.Now().Unix() {
+	if int64(expiration) < time.Now().Unix() && !force {
 		return "", 0, "", errors.New("Error token has expired")
 	}
 
@@ -351,7 +351,6 @@ func GetAllUsersAlpaca(c *gin.Context) {
 	}
 
 	headers := BasicAuth()
-	log.Println(headers)
 
 	body, err := SendRequest(http.MethodGet, BaseURL+Accounts, nil, nil, headers)
 	if err != nil {
@@ -369,7 +368,9 @@ func InvalidateRefreshTokens(conn *pgx.Conn, userID string) error {
 }
 
 func Refresh(c *gin.Context) {
-	id := c.GetString("id")
+	token := c.GetString("token")
+	id, accountType, email, _ := ValidateJWT(token, true) // already expired
+	log.Println(id, accountType, email)
 
 	refresh, err := c.Cookie("refresh")
 	if err != nil {
@@ -441,10 +442,7 @@ func Refresh(c *gin.Context) {
 
 	c.SetCookie("refresh", newRefresh, int((5 * 24 * time.Hour).Seconds()), "/", Domain, Secure, true)
 
-	accountType := c.GetInt("type")
-	email := c.GetString("email")
-
-	token, err := GenerateJWT(id, byte(accountType), email)
+	token, err = GenerateJWT(id, accountType, email)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error unable to generate new token"})

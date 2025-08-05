@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"net/http"
 	"os"
 )
@@ -39,10 +38,8 @@ func SendRequest(method, url string, body io.Reader, errs map[int]string, header
 		return nil, err
 	}
 
-	if errs != nil {
-		for header, value := range headers {
-			req.Header.Add(header, value)
-		}
+	for header, value := range headers {
+		req.Header.Add(header, value)
 	}
 
 	req.Header.Add("accept", "application/json")
@@ -79,7 +76,6 @@ func SendRequest(method, url string, body io.Reader, errs map[int]string, header
 func BasicAuth() map[string]string {
 	credentials := os.Getenv("API_KEY") + ":" + os.Getenv("SECRET_KEY")
 	out := base64.StdEncoding.EncodeToString([]byte(credentials))
-	log.Println(out)
 	m := map[string]string{"Authorization": "Basic " + out}
 	return m
 }
