@@ -369,8 +369,7 @@ func InvalidateRefreshTokens(conn *pgx.Conn, userID string) error {
 }
 
 func Refresh(c *gin.Context) {
-	userId, _ := c.Get("id")
-	id := userId.(string)
+	id := c.GetString("id")
 
 	refresh, err := c.Cookie("refresh")
 	if err != nil {
@@ -441,5 +440,16 @@ func Refresh(c *gin.Context) {
 	}
 
 	c.SetCookie("refresh", newRefresh, int((5 * 24 * time.Hour).Seconds()), "/", Domain, Secure, true)
-	c.JSON(http.StatusOK, nil)
+
+	accountType := c.GetInt("type")
+	email := c.GetString("email")
+
+	token, err := GenerateJWT(id, byte(accountType), email)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error unable to generate new token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"token": token})
 }
