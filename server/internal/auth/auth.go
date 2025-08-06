@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
@@ -483,7 +484,14 @@ func GetUser(c *gin.Context) {
 
 func UpdateUser(c *gin.Context) {
 	// name &| email
+	userID := c.Param("id")
 	id := c.GetString("id")
+	acc, _ := c.Get("accountType")
+	accountType := acc.(byte)
+	if accountType != Admin && userID != id {
+		ErrorExit(c, http.StatusForbidden, "only admins and the user himself can do this", nil)
+	}
+	id = userID
 
 	name := c.GetString("name")
 	email := c.GetString("email")
@@ -522,7 +530,36 @@ func UpdateUser(c *gin.Context) {
 // This endpoint makes an external API call,
 // only use it if you want to update more information about the user
 func UpdateUserAlpaca(c *gin.Context) {
+	userID := c.Param("id")
+	if strings.HasPrefix(userID, "/") && strings.HasSuffix(userID, "/") {
+		userID = strings.TrimPrefix(userID, "/")
+		userID = strings.TrimSuffix(userID, "/")
+	}
 
+	id := c.GetString("id")
+	acc, _ := c.Get("accountType")
+	accountType := acc.(byte)
+
+	if accountType != Admin && id != userID {
+		ErrorExit(c, http.StatusForbidden, "only admins and the user themselves can edit their profile", nil)
+		return
+	}
+	id = userID
+
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		400: "The post body is not well formed",
+		422: "The response body contains an atribute that is not permited to be updated or you are atempting to set an invalid value",
+	}
+
+	body, err := SendRequest(http.MethodPatch, BaseURL+Accounts+id, c.Request.Body, errs, headers)
+	if err != nil {
+		ErrorExit(c, http.StatusFailedDependency, "while trying to update the user", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
 }
 
 func DeleteUser(c *gin.Context) {

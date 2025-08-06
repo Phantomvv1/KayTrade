@@ -25,8 +25,9 @@ func main() {
 	r.GET("/users", AuthParserMiddleware, AuthProtectMiddleware, GetAllUsers)
 	r.GET("/users/:id", AuthParserMiddleware, GetUser)
 	r.GET("/users/alpaca", AuthParserMiddleware, AuthProtectMiddleware, GetAllUsersAlpaca)
-	r.PATCH("/users", AuthParserMiddleware, ParserMiddleware, UpdateUser)
-	r.POST("/refresh", ParserMiddleware, Refresh)
+	r.PATCH("/users/:id", AuthParserMiddleware, JSONParserMiddleware, UpdateUser)
+	r.PATCH("/users/:id/alpaca", AuthParserMiddleware, UpdateUserAlpaca)
+	r.POST("/refresh", JSONParserMiddleware, Refresh)
 
 	r.Run(":42069")
 }

@@ -41,7 +41,7 @@ func AuthProtectMiddleware(c *gin.Context) {
 	}
 }
 
-func ParserMiddleware(c *gin.Context) {
+func JSONParserMiddleware(c *gin.Context) {
 	var information map[string]any
 	err := json.NewDecoder(c.Request.Body).Decode(&information)
 	if err != nil {
