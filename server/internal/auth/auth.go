@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"time"
 
+	. "github.com/Phantomvv1/KayTrade/internal/exit"
 	. "github.com/Phantomvv1/KayTrade/internal/requests"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -98,7 +99,7 @@ func SHA512(text string) string {
 }
 
 func CreateAuthTable(conn *pgx.Conn) error {
-	_, err := conn.Exec(context.Background(), "create table if not exists authentication (id uuid primary key default gen_random_uuid(), full_name text, "+
+	_, err := conn.Exec(context.Background(), "create table if not exists authentication (id uuid primary key, full_name text, "+
 		"email text, password text, type int check (type in (1, 2)), created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp)")
 	return err
 }
@@ -296,14 +297,6 @@ func GetCurrentProfile(c *gin.Context) {
 }
 
 func GetAllUsers(c *gin.Context) {
-	acc, _ := c.Get("accountType")
-	accountType := acc.(byte)
-
-	if accountType != Admin {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Error only admins can view all of the accounts"})
-		return
-	}
-
 	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Println(err)
@@ -341,15 +334,9 @@ func GetAllUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"users": profiles})
 }
 
+// This endpoint makes an external API call,
+// only use it if you want more information about the user
 func GetAllUsersAlpaca(c *gin.Context) {
-	acc, _ := c.Get("accountType")
-	accountType := acc.(byte)
-
-	if accountType != Admin {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Error only admins can view all of the accounts"})
-		return
-	}
-
 	headers := BasicAuth()
 
 	body, err := SendRequest(http.MethodGet, BaseURL+Accounts, nil, nil, headers)
@@ -369,8 +356,12 @@ func InvalidateRefreshTokens(conn *pgx.Conn, userID string) error {
 
 func Refresh(c *gin.Context) {
 	token := c.GetString("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Error incorrectly provided token"})
+		return
+	}
+
 	id, accountType, email, _ := ValidateJWT(token, true) // already expired
-	log.Println(id, accountType, email)
 
 	refresh, err := c.Cookie("refresh")
 	if err != nil {
@@ -450,4 +441,90 @@ func Refresh(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"token": token})
+}
+
+func GetUser(c *gin.Context) {
+	userID := c.Param("id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Error incorrectly provided id of the user"})
+		return
+	}
+
+	id := c.GetString("id")
+	acc, _ := c.Get("accountType")
+	accountType := acc.(byte)
+
+	if accountType != Admin && id != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Error only admins and the person himself can access this resource"})
+		return
+	}
+
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error unable to connect to the database"})
+		return
+	}
+	defer conn.Close(context.Background())
+
+	user := Profile{}
+	user.ID = userID
+	user.Type = accountType
+	err = conn.QueryRow(context.Background(), "select full_name, email, created_at, updated_at from authentication where id = $1", user.ID).
+		Scan(&user.Name, &user.Email, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error unable to get the user from the database"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"user": user})
+}
+
+func UpdateUser(c *gin.Context) {
+	// name &| email
+	id := c.GetString("id")
+
+	name := c.GetString("name")
+	email := c.GetString("email")
+	if name == "" && email == "" {
+		ErrorExit(c, http.StatusBadRequest, "no new information given", nil)
+	}
+
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't connect to the database", err)
+		return
+	}
+	defer conn.Close(context.Background())
+
+	if name != "" && email != "" {
+		_, err = conn.Exec(context.Background(), "update authentication set full_name = $1, email = $2 where id = $3", name, email, id)
+		if err != nil {
+			ErrorExit(c, http.StatusInternalServerError, "unable to update the person in the database", err)
+			return
+		}
+	} else if name != "" {
+		_, err = conn.Exec(context.Background(), "update authentication set full_name = $1 where id = $2", name, id)
+		if err != nil {
+			ErrorExit(c, http.StatusInternalServerError, "unable to update the person in the database", err)
+			return
+		}
+	} else {
+		_, err = conn.Exec(context.Background(), "update authentication set email = $1 where id = $2", email, id)
+		if err != nil {
+			ErrorExit(c, http.StatusInternalServerError, "unable to update the person in the database", err)
+			return
+		}
+	}
+}
+
+// This endpoint makes an external API call,
+// only use it if you want to update more information about the user
+func UpdateUserAlpaca(c *gin.Context) {
+
+}
+
+func DeleteUser(c *gin.Context) {
+
 }
