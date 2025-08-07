@@ -100,13 +100,13 @@ func SHA512(text string) string {
 }
 
 func CreateAuthTable(conn *pgx.Conn) error {
-	_, err := conn.Exec(context.Background(), "create table if not exists authentication (id uuid primary key, full_name text, "+
+	_, err := conn.Exec(context.Background(), "create table if not exists authentication (id uuid primary key default gen_random_uuid(), full_name text, "+
 		"email text, password text, type int check (type in (1, 2)), created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp)")
 	return err
 }
 
 func CreateRefreshTokenTable(conn *pgx.Conn) error {
-	_, err := conn.Exec(context.Background(), "create table if not exists r_tokens(token uuid primary key default gen_random_uuid(), user_id uuid references authentication(id) "+
+	_, err := conn.Exec(context.Background(), "create table if not exists r_tokens(token uuid primary key default gen_random_uuid(), user_id uuid references authentication(id) on delete cascade, "+
 		"expiration timestamp default current_timestamp + '5 days'::interval, valid bool)")
 	return err
 }
@@ -174,22 +174,22 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
-	errs := map[int]string{
-		400: "The post body is not well formed",
-		409: "There is already an existing account registered with the same email address",
-		422: "One of the input values is not a valid value",
-	}
-
-	headers := BasicAuth()
-
-	body, err := SendRequest(http.MethodPost, BaseURL+Accounts, nil, errs, headers)
-	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusFailedDependency, gin.H{"error": err.Error()})
-		return
-	}
-
-	log.Println(body)
+	// errs := map[int]string{
+	// 	400: "The post body is not well formed",
+	// 	409: "There is already an existing account registered with the same email address",
+	// 	422: "One of the input values is not a valid value",
+	// }
+	//
+	// headers := BasicAuth()
+	//
+	// body, err := SendRequest(http.MethodPost, BaseURL+Accounts, nil, errs, headers)
+	// if err != nil {
+	// 	log.Println(err)
+	// 	c.JSON(http.StatusFailedDependency, gin.H{"error": err.Error()})
+	// 	return
+	// }
+	//
+	// log.Println(body)
 
 	hashedPassword := SHA512(information["password"])
 	_, err = conn.Exec(context.Background(), "insert into authentication (full_name, email, password, type) values ($1, $2, $3, $4)",
@@ -563,5 +563,29 @@ func UpdateUserAlpaca(c *gin.Context) {
 }
 
 func DeleteUser(c *gin.Context) {
+	userID := c.Param("id")
+	id := c.GetString("id")
+	acc, _ := c.Get("accountType")
+	accountType := acc.(byte)
+	id = userID
 
+	if accountType != Admin && id != userID {
+		ErrorExit(c, http.StatusForbidden, "only admins and the user themselves can access the following", nil)
+		return
+	}
+
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "unable to connect to the database", err)
+		return
+	}
+	defer conn.Close(context.Background())
+
+	_, err = conn.Exec(context.Background(), "delete from authentication where id = $1", id)
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "deleting the person from the database", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, nil)
 }

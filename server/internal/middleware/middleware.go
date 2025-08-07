@@ -13,7 +13,7 @@ import (
 func AuthParserMiddleware(c *gin.Context) {
 	token := c.GetHeader("Authorization")
 	if token == "" || !strings.HasPrefix(token, "Bearer ") {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error only authorized users can access this resource"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Error only authorized users can access this resource"})
 		return
 	}
 
@@ -39,6 +39,8 @@ func AuthProtectMiddleware(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Error only admins can access this resource"})
 		return
 	}
+
+	c.Next()
 }
 
 func JSONParserMiddleware(c *gin.Context) {
