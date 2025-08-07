@@ -32,10 +32,11 @@ const (
 	Crypto           = "wallets/" // Accounts + :accountId + Crypto
 )
 
-func SendRequest(method, url string, body io.Reader, errs map[int]string, headers map[string]string) (any, error) {
+func SendRequest[T any](method, url string, body io.Reader, errs map[int]string, headers map[string]string) (T, error) {
+	var zero T
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
-		return nil, err
+		return zero, err
 	}
 
 	for header, value := range headers {
@@ -47,27 +48,27 @@ func SendRequest(method, url string, body io.Reader, errs map[int]string, header
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return zero, err
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != 200 {
+	if res.StatusCode/100 != 2 {
 		for code, errMsg := range errs {
 			if res.StatusCode == code {
-				return nil, errors.New(errMsg)
+				return zero, errors.New(errMsg)
 			}
 		}
 	}
 
 	resBody, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		return zero, err
 	}
 
-	var resJson any
+	var resJson T
 	err = json.Unmarshal(resBody, &resJson)
 	if err != nil {
-		return nil, err
+		return zero, err
 	}
 
 	return resJson, nil

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha512"
 	"encoding/json"
@@ -9,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -35,6 +35,39 @@ type Profile struct {
 	Type      byte      `json:"type"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type alpacaContact struct {
+	Email      string   `json:"email_address"`
+	Phone      string   `json:"phone_number"`
+	Street     []string `json:"street_address"`
+	Unit       string   `json:"unit"`
+	City       string   `json:"city"`
+	State      string   `json:"state"`
+	PostalCode string   `json:"postal_code"`
+}
+
+type alpacaIdentity struct {
+	GivenName          string   `json:"given_name"`
+	FamilyName         string   `json:"family_name"`
+	Birth              string   `json:"date_of_birth"`
+	TaxId              string   `json:"tax_id"`
+	TaxIdType          string   `json:"tax_id_type"`
+	CountryCitizenship string   `json:"country_of_citizenship"`
+	CountryTax         string   `json:"country_of_tax_residence"`
+	FundingSource      []string `json:"funding_source"`
+}
+
+type AlpacaAccount struct {
+	ID             string              `json:"id,omitempty"`
+	Password       string              `json:"password,omitempty"`
+	Contact        alpacaContact       `json:"contact"`
+	Identity       alpacaIdentity      `json:"identity"`
+	Disclosures    map[string]bool     `json:"disclosures"`
+	Agreements     []map[string]string `json:"agreements"`
+	Documents      []map[string]string `json:"documents"`
+	TrustedContact map[string]string   `json:"trusted_contact"`
+	Assets         []string            `json:"enabled_assets"`
 }
 
 func GenerateJWT(id string, accountType byte, email string) (string, error) {
@@ -112,15 +145,28 @@ func CreateRefreshTokenTable(conn *pgx.Conn) error {
 }
 
 func SignUp(c *gin.Context) {
+	acc := AlpacaAccount{}
+	if err := c.ShouldBindJSON(&acc); err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't parse the body of the request correctly", err)
+		return
+	}
+
+	password := acc.Password
+	acc.Password = ""
+
+	req, err := json.Marshal(acc)
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't recreate the request", err)
+		return
+	}
+
 	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Databse connection failed"})
 		return
 	}
-
-	var information map[string]string
-	json.NewDecoder(c.Request.Body).Decode(&information) //fullName, email, password
+	defer conn.Close(context.Background())
 
 	if err = CreateAuthTable(conn); err != nil {
 		log.Println(err)
@@ -128,79 +174,37 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
-	if _, ok := information["email"]; !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error incorrectly provided email of the user"})
-		return
+	errs := map[int]string{
+		400: "The post body is not well formed",
+		409: "There is already an existing account registered with the same email address",
+		422: "One of the input values is not a valid value",
 	}
 
-	validEmail, err := regexp.MatchString(".*@.*\\..*", information["email"])
+	headers := BasicAuth()
+
+	reader := bytes.NewReader(req)
+
+	res, err := SendRequest[AlpacaAccount](http.MethodPost, BaseURL+Accounts, reader, errs, headers)
 	if err != nil {
 		log.Println(err)
-		c.JSON(http.StatusForbidden, gin.H{"error": "Error invalid email"})
+		c.JSON(http.StatusFailedDependency, gin.H{"error": err.Error()})
 		return
 	}
 
-	if !validEmail {
-		log.Println("Invalid email")
-		c.JSON(http.StatusForbidden, gin.H{"error": "Error invalid email"})
-		return
-	}
+	id := res.ID
+	name := res.Identity.GivenName + " " + res.Identity.FamilyName
+	email := res.Contact.Email
 
-	if _, ok := information["password"]; !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error incorrectly provided password of the user"})
-		return
-	}
-
-	if _, ok := information["name"]; !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error incorrectly provided name of the user"})
-		return
-	}
-
-	var check string
-	err = conn.QueryRow(context.Background(), "select email from authentication where email = $1", information["email"]).Scan(&check)
-	emailExists := true
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			emailExists = false
-		} else {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting the password from the table"})
-			return
-		}
-	}
-
-	if emailExists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "There is already a person with this email"})
-		return
-	}
-
-	// errs := map[int]string{
-	// 	400: "The post body is not well formed",
-	// 	409: "There is already an existing account registered with the same email address",
-	// 	422: "One of the input values is not a valid value",
-	// }
-	//
-	// headers := BasicAuth()
-	//
-	// body, err := SendRequest(http.MethodPost, BaseURL+Accounts, nil, errs, headers)
-	// if err != nil {
-	// 	log.Println(err)
-	// 	c.JSON(http.StatusFailedDependency, gin.H{"error": err.Error()})
-	// 	return
-	// }
-	//
-	// log.Println(body)
-
-	hashedPassword := SHA512(information["password"])
-	_, err = conn.Exec(context.Background(), "insert into authentication (full_name, email, password, type) values ($1, $2, $3, $4)",
-		information["name"], information["email"], hashedPassword, User)
+	hashedPassword := SHA512(password)
+	_, err = conn.Exec(context.Background(), "insert into authentication (id, full_name, email, password, type) values ($1, $2, $3, $4, $5)",
+		id, name, email, hashedPassword, User)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error inserting the information into the database."})
 		return
 	}
 
-	c.JSON(http.StatusOK, nil)
+	c.JSON(http.StatusOK, res)
 }
 
 func LogIn(c *gin.Context) {
@@ -340,7 +344,7 @@ func GetAllUsers(c *gin.Context) {
 func GetAllUsersAlpaca(c *gin.Context) {
 	headers := BasicAuth()
 
-	body, err := SendRequest(http.MethodGet, BaseURL+Accounts, nil, nil, headers)
+	body, err := SendRequest[any](http.MethodGet, BaseURL+Accounts, nil, nil, headers)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusFailedDependency, gin.H{"error": err.Error()})
@@ -428,7 +432,7 @@ func Refresh(c *gin.Context) {
 	err = conn.QueryRow(context.Background(), "insert into r_tokens (user_id, valid) values ($1, $2) returning token", id, true).Scan(&newRefresh)
 	if err != nil {
 		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error unable to invalidate the refresh token"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error unable to create a new refresh token"})
 		return
 	}
 
@@ -437,7 +441,7 @@ func Refresh(c *gin.Context) {
 	token, err = GenerateJWT(id, accountType, email)
 	if err != nil {
 		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error unable to generate new token"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error unable to generate a new token"})
 		return
 	}
 
@@ -553,7 +557,7 @@ func UpdateUserAlpaca(c *gin.Context) {
 		422: "The response body contains an atribute that is not permited to be updated or you are atempting to set an invalid value",
 	}
 
-	body, err := SendRequest(http.MethodPatch, BaseURL+Accounts+id, c.Request.Body, errs, headers)
+	body, err := SendRequest[any](http.MethodPatch, BaseURL+Accounts+id, c.Request.Body, errs, headers)
 	if err != nil {
 		ErrorExit(c, http.StatusFailedDependency, "while trying to update the user", err)
 		return
@@ -581,11 +585,19 @@ func DeleteUser(c *gin.Context) {
 	}
 	defer conn.Close(context.Background())
 
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		404: "Account not found",
+	}
+
+	body, err := SendRequest[any](http.MethodDelete, BaseURL+Accounts+id+"/actions/"+"close", nil, errs, headers)
+
 	_, err = conn.Exec(context.Background(), "delete from authentication where id = $1", id)
 	if err != nil {
 		ErrorExit(c, http.StatusInternalServerError, "deleting the person from the database", err)
 		return
 	}
 
-	c.JSON(http.StatusOK, nil)
+	c.JSON(http.StatusOK, body)
 }
