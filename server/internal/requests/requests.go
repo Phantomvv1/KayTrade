@@ -24,7 +24,7 @@ const (
 	Clock            = "clock/"
 	Journals         = "journals/"
 	CorporateActions = "corporate_actions"
-	Watchlist        = "watchlist/" // Trading + Accounts + :accountId + Watchlist
+	Watchlist        = "watchlist/" // Trading + :accountId + Watchlist
 	Rebalancing      = "rebalancing/"
 	Reporting        = "reporting/eod"
 	CashInterest     = "cash_interest/apr_tiers" //1 endpoint
