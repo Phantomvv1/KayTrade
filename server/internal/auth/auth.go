@@ -507,19 +507,19 @@ func UpdateUser(c *gin.Context) {
 	defer conn.Close(context.Background())
 
 	if name != "" && email != "" {
-		_, err = conn.Exec(context.Background(), "update authentication set full_name = $1, email = $2 where id = $3", name, email, id)
+		_, err = conn.Exec(context.Background(), "update authentication set full_name = $1, email = $2, updated_at = current_timestamp where id = $3", name, email, id)
 		if err != nil {
 			ErrorExit(c, http.StatusInternalServerError, "unable to update the person in the database", err)
 			return
 		}
 	} else if name != "" {
-		_, err = conn.Exec(context.Background(), "update authentication set full_name = $1 where id = $2", name, id)
+		_, err = conn.Exec(context.Background(), "update authentication set full_name = $1, updated_at = current_timestamp where id = $2", name, id)
 		if err != nil {
 			ErrorExit(c, http.StatusInternalServerError, "unable to update the person in the database", err)
 			return
 		}
 	} else {
-		_, err = conn.Exec(context.Background(), "update authentication set email = $1 where id = $2", email, id)
+		_, err = conn.Exec(context.Background(), "update authentication set email = $1, updated_at = current_timestamp where id = $2", email, id)
 		if err != nil {
 			ErrorExit(c, http.StatusInternalServerError, "unable to update the person in the database", err)
 			return
