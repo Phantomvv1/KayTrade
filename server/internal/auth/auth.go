@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
@@ -184,16 +183,15 @@ func SignUp(c *gin.Context) {
 
 	reader := bytes.NewReader(req)
 
-	res, err := SendRequest[AlpacaAccount](http.MethodPost, BaseURL+Accounts, reader, errs, headers)
+	body, err := SendRequest[AlpacaAccount](http.MethodPost, BaseURL+Accounts, reader, errs, headers)
 	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusFailedDependency, gin.H{"error": err.Error()})
+		RequestExit(c, body, err, "unable to make an account for the user")
 		return
 	}
 
-	id := res.ID
-	name := res.Identity.GivenName + " " + res.Identity.FamilyName
-	email := res.Contact.Email
+	id := body.ID
+	name := body.Identity.GivenName + " " + body.Identity.FamilyName
+	email := body.Contact.Email
 
 	hashedPassword := SHA512(password)
 	_, err = conn.Exec(context.Background(), "insert into authentication (id, full_name, email, password, type) values ($1, $2, $3, $4, $5)",
@@ -204,7 +202,7 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, body)
 }
 
 func LogIn(c *gin.Context) {
@@ -346,8 +344,7 @@ func GetAllUsersAlpaca(c *gin.Context) {
 
 	body, err := SendRequest[any](http.MethodGet, BaseURL+Accounts, nil, nil, headers)
 	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusFailedDependency, gin.H{"error": err.Error()})
+		RequestExit(c, body, err, "unable to get all users")
 		return
 	}
 
@@ -449,20 +446,9 @@ func Refresh(c *gin.Context) {
 }
 
 func GetUser(c *gin.Context) {
-	userID := c.Param("id")
-	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error incorrectly provided id of the user"})
-		return
-	}
-
 	id := c.GetString("id")
 	acc, _ := c.Get("accountType")
 	accountType := acc.(byte)
-
-	if accountType != Admin && id != userID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Error only admins and the person himself can access this resource"})
-		return
-	}
 
 	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -473,7 +459,7 @@ func GetUser(c *gin.Context) {
 	defer conn.Close(context.Background())
 
 	user := Profile{}
-	user.ID = userID
+	user.ID = id
 	user.Type = accountType
 	err = conn.QueryRow(context.Background(), "select full_name, email, created_at, updated_at from authentication where id = $1", user.ID).
 		Scan(&user.Name, &user.Email, &user.CreatedAt, &user.UpdatedAt)
@@ -488,14 +474,7 @@ func GetUser(c *gin.Context) {
 
 func UpdateUser(c *gin.Context) {
 	// name &| email
-	userID := c.Param("id")
-	id := c.GetString("id")
-	acc, _ := c.Get("accountType")
-	accountType := acc.(byte)
-	if accountType != Admin && userID != id {
-		ErrorExit(c, http.StatusForbidden, "only admins and the user himself can do this", nil)
-	}
-	id = userID
+	id := c.Param("id")
 
 	name := c.GetString("name")
 	email := c.GetString("email")
@@ -534,21 +513,7 @@ func UpdateUser(c *gin.Context) {
 // This endpoint makes an external API call,
 // only use it if you want to update more information about the user
 func UpdateUserAlpaca(c *gin.Context) {
-	userID := c.Param("id")
-	if strings.HasPrefix(userID, "/") && strings.HasSuffix(userID, "/") {
-		userID = strings.TrimPrefix(userID, "/")
-		userID = strings.TrimSuffix(userID, "/")
-	}
-
-	id := c.GetString("id")
-	acc, _ := c.Get("accountType")
-	accountType := acc.(byte)
-
-	if accountType != Admin && id != userID {
-		ErrorExit(c, http.StatusForbidden, "only admins and the user themselves can edit their profile", nil)
-		return
-	}
-	id = userID
+	id := c.Param("id")
 
 	headers := BasicAuth()
 
@@ -559,7 +524,7 @@ func UpdateUserAlpaca(c *gin.Context) {
 
 	body, err := SendRequest[any](http.MethodPatch, BaseURL+Accounts+id, c.Request.Body, errs, headers)
 	if err != nil {
-		ErrorExit(c, http.StatusFailedDependency, "while trying to update the user", err)
+		RequestExit(c, body, err, "unable to update the user")
 		return
 	}
 
@@ -567,16 +532,7 @@ func UpdateUserAlpaca(c *gin.Context) {
 }
 
 func DeleteUser(c *gin.Context) {
-	userID := c.Param("id")
-	id := c.GetString("id")
-	acc, _ := c.Get("accountType")
-	accountType := acc.(byte)
-	id = userID
-
-	if accountType != Admin && id != userID {
-		ErrorExit(c, http.StatusForbidden, "only admins and the user themselves can access the following", nil)
-		return
-	}
+	id := c.Param("id")
 
 	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -591,7 +547,11 @@ func DeleteUser(c *gin.Context) {
 		404: "Account not found",
 	}
 
-	body, err := SendRequest[any](http.MethodDelete, BaseURL+Accounts+id+"/actions/"+"close", nil, errs, headers)
+	body, err := SendRequest[any](http.MethodPost, BaseURL+Accounts+id+"/actions/close", nil, errs, headers)
+	if err != nil {
+		RequestExit(c, body, err, "unable to delete the account of the user")
+		return
+	}
 
 	_, err = conn.Exec(context.Background(), "delete from authentication where id = $1", id)
 	if err != nil {

@@ -27,12 +27,12 @@ func AuthParserMiddleware(c *gin.Context) {
 
 	c.Set("id", id)
 	c.Set("accountType", accountType)
-	c.Set("email", email)
+	c.Set("token_email", email)
 
 	c.Next()
 }
 
-func AuthProtectMiddleware(c *gin.Context) {
+func AdminOnlyMiddleware(c *gin.Context) {
 	accType, _ := c.Get("accountType")
 	accountType := accType.(byte)
 	if accountType != Admin {
@@ -54,6 +54,25 @@ func JSONParserMiddleware(c *gin.Context) {
 
 	for k, v := range information {
 		c.Set(k, v)
+	}
+
+	c.Next()
+}
+
+func AuthProtectMiddleware(c *gin.Context) {
+	userID := c.Param("id")
+	if strings.HasPrefix(userID, "/") && strings.HasSuffix(userID, "/") {
+		userID = strings.TrimPrefix(userID, "/")
+		userID = strings.TrimSuffix(userID, "/")
+	}
+
+	id := c.GetString("id")
+	acc, _ := c.Get("accountType")
+	accountType := acc.(byte)
+
+	if accountType != Admin && id != userID {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Error only admins and the user themselves can access this resource"})
+		return
 	}
 
 	c.Next()
