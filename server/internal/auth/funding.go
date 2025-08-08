@@ -80,5 +80,15 @@ func GetAllTransfers(c *gin.Context) {
 }
 
 func NewTransfer(c *gin.Context) {
+	id := c.Param("id")
 
+	headers := BasicAuth()
+
+	body, err := SendRequest[any](http.MethodPost, BaseURL+Accounts+id+"/transfers", c.Request.Body, nil, headers)
+	if err != nil {
+		RequestExit(c, body, err, "unable to get the transfers for this account")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
 }

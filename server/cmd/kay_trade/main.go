@@ -41,6 +41,7 @@ func main() {
 	t.Use(AuthParserMiddleware)
 	t.Use(AuthProtectMiddleware)
 	t.GET("/:id", GetAllTransfers)
+	t.POST("/:id", NewTransfer)
 
 	r.Run(":42069")
 }
