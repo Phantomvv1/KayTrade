@@ -35,6 +35,7 @@ func main() {
 	f.Use(AuthProtectMiddleware)
 	f.POST("/:id", CreateBankRelationship)
 	f.GET("/:id", GetBankRelationships)
+	f.GET("/:id/alpaca", GetBankRelationshipsAlpaca)
 	f.DELETE("/:id", JSONParserMiddleware, DeleteBankRelationship)
 
 	t := r.Group("/transfers")
