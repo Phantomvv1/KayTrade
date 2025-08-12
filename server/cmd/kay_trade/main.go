@@ -53,6 +53,8 @@ func main() {
 	trade.GET("/:id/alpaca", trading.GetOrdersAlpaca)
 	trade.PATCH("/:id/orders/:orderId", trading.ReplaceOrder)
 	trade.DELETE("/:id/orders/:orderId", trading.CancelOrder)
+	trade.POST("/:id/orders/estimation", trading.EstimateOrder)
+	trade.GET("/:id/orders/:orderId", trading.GetOrderByID)
 
 	r.Run(":42069")
 }

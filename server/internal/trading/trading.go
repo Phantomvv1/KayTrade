@@ -139,9 +139,9 @@ func ReplaceOrder(c *gin.Context) {
 		404: "Resource doesn't exist",
 	}
 
-	body, err := SendRequest[any](http.MethodPatch, BaseURL+Trading+id+"/orders"+orderID, c.Request.Body, errs, headers)
+	body, err := SendRequest[any](http.MethodPatch, BaseURL+Trading+id+"/orders/"+orderID, c.Request.Body, errs, headers)
 	if err != nil {
-		RequestExit(c, body, err, "couldn't get the orders for this account")
+		RequestExit(c, body, err, "couldn't replce the order")
 		return
 	}
 
@@ -170,10 +170,10 @@ func CancelOrder(c *gin.Context) {
 	res := make(chan result)
 	var resBody any
 	go func() {
-		body, err := SendRequest[any](http.MethodPatch, BaseURL+Trading+id+"/orders"+orderID, c.Request.Body, errs, headers)
+		body, err := SendRequest[any](http.MethodDelete, BaseURL+Trading+id+"/orders/"+orderID, c.Request.Body, errs, headers)
 		if err != nil {
 			res <- result{Type: "f", F: func() {
-				RequestExit(c, body, err, "couldn't get the orders for this account")
+				RequestExit(c, body, err, "couldn't cancel the order")
 			}}
 			wg.Done()
 			return
@@ -221,4 +221,38 @@ func CancelOrder(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resBody)
+}
+
+func EstimateOrder(c *gin.Context) {
+	id := c.Param("id")
+
+	headers := BasicAuth()
+
+	body, err := SendRequest[any](http.MethodPost, BaseURL+Trading+id+"/orders/estimation", c.Request.Body, nil, headers)
+	if err != nil {
+		RequestExit(c, body, err, "couldn't estimate the order")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}
+
+func GetOrderByID(c *gin.Context) {
+	id := c.Param("id")
+	orderID := c.Param("orderId")
+
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		400: "Malformed input",
+		404: "Resource doesn't exist",
+	}
+
+	body, err := SendRequest[any](http.MethodGet, BaseURL+Trading+id+"/orders/"+orderID, c.Request.Body, errs, headers)
+	if err != nil {
+		RequestExit(c, body, err, "couldn't get the order")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
 }
