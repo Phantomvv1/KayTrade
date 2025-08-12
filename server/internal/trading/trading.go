@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
@@ -125,4 +126,99 @@ func GetOrdersAlpaca(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, body)
+}
+
+func ReplaceOrder(c *gin.Context) {
+	id := c.Param("id")
+	orderID := c.Param("orderId")
+
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		400: "Malformed input",
+		404: "Resource doesn't exist",
+	}
+
+	body, err := SendRequest[any](http.MethodPatch, BaseURL+Trading+id+"/orders"+orderID, c.Request.Body, errs, headers)
+	if err != nil {
+		RequestExit(c, body, err, "couldn't get the orders for this account")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}
+
+type result struct {
+	Type string
+	F    func()
+}
+
+func CancelOrder(c *gin.Context) {
+	id := c.Param("id")
+	orderID := c.Param("orderId")
+
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		400: "Malformed input",
+		404: "Resource doesn't exist",
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	res := make(chan result)
+	var resBody any
+	go func() {
+		body, err := SendRequest[any](http.MethodPatch, BaseURL+Trading+id+"/orders"+orderID, c.Request.Body, errs, headers)
+		if err != nil {
+			res <- result{Type: "f", F: func() {
+				RequestExit(c, body, err, "couldn't get the orders for this account")
+			}}
+			wg.Done()
+			return
+		}
+
+		resBody = body
+		res <- result{Type: "s"}
+		wg.Done()
+	}()
+
+	go func() {
+		conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+		if err != nil {
+			res <- result{Type: "f", F: func() {
+				ErrorExit(c, http.StatusInternalServerError, "couldn't connect to the database", err)
+			}}
+			wg.Done()
+			return
+		}
+		defer conn.Close(context.Background())
+
+		_, err = conn.Exec(context.Background(), "delete from orders where id = $1 and user_id = $2", orderID, id)
+		if err != nil {
+			res <- result{Type: "f", F: func() {
+				ErrorExit(c, http.StatusInternalServerError, "couldn't delete the information from the database", err)
+			}}
+			wg.Done()
+			return
+		}
+
+		res <- result{Type: "s"}
+		wg.Done()
+	}()
+
+	go func() {
+		wg.Wait()
+		close(res)
+	}()
+
+	for r := range res {
+		if r.Type == "f" {
+			r.F()
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, resBody)
 }
