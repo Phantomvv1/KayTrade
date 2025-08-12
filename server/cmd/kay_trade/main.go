@@ -55,6 +55,7 @@ func main() {
 	trade.DELETE("/:id/orders/:orderId", trading.CancelOrder)
 	trade.POST("/:id/orders/estimation", trading.EstimateOrder)
 	trade.GET("/:id/orders/:orderId", trading.GetOrderByID)
+	trade.GET("/:id/portfolio", trading.GetAccountProtfolioHistory)
 
 	r.Run(":42069")
 }

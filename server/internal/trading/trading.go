@@ -256,3 +256,17 @@ func GetOrderByID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, body)
 }
+
+func GetAccountProtfolioHistory(c *gin.Context) {
+	id := c.Param("id")
+
+	headers := BasicAuth()
+
+	body, err := SendRequest[any](http.MethodGet, BaseURL+Trading+id+"/account/portfolio/history", c.Request.Body, nil, headers)
+	if err != nil {
+		RequestExit(c, body, err, "couldn't get the order")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}
