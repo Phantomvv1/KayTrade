@@ -6,6 +6,7 @@ import (
 
 	. "github.com/Phantomvv1/KayTrade/internal/auth"
 	. "github.com/Phantomvv1/KayTrade/internal/middleware"
+	"github.com/Phantomvv1/KayTrade/internal/trading"
 	"github.com/gin-gonic/gin"
 )
 
@@ -43,6 +44,13 @@ func main() {
 	t.Use(AuthProtectMiddleware)
 	t.GET("/:id", GetAllTransfers)
 	t.POST("/:id", NewTransfer)
+
+	trade := r.Group("/trading")
+	trade.Use(AuthParserMiddleware)
+	trade.Use(AuthProtectMiddleware)
+	trade.POST("/:id", trading.CreateOrder)
+	trade.GET("/:id", trading.GetOrders)
+	trade.GET("/:id/alpaca", trading.GetOrdersAlpaca)
 
 	r.Run(":42069")
 }
