@@ -56,6 +56,10 @@ func main() {
 	trade.POST("/:id/orders/estimation", trading.EstimateOrder)
 	trade.GET("/:id/orders/:orderId", trading.GetOrderByID)
 	trade.GET("/:id/portfolio", trading.GetAccountProtfolioHistory)
+	trade.GET("/:id/positions", trading.GetOpenPositions)
+	trade.DELETE("/:id/positions", trading.CloseAllOpenPositions)
+	trade.GET("/:id/positions/:symbol_or_asset_id", trading.GetOpenPosition)
+	trade.DELETE("/:id/positions/:symbol_or_asset_id", JSONParserMiddleware, trading.ClosePosition)
 
 	r.Run(":42069")
 }

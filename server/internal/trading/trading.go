@@ -2,6 +2,8 @@ package trading
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -265,6 +267,97 @@ func GetAccountProtfolioHistory(c *gin.Context) {
 	body, err := SendRequest[any](http.MethodGet, BaseURL+Trading+id+"/account/portfolio/history", c.Request.Body, nil, headers)
 	if err != nil {
 		RequestExit(c, body, err, "couldn't get the order")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}
+
+func GetOpenPositions(c *gin.Context) {
+	id := c.Param("id")
+
+	headers := BasicAuth()
+
+	body, err := SendRequest[any](http.MethodGet, BaseURL+Trading+id+"/positions", nil, nil, headers)
+	if err != nil {
+		RequestExit(c, body, err, "coludn't get the open positions for your account")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}
+
+func CloseAllOpenPositions(c *gin.Context) {
+	id := c.Param("id")
+
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		500: "Failed to liquidate some positions",
+	}
+
+	body, err := SendRequest[any](http.MethodGet, BaseURL+Trading+id+"/positions", nil, errs, headers)
+	if err != nil {
+		RequestExit(c, body, err, "coludn't close all the open positions for your account")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}
+
+func GetOpenPosition(c *gin.Context) {
+	id := c.Param("id")
+	symbolOrAssetID := c.Param("symbol_or_asset_id")
+	if symbolOrAssetID == "" {
+		ErrorExit(c, http.StatusBadRequest, "missing a parameter", nil)
+		return
+	}
+
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		404: "Account doesn't have a position for this symbol or asset_id ",
+	}
+
+	body, err := SendRequest[any](http.MethodGet, BaseURL+Trading+id+"/positions/"+symbolOrAssetID, nil, errs, headers)
+	if err != nil {
+		RequestExit(c, body, err, "coludn't get the open position for your account")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}
+
+func ClosePosition(c *gin.Context) {
+	id := c.Param("id")
+	symbolOrAssetID := c.Param("symbol_or_asset_id")
+	if symbolOrAssetID == "" {
+		ErrorExit(c, http.StatusBadRequest, "missing a parameter", nil)
+		return
+	}
+	qtyFl := c.GetFloat64("qty")
+	qty := int(qtyFl)
+	percentageFl := c.GetFloat64("percentage")
+	percentage := int(percentageFl)
+
+	if qty != 0 && percentage != 0 {
+		ErrorExit(c, http.StatusBadRequest, "only 1 of the bonus parameters can be specified at a time", nil)
+		return
+	}
+
+	url := BaseURL + Trading + id + "/positions/" + symbolOrAssetID
+	if qty != 0 {
+		url += "?qty=" + fmt.Sprintf("%d", qty)
+	} else if percentage != 0 {
+		url += "?percentage=" + fmt.Sprintf("%d", percentage)
+	}
+	log.Println(url)
+
+	headers := BasicAuth()
+
+	body, err := SendRequest[any](http.MethodGet, url, nil, nil, headers)
+	if err != nil {
+		RequestExit(c, body, err, "coludn't get the open position for your account")
 		return
 	}
 
