@@ -296,7 +296,7 @@ func CloseAllOpenPositions(c *gin.Context) {
 		500: "Failed to liquidate some positions",
 	}
 
-	body, err := SendRequest[any](http.MethodGet, BaseURL+Trading+id+"/positions", nil, errs, headers)
+	body, err := SendRequest[any](http.MethodDelete, BaseURL+Trading+id+"/positions", nil, errs, headers)
 	if err != nil {
 		RequestExit(c, body, err, "coludn't close all the open positions for your account")
 		return
@@ -355,7 +355,7 @@ func ClosePosition(c *gin.Context) {
 
 	headers := BasicAuth()
 
-	body, err := SendRequest[any](http.MethodGet, url, nil, nil, headers)
+	body, err := SendRequest[any](http.MethodDelete, url, nil, nil, headers)
 	if err != nil {
 		RequestExit(c, body, err, "coludn't get the open position for your account")
 		return
