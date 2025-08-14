@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	. "github.com/Phantomvv1/KayTrade/internal/auth"
+	"github.com/Phantomvv1/KayTrade/internal/clock"
 	"github.com/Phantomvv1/KayTrade/internal/documents"
 	. "github.com/Phantomvv1/KayTrade/internal/middleware"
 	"github.com/Phantomvv1/KayTrade/internal/trading"
@@ -31,6 +32,7 @@ func main() {
 	r.PATCH("/users/:id/alpaca", AuthParserMiddleware, AuthProtectMiddleware, UpdateUserAlpaca)
 	r.DELETE("/users/:id", AuthParserMiddleware, AuthProtectMiddleware, DeleteUser)
 	r.POST("/refresh", JSONParserMiddleware, Refresh)
+	r.GET("/clock", clock.GetClock)
 
 	f := r.Group("/funding")
 	f.Use(AuthParserMiddleware)
