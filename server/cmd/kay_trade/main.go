@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	. "github.com/Phantomvv1/KayTrade/internal/auth"
+	"github.com/Phantomvv1/KayTrade/internal/documents"
 	. "github.com/Phantomvv1/KayTrade/internal/middleware"
 	"github.com/Phantomvv1/KayTrade/internal/trading"
 	"github.com/gin-gonic/gin"
@@ -60,6 +61,12 @@ func main() {
 	trade.DELETE("/:id/positions", trading.CloseAllOpenPositions)
 	trade.GET("/:id/positions/:symbol_or_asset_id", trading.GetOpenPosition)
 	trade.DELETE("/:id/positions/:symbol_or_asset_id", JSONParserMiddleware, trading.ClosePosition)
+
+	docs := r.Group("/documents")
+	docs.Use(AuthParserMiddleware)
+	docs.Use(AuthProtectMiddleware)
+	docs.GET("/:id", documents.GetAllDocuments)
+	docs.GET("/:id/download/:documentId", documents.DownloadDocument)
 
 	r.Run(":42069")
 }

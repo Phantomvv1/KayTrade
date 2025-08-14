@@ -13,7 +13,7 @@ const (
 	// BaseTradingURL = "https://paper-api.alpaca.markets"
 	BaseURL          = "https://broker-api.sandbox.alpaca.markets/v1/"
 	Accounts         = "accounts/"
-	Documents        = "documents/"        // Accounts + ":accountId"
+	Documents        = "documents/"        // Accounts + ":accountId" + Documents
 	Trading          = "trading/accounts/" // :accountId
 	Assets           = "assets/"
 	Calendar         = "calendar/"
