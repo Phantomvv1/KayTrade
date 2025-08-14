@@ -10,6 +10,7 @@ import (
 	"github.com/Phantomvv1/KayTrade/internal/journals"
 	. "github.com/Phantomvv1/KayTrade/internal/middleware"
 	"github.com/Phantomvv1/KayTrade/internal/trading"
+	"github.com/Phantomvv1/KayTrade/internal/watchlist"
 	"github.com/gin-gonic/gin"
 )
 
@@ -78,6 +79,11 @@ func main() {
 	journ.GET("", journals.GetJournalList)
 	journ.DELETE("/:id", journals.CancelJournal)
 	journ.GET("/:id", journals.GetJournalByID)
+
+	watch := r.Group("/watchlist")
+	watch.Use(AuthParserMiddleware)
+	watch.Use(AuthProtectMiddleware)
+	watch.POST("/:id", watchlist.CreateWatchlist)
 
 	r.Run(":42069")
 }
