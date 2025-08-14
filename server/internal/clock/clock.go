@@ -11,13 +11,9 @@ import (
 func GetClock(c *gin.Context) {
 	headers := BasicAuth()
 
-	errs := map[int]string{
-		404: "Not found",
-	}
-
-	body, err := SendRequest[any](http.MethodGet, BaseURL+Clock, nil, errs, headers)
+	body, err := SendRequest[any](http.MethodGet, BaseURL+Clock, nil, nil, headers)
 	if err != nil {
-		RequestExit(c, body, err, "coludn't get the documents for your account")
+		RequestExit(c, body, err, "coludn't get the clock")
 		return
 	}
 

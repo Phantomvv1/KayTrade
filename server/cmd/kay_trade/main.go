@@ -7,6 +7,7 @@ import (
 	. "github.com/Phantomvv1/KayTrade/internal/auth"
 	"github.com/Phantomvv1/KayTrade/internal/clock"
 	"github.com/Phantomvv1/KayTrade/internal/documents"
+	"github.com/Phantomvv1/KayTrade/internal/journals"
 	. "github.com/Phantomvv1/KayTrade/internal/middleware"
 	"github.com/Phantomvv1/KayTrade/internal/trading"
 	"github.com/gin-gonic/gin"
@@ -69,6 +70,14 @@ func main() {
 	docs.Use(AuthProtectMiddleware)
 	docs.GET("/:id", documents.GetAllDocuments)
 	docs.GET("/:id/download/:documentId", documents.DownloadDocument)
+
+	journ := r.Group("/journals")
+	journ.Use(AuthParserMiddleware)
+	journ.Use(AuthProtectMiddleware)
+	journ.POST("", journals.CreateJournal)
+	journ.GET("", journals.GetJournalList)
+	journ.DELETE("/:id", journals.CancelJournal)
+	journ.GET("/:id", journals.GetJournalByID)
 
 	r.Run(":42069")
 }
