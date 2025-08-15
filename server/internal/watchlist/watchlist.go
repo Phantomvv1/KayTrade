@@ -109,8 +109,7 @@ func RemoveSymbolFromWatchlist(c *gin.Context) {
 	headers := BasicAuth()
 
 	errs := map[int]string{
-		404: "The requested watchlist is not found, or one of the symbols is not found in the assets",
-		422: "Some parameters are not valid",
+		404: "The requested watchlist is not found",
 	}
 
 	body, err := SendRequest[any](http.MethodDelete, BaseURL+Trading+id+Watchlist+watchlistID+symbol, c.Request.Body, errs, headers)
