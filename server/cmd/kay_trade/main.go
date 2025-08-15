@@ -84,6 +84,8 @@ func main() {
 	watch.Use(AuthParserMiddleware)
 	watch.Use(AuthProtectMiddleware)
 	watch.POST("/:id", watchlist.CreateWatchlist)
+	watch.GET("/:id", watchlist.GetWatchlist)
+	watch.GET("/:id/watch/:watchlistId", watchlist.ManageWatchlist)
 
 	r.Run(":42069")
 }
