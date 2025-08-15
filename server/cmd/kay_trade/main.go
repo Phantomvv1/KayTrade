@@ -86,6 +86,8 @@ func main() {
 	watch.POST("/:id", watchlist.CreateWatchlist)
 	watch.GET("/:id", watchlist.GetWatchlist)
 	watch.GET("/:id/watch/:watchlistId", watchlist.ManageWatchlist)
+	watch.PUT("/:id/watch/:watchlistId", watchlist.UpdateWatchlist)
+	watch.DELETE("/:id/watch/:watchlistId", watchlist.DeleteWatchlist)
 
 	r.Run(":42069")
 }
