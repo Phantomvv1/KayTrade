@@ -14,5 +14,8 @@ func main() {
 
 	r := routes.NewRouter()
 
+	data := r.Group("/data")
+	data.GET("", marketdata.GetHistoricalAuctions)
+
 	r.Run(":42069")
 }
