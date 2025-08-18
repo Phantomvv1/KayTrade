@@ -8,6 +8,7 @@ import (
 	"github.com/Phantomvv1/KayTrade/internal/clock"
 	"github.com/Phantomvv1/KayTrade/internal/documents"
 	"github.com/Phantomvv1/KayTrade/internal/journals"
+	marketdata "github.com/Phantomvv1/KayTrade/internal/market_data"
 	. "github.com/Phantomvv1/KayTrade/internal/middleware"
 	"github.com/Phantomvv1/KayTrade/internal/trading"
 	"github.com/Phantomvv1/KayTrade/internal/watchlist"
@@ -90,6 +91,9 @@ func main() {
 	watch.DELETE("/:id/watch/:watchlistId", watchlist.DeleteWatchlist)
 	watch.POST("/:id/watch/:watchlistId", watchlist.AddAssetWatchlist)
 	watch.DELETE("/:id/watch/:watchlistId/:symbol", watchlist.RemoveSymbolFromWatchlist)
+
+	data := r.Group("/data")
+	data.GET("", marketdata.GetHistoricalAuctions)
 
 	r.Run(":42069")
 }
