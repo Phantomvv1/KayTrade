@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"os"
+	"strings"
 )
 
 const (
@@ -24,7 +26,7 @@ const (
 	Clock            = "clock/"
 	Journals         = "journals/"
 	CorporateActions = "corporate_actions"
-	Watchlist        = "watchlist/" // Trading + :accountId + Watchlist
+	Watchlist        = "watchlists/" // Trading + :accountId + Watchlist
 	Rebalancing      = "rebalancing/"
 	Reporting        = "reporting/eod"
 	CashInterest     = "cash_interest/apr_tiers" //1 endpoint
@@ -63,6 +65,13 @@ func SendRequest[T any](method, url string, body io.Reader, errs map[int]string,
 	resBody, err := io.ReadAll(res.Body)
 	if err != nil {
 		return zero, err
+	}
+
+	h := res.Header["Content-Type"][0]
+	h, _, _ = strings.Cut(h, ";")
+	if h == "text/plain" {
+		log.Println(string(resBody))
+		return zero, errors.New("Unkown error")
 	}
 
 	var resJson T
