@@ -1,8 +1,11 @@
 package trading
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -32,6 +35,34 @@ func CreateOrdersTable(conn *pgx.Conn) error {
 func CreateOrder(c *gin.Context) {
 	id := c.Param("id")
 
+	var reader *bytes.Reader
+
+	if gin.Mode() == "release" {
+		reqBody, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			ErrorExit(c, http.StatusInternalServerError, "couldn't read the request body", err)
+			return
+		}
+
+		var info map[string]any
+		err = json.Unmarshal(reqBody, &info)
+		if err != nil {
+			ErrorExit(c, http.StatusInternalServerError, "couldn't unmarshal the request body", err)
+			return
+		}
+
+		info["commission_type"] = "bps"
+		info["commission"] = "15"
+
+		reqBody, err = json.Marshal(info)
+		if err != nil {
+			ErrorExit(c, http.StatusInternalServerError, "couldn't marshal the request body again", err)
+			return
+		}
+
+		reader = bytes.NewReader(reqBody)
+	}
+
 	headers := BasicAuth()
 
 	errs := map[int]string{
@@ -41,7 +72,16 @@ func CreateOrder(c *gin.Context) {
 		422: "Some parameters are invalid",
 	}
 
-	body, err := SendRequest[map[string]any](http.MethodPost, BaseURL+Trading+id+"/orders", c.Request.Body, errs, headers)
+	var body map[string]any
+	var err error
+	if reader != nil {
+		body, err = SendRequest[map[string]any](http.MethodPost, BaseURL+Trading+id+"/orders", reader, errs, headers)
+		log.Println("Reader")
+	} else {
+		body, err = SendRequest[map[string]any](http.MethodPost, BaseURL+Trading+id+"/orders", c.Request.Body, errs, headers)
+		log.Println("Req body")
+	}
+
 	if err != nil {
 		RequestExit(c, body, err, "couldn't place an order for the given stock")
 		return
