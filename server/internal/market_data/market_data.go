@@ -212,3 +212,39 @@ func GetLatestBars(c *gin.Context) {
 
 	c.JSON(http.StatusOK, body)
 }
+
+func GetConditionCodes(c *gin.Context) {
+	ticktype := c.Param("ticktype")
+	if ticktype == "" {
+		ErrorExit(c, http.StatusBadRequest, "incorrectly provided tick type", nil)
+		return
+	}
+
+	if ticktype != "trade" && ticktype != "quote" {
+		ErrorExit(c, http.StatusBadRequest, "incorrectly provided tick type", nil)
+		return
+	}
+
+	tape := c.Query("tape")
+	if tape != "A" && tape != "B" && tape != "C" {
+		ErrorExit(c, http.StatusBadRequest, "incorrectly provided tape", nil)
+		return
+	}
+
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		400: "One of the request parameters is invalid",
+		403: "Authentication headers are missing or invalid. Make sure you authenticate your request with a valid API key",
+		429: "Too many requests",
+		500: "Internal server error. We recommend retrying these later",
+	}
+
+	body, err := SendRequest[any](http.MethodGet, MarketData+"/stocks/meta/coditions/"+ticktype+"?tape="+tape, nil, errs, headers)
+	if err != nil {
+		RequestExit(c, body, err, "coludn't get the market data for these symbols")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}

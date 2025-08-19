@@ -18,6 +18,7 @@ func main() {
 	data.GET("/auctions", marketdata.GetHistoricalAuctions)
 	data.GET("/bars", marketdata.GetHistoricalBars)
 	data.GET("/bars/latest", marketdata.GetLatestBars)
+	data.GET("/conditions/:ticktype", marketdata.GetConditionCodes)
 
 	r.Run(":42069")
 }
