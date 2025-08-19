@@ -93,7 +93,8 @@ func main() {
 	watch.DELETE("/:id/watch/:watchlistId/:symbol", watchlist.RemoveSymbolFromWatchlist)
 
 	data := r.Group("/data")
-	data.GET("", marketdata.GetHistoricalAuctions)
+	data.GET("/auctions", marketdata.GetHistoricalAuctions)
+	data.GET("/bars", marketdata.GetHistoricalBars)
 
 	r.Run(":42069")
 }
