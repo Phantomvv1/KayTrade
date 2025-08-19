@@ -19,6 +19,7 @@ func main() {
 	data.GET("/bars", marketdata.GetHistoricalBars)
 	data.GET("/bars/latest", marketdata.GetLatestBars)
 	data.GET("/conditions/:ticktype", marketdata.GetConditionCodes)
+	data.GET("/exchanges", marketdata.GetExchangeCodes)
 
 	r.Run(":42069")
 }

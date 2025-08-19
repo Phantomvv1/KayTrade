@@ -248,3 +248,31 @@ func GetConditionCodes(c *gin.Context) {
 
 	c.JSON(http.StatusOK, body)
 }
+
+func GetExchangeCodes(c *gin.Context) {
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		400: "One of the request parameters is invalid",
+		403: "Authentication headers are missing or invalid. Make sure you authenticate your request with a valid API key",
+		429: "Too many requests",
+		500: "Internal server error. We recommend retrying these later",
+	}
+
+	res := make(chan any)
+	go func() {
+		body, err := SendRequest[any](http.MethodGet, MarketData+"/stocks/meta/exchanges", nil, errs, headers)
+		if err != nil {
+			RequestExit(c, body, err, "coludn't get the market data for these symbols")
+			return
+		}
+
+		res <- body
+	}()
+
+	var response any
+	r := <-res
+	response = r
+
+	c.JSON(http.StatusOK, response)
+}
