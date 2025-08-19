@@ -182,3 +182,33 @@ func GetHistoricalBars(c *gin.Context) {
 
 	c.JSON(http.StatusOK, body)
 }
+
+func GetLatestBars(c *gin.Context) {
+	symbols := c.QueryArray("symbols")
+	if symbols == nil {
+		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
+		return
+	} else if symbols[0] == "" {
+		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
+		return
+	}
+
+	symbolsToSend := strings.Join(symbols, ",")
+
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		400: "One of the request parameters is invalid",
+		403: "Authentication headers are missing or invalid. Make sure you authenticate your request with a valid API key",
+		429: "Too many requests",
+		500: "Internal server error. We recommend retrying these later",
+	}
+
+	body, err := SendRequest[any](http.MethodGet, MarketData+"/stocks/bars/latest?symbols="+symbolsToSend, nil, errs, headers)
+	if err != nil {
+		RequestExit(c, body, err, "coludn't get the market data for these symbols")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}

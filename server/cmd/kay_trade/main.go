@@ -95,6 +95,7 @@ func main() {
 	data := r.Group("/data")
 	data.GET("/auctions", marketdata.GetHistoricalAuctions)
 	data.GET("/bars", marketdata.GetHistoricalBars)
+	data.GET("/bars/latest", marketdata.GetLatestBars)
 
 	r.Run(":42069")
 }
