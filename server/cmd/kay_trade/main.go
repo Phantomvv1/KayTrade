@@ -22,6 +22,7 @@ func main() {
 	data.GET("/exchanges", marketdata.GetExchangeCodes)
 	data.GET("/quotes", marketdata.GetHisoticalQuotes)
 	data.GET("/quotes/latest", marketdata.GetLatestQuotes)
+	data.GET("/snapshots", marketdata.GetSnapshots)
 
 	r.Run(":42069")
 }
