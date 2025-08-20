@@ -72,16 +72,7 @@ func (t TimeFrame) ValidTimeFrame() bool {
 }
 
 func GetHistoricalAuctions(c *gin.Context) {
-	symbols := c.QueryArray("symbols")
-	if symbols == nil {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	} else if symbols[0] == "" {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	}
-
-	symbolsToSend := strings.Join(symbols, ",")
+	symbols := c.GetString("symbols")
 
 	headers := BasicAuth()
 
@@ -121,9 +112,9 @@ func GetHistoricalAuctions(c *gin.Context) {
 	var body any
 	var err error
 	if omitDuration {
-		body, err = SendRequest[any](http.MethodGet, MarketData+"/stocks/auctions?symbols="+symbolsToSend, nil, errs, headers)
+		body, err = SendRequest[any](http.MethodGet, MarketData+"/stocks/auctions?symbols="+symbols, nil, errs, headers)
 	} else {
-		body, err = SendRequest[any](http.MethodGet, MarketData+"/stocks/auctions?symbols="+symbolsToSend+start+end, nil, errs, headers)
+		body, err = SendRequest[any](http.MethodGet, MarketData+"/stocks/auctions?symbols="+symbols+start+end, nil, errs, headers)
 	}
 	if err != nil {
 		RequestExit(c, body, err, "coludn't get the market data for these symbols")
@@ -134,29 +125,13 @@ func GetHistoricalAuctions(c *gin.Context) {
 }
 
 func GetHistoricalBars(c *gin.Context) {
-	symbols := c.QueryArray("symbols")
-	if symbols == nil {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	} else if symbols[0] == "" {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	}
-
-	symbolsToSend := strings.Join(symbols, ",")
+	symbols := c.GetString("symbols")
+	start := c.GetString("start")
 
 	timeframe := TimeFrame(c.Query("timeframe"))
 	if timeframe == "" || !timeframe.ValidTimeFrame() {
 		ErrorExit(c, http.StatusBadRequest, "timeframe was incorrectly provided", nil)
 		return
-	}
-
-	start := c.Query("start")
-	omitInterval := false
-	if start == "" {
-		omitInterval = true
-	} else {
-		start = "&start=" + start
 	}
 
 	headers := BasicAuth()
@@ -168,13 +143,7 @@ func GetHistoricalBars(c *gin.Context) {
 		500: "Internal server error. We recommend retrying these later",
 	}
 
-	var body any
-	var err error
-	if omitInterval {
-		body, err = SendRequest[any](http.MethodGet, MarketData+"/stocks/bars?symbols="+symbolsToSend+"&timeframe="+string(timeframe), nil, errs, headers)
-	} else {
-		body, err = SendRequest[any](http.MethodGet, MarketData+"/stocks/bars?symbols="+symbolsToSend+"&timeframe="+string(timeframe)+start, nil, errs, headers)
-	}
+	body, err := SendRequest[any](http.MethodGet, MarketData+"/stocks/bars?symbols="+symbols+start+"&timeframe="+string(timeframe), nil, errs, headers)
 	if err != nil {
 		RequestExit(c, body, err, "coludn't get the market data for these symbols")
 		return
@@ -184,16 +153,7 @@ func GetHistoricalBars(c *gin.Context) {
 }
 
 func GetLatestBars(c *gin.Context) {
-	symbols := c.QueryArray("symbols")
-	if symbols == nil {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	} else if symbols[0] == "" {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	}
-
-	symbolsToSend := strings.Join(symbols, ",")
+	symbols := c.GetString("symbols")
 
 	headers := BasicAuth()
 
@@ -204,7 +164,7 @@ func GetLatestBars(c *gin.Context) {
 		500: "Internal server error. We recommend retrying these later",
 	}
 
-	body, err := SendRequest[any](http.MethodGet, MarketData+"/stocks/bars/latest?symbols="+symbolsToSend, nil, errs, headers)
+	body, err := SendRequest[any](http.MethodGet, MarketData+"/stocks/bars/latest?symbols="+symbols, nil, errs, headers)
 	if err != nil {
 		RequestExit(c, body, err, "coludn't get the market data for these symbols")
 		return
@@ -269,24 +229,8 @@ func GetExchangeCodes(c *gin.Context) {
 }
 
 func GetHisoticalQuotes(c *gin.Context) {
-	symbols := c.QueryArray("symbols")
-	if symbols == nil {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	} else if symbols[0] == "" {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	}
-
-	symbolsToSend := strings.Join(symbols, ",")
-
-	start := c.Query("start")
-	omitInterval := false
-	if start == "" {
-		omitInterval = true
-	} else {
-		start = "&start=" + start
-	}
+	symbols := c.GetString("symbols")
+	start := c.GetString("start")
 
 	headers := BasicAuth()
 
@@ -297,13 +241,7 @@ func GetHisoticalQuotes(c *gin.Context) {
 		500: "Internal server error. We recommend retrying these later",
 	}
 
-	var body any
-	var err error
-	if omitInterval {
-		body, err = SendRequest[any](http.MethodGet, MarketData+"/stocks/quotes?symbols="+symbolsToSend, nil, errs, headers)
-	} else {
-		body, err = SendRequest[any](http.MethodGet, MarketData+"/stocks/quotes?symbols="+symbolsToSend+start, nil, errs, headers)
-	}
+	body, err := SendRequest[any](http.MethodGet, MarketData+"/stocks/quotes?symbols="+symbols+start, nil, errs, headers)
 	if err != nil {
 		RequestExit(c, body, err, "coludn't get the qoutes for these symbols")
 		return
@@ -313,16 +251,7 @@ func GetHisoticalQuotes(c *gin.Context) {
 }
 
 func GetLatestQuotes(c *gin.Context) {
-	symbols := c.QueryArray("symbols")
-	if symbols == nil {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	} else if symbols[0] == "" {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	}
-
-	symbolsToSend := strings.Join(symbols, ",")
+	symbols := c.GetString("symbols")
 
 	headers := BasicAuth()
 
@@ -333,7 +262,7 @@ func GetLatestQuotes(c *gin.Context) {
 		500: "Internal server error. We recommend retrying these later",
 	}
 
-	body, err := SendRequest[any](http.MethodGet, MarketData+"/stocks/quotes/latest?symbols="+symbolsToSend, nil, errs, headers)
+	body, err := SendRequest[any](http.MethodGet, MarketData+"/stocks/quotes/latest?symbols="+symbols, nil, errs, headers)
 	if err != nil {
 		RequestExit(c, body, err, "coludn't get the qoutes for these symbols")
 		return
@@ -343,16 +272,7 @@ func GetLatestQuotes(c *gin.Context) {
 }
 
 func GetSnapshots(c *gin.Context) {
-	symbols := c.QueryArray("symbols")
-	if symbols == nil {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	} else if symbols[0] == "" {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	}
-
-	symbolsToSend := strings.Join(symbols, ",")
+	symbols := c.GetString("symbols")
 
 	headers := BasicAuth()
 
@@ -363,7 +283,7 @@ func GetSnapshots(c *gin.Context) {
 		500: "Internal server error. We recommend retrying these later",
 	}
 
-	body, err := SendRequest[any](http.MethodGet, MarketData+"/stocks/snapshots?symbols="+symbolsToSend, nil, errs, headers)
+	body, err := SendRequest[any](http.MethodGet, MarketData+"/stocks/snapshots?symbols="+symbols, nil, errs, headers)
 	if err != nil {
 		RequestExit(c, body, err, "coludn't get the qoutes for these symbols")
 		return
@@ -373,24 +293,8 @@ func GetSnapshots(c *gin.Context) {
 }
 
 func GetHistoricalTrades(c *gin.Context) {
-	symbols := c.QueryArray("symbols")
-	if symbols == nil {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	} else if symbols[0] == "" {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	}
-
-	symbolsToSend := strings.Join(symbols, ",")
-
-	start := c.Query("start")
-	omitInterval := false
-	if start == "" {
-		omitInterval = true
-	} else {
-		start = "&start=" + start
-	}
+	symbols := c.GetString("symbols")
+	start := c.GetString("start")
 
 	headers := BasicAuth()
 
@@ -401,13 +305,7 @@ func GetHistoricalTrades(c *gin.Context) {
 		500: "Internal server error. We recommend retrying these later",
 	}
 
-	var body any
-	var err error
-	if omitInterval {
-		body, err = SendRequest[any](http.MethodGet, MarketData+"/stocks/trades?symbols="+symbolsToSend, nil, errs, headers)
-	} else {
-		body, err = SendRequest[any](http.MethodGet, MarketData+"/stocks/trades?symbols="+symbolsToSend+start, nil, errs, headers)
-	}
+	body, err := SendRequest[any](http.MethodGet, MarketData+"/stocks/trades?symbols="+symbols+start, nil, errs, headers)
 	if err != nil {
 		RequestExit(c, body, err, "coludn't get the qoutes for these symbols")
 		return
@@ -417,16 +315,7 @@ func GetHistoricalTrades(c *gin.Context) {
 }
 
 func GetLatestTrades(c *gin.Context) {
-	symbols := c.QueryArray("symbols")
-	if symbols == nil {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	} else if symbols[0] == "" {
-		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
-		return
-	}
-
-	symbolsToSend := strings.Join(symbols, ",")
+	symbols := c.GetString("symbols")
 
 	headers := BasicAuth()
 
@@ -437,7 +326,7 @@ func GetLatestTrades(c *gin.Context) {
 		500: "Internal server error. We recommend retrying these later",
 	}
 
-	body, err := SendRequest[any](http.MethodGet, MarketData+"/stocks/trades/latest?symbols="+symbolsToSend, nil, errs, headers)
+	body, err := SendRequest[any](http.MethodGet, MarketData+"/stocks/trades/latest?symbols="+symbols, nil, errs, headers)
 	if err != nil {
 		RequestExit(c, body, err, "coludn't get the qoutes for these symbols")
 		return

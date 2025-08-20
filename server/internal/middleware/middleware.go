@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	. "github.com/Phantomvv1/KayTrade/internal/auth"
 	"github.com/gin-gonic/gin"
@@ -74,6 +75,35 @@ func AuthProtectMiddleware(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Error only admins and the user themselves can access this resource"})
 		return
 	}
+
+	c.Next()
+}
+
+func SymbolsParserMiddleware(c *gin.Context) {
+	symbols := c.QueryArray("symbols")
+	if symbols == nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, "no information given")
+		return
+	} else if symbols[0] == "" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, "no information given")
+		return
+	}
+
+	symbolsToSend := strings.Join(symbols, ",")
+	c.Set("symbols", symbolsToSend)
+
+	c.Next()
+}
+
+func StartParserMiddleware(c *gin.Context) {
+	start := c.Query("start")
+	if start == "" {
+		start = "&start=" + time.Now().UTC().Truncate(time.Hour*24).Format(time.RFC3339)
+	} else {
+		start = "&start=" + start
+	}
+
+	c.Set("start", start)
 
 	c.Next()
 }
