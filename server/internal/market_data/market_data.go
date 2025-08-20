@@ -371,3 +371,47 @@ func GetSnapshots(c *gin.Context) {
 
 	c.JSON(http.StatusOK, body)
 }
+
+func GetHistoricalTrades(c *gin.Context) {
+	symbols := c.QueryArray("symbols")
+	if symbols == nil {
+		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
+		return
+	} else if symbols[0] == "" {
+		ErrorExit(c, http.StatusBadRequest, "no information given", nil)
+		return
+	}
+
+	symbolsToSend := strings.Join(symbols, ",")
+
+	start := c.Query("start")
+	omitInterval := false
+	if start == "" {
+		omitInterval = true
+	} else {
+		start = "&start=" + start
+	}
+
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		400: "One of the request parameters is invalid",
+		403: "Authentication headers are missing or invalid. Make sure you authenticate your request with a valid API key",
+		429: "Too many requests",
+		500: "Internal server error. We recommend retrying these later",
+	}
+
+	var body any
+	var err error
+	if omitInterval {
+		body, err = SendRequest[any](http.MethodGet, MarketData+"/stocks/trades?symbols="+symbolsToSend, nil, errs, headers)
+	} else {
+		body, err = SendRequest[any](http.MethodGet, MarketData+"/stocks/trades?symbols="+symbolsToSend+start, nil, errs, headers)
+	}
+	if err != nil {
+		RequestExit(c, body, err, "coludn't get the qoutes for these symbols")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}
