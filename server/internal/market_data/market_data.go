@@ -3,7 +3,6 @@ package marketdata
 import (
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
