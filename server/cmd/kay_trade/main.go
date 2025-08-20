@@ -99,6 +99,7 @@ func main() {
 	data.GET("/conditions/:ticktype", marketdata.GetConditionCodes)
 	data.GET("/exchanges", marketdata.GetExchangeCodes)
 	data.GET("/quotes", marketdata.GetHisoticalQuotes)
+	data.GET("/quotes/latest", marketdata.GetLatestQuotes)
 
 	r.Run(":42069")
 }
