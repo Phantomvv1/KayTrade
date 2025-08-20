@@ -23,6 +23,7 @@ func main() {
 	data.GET("/quotes", marketdata.GetHisoticalQuotes)
 	data.GET("/quotes/latest", marketdata.GetLatestQuotes)
 	data.GET("/snapshots", marketdata.GetSnapshots)
+	data.GET("/trades", marketdata.GetHistoricalTrades)
 
 	r.Run(":42069")
 }
