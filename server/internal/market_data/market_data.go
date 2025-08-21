@@ -333,3 +333,42 @@ func GetLatestTrades(c *gin.Context) {
 
 	c.JSON(http.StatusOK, body)
 }
+
+func GetMostActiveStocks(c *gin.Context) {
+	by := c.Query("by")
+	top := c.Query("top")
+
+	if by == "" {
+		by = "volume"
+	} else if by != "volume" && by != "trades" {
+		ErrorExit(c, http.StatusBadRequest, "incorrectly provided by", nil)
+		return
+	}
+
+	if top == "" {
+		top = "10"
+	} else if top < "0" || top > "100" {
+		ErrorExit(c, http.StatusBadRequest, "incorrectly provided top", nil)
+		return
+	}
+
+	by = "?by=" + by
+	top = "&top=" + top
+
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		400: "One of the request parameters is invalid",
+		403: "Authentication headers are missing or invalid. Make sure you authenticate your request with a valid API key",
+		429: "Too many requests",
+		500: "Internal server error. We recommend retrying these later",
+	}
+
+	body, err := SendRequest[any](http.MethodGet, "https://data.sandbox.alpaca.markets/v1beta1/screener/stocks/most-actives"+by+top, nil, errs, headers)
+	if err != nil {
+		RequestExit(c, body, err, "coludn't get the qoutes for these symbols")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}

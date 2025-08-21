@@ -82,10 +82,10 @@ func AuthProtectMiddleware(c *gin.Context) {
 func SymbolsParserMiddleware(c *gin.Context) {
 	symbols := c.QueryArray("symbols")
 	if symbols == nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, "no information given")
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "No information given"})
 		return
 	} else if symbols[0] == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, "no information given")
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "No information given"})
 		return
 	}
 
