@@ -26,6 +26,7 @@ func main() {
 	data.GET("/trades", SymbolsParserMiddleware, StartParserMiddleware, marketdata.GetHistoricalTrades)
 	data.GET("/trades/latest", SymbolsParserMiddleware, marketdata.GetLatestTrades)
 	data.GET("/stocks/most-active", marketdata.GetMostActiveStocks)
+	data.GET("/stocks/top-market-movers", marketdata.GetTopMarketMovers)
 
 	r.Run(":42069")
 }
