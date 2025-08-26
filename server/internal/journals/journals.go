@@ -45,7 +45,7 @@ func GetJournalList(c *gin.Context) {
 }
 
 func CancelJournal(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("journal_id")
 
 	headers := BasicAuth()
 
@@ -69,7 +69,7 @@ func CancelJournal(c *gin.Context) {
 }
 
 func GetJournalByID(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("journal_id")
 
 	headers := BasicAuth()
 
