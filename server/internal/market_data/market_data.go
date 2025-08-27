@@ -2,13 +2,17 @@ package marketdata
 
 import (
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
 	. "github.com/Phantomvv1/KayTrade/internal/requests"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
+
+var upgrader websocket.Upgrader
 
 type TimeFrame string
 
@@ -67,6 +71,178 @@ func (t TimeFrame) ValidTimeFrame() bool {
 		}
 	default:
 		return false
+	}
+}
+
+type User struct {
+	ID     int
+	Symbol string
+	ws     *websocket.Conn
+	send   chan map[string]any
+}
+
+type Message struct {
+	Receiver string
+	Message  string
+	Symbol   string
+	Data     map[string]any
+}
+
+type Hub struct {
+	Users       map[*User]struct{}
+	Broadcast   chan *Message
+	Register    chan *User
+	Unregister  chan *User
+	IsConnected bool
+	IsListening bool
+	ws          *websocket.Conn
+}
+
+func NewHub() *Hub {
+	return &Hub{
+		Users:       make(map[*User]struct{}),
+		Broadcast:   make(chan *Message),
+		Register:    make(chan *User),
+		Unregister:  make(chan *User),
+		IsConnected: false,
+		IsListening: false,
+	}
+}
+
+func (h *Hub) Run() {
+	for {
+		select {
+		case msg := <-h.Broadcast:
+			switch msg.Receiver {
+			case "all":
+				for user := range h.Users {
+					user.send <- msg.Data
+				}
+			case "":
+				for user := range h.Users {
+					if user.Symbol == msg.Symbol {
+						user.send <- msg.Data
+					}
+				}
+			default:
+			}
+
+		case user := <-h.Register:
+			h.Users[user] = struct{}{}
+			if !h.IsConnected {
+				h.IsConnected = true
+				go h.Connect(user.Symbol)
+			}
+
+			alreadySubscribed := false
+			for existingUser := range h.Users {
+				if user.Symbol == existingUser.Symbol {
+					alreadySubscribed = true
+				}
+			}
+
+			if !alreadySubscribed {
+				go h.Subscribe(user.Symbol)
+			}
+
+		case user := <-h.Unregister:
+			if _, ok := h.Users[user]; ok {
+				delete(h.Users, user)
+				close(user.send)
+			}
+		}
+	}
+}
+
+func (h *Hub) Connect(symbol string) {
+	ws, _, err := websocket.DefaultDialer.Dial(RealTimeData, nil)
+	if err != nil {
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error dialing the data stream"}
+		return
+	}
+	h.ws = ws
+
+	var body []map[string]string
+	if err = ws.ReadJSON(&body); err != nil {
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error dialing the data stream"}
+		return
+	}
+
+	if body[0]["T"] != "success" && body[0]["msg"] != "connected" {
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't connect to the real time data stream. Please check if the market is open. " +
+			"If it's not, please wait for it. Otherwise try again."}
+		return
+	}
+
+	authMsg := map[string]string{
+		"action": "auth",
+		"key":    os.Getenv("API_KEY"),
+		"secret": os.Getenv("SECRET_KEY"),
+	}
+
+	if err = ws.WriteJSON(authMsg); err != nil {
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error writing in the data stream"}
+		return
+	}
+
+	if err = ws.ReadJSON(&body); err != nil {
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error reading in the data stream"}
+		return
+	}
+
+	if body[0]["T"] != "success" && body[0]["msg"] != "authenticated" {
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't connect to the real time data stream. Please check if the market is open. " +
+			"If it's not, please wait for it. Otherwise try again."}
+		return
+	}
+
+	h.Subscribe(symbol)
+}
+
+func (h *Hub) Subscribe(symbol string) {
+	if symbol == "" {
+		return
+	}
+
+	body := map[string]string{
+		"action":   "subscribe",
+		"trades":   symbol,
+		"quotes":   symbol,
+		"bars":     symbol,
+		"statuses": "*",
+	}
+
+	if err := h.ws.WriteJSON(body); err != nil {
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
+		return
+	}
+
+	var resp []map[string]any
+	if err := h.ws.ReadJSON(&resp); err != nil {
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
+		return
+	}
+
+	if resp[0]["T"] != "subscription" {
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
+		return
+	}
+
+	if !h.IsListening {
+		h.IsListening = true
+		go h.Listen()
+	}
+}
+
+func (h *Hub) Listen() {
+	for {
+		var body []map[string]any
+		if err := h.ws.ReadJSON(&body); err != nil {
+			h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
+			return
+		}
+
+		h.Broadcast <- &Message{Receiver: "", Message: "", Symbol: body[0]["S"].(string), Data: body[0]}
 	}
 }
 
@@ -399,4 +575,13 @@ func GetTopMarketMovers(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, body)
+}
+
+func GetRealTimeStocks(c *gin.Context, hub *Hub) {
+	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't upgrade the connection to a websocket one", err)
+		return
+	}
+	defer ws.Close()
 }
