@@ -14,6 +14,7 @@ import (
 const (
 	// BaseTradingURL = "https://paper-api.alpaca.markets"
 	BaseURL          = "https://broker-api.sandbox.alpaca.markets/v1/"
+	MarketData       = "https://data.sandbox.alpaca.markets/v2"
 	Accounts         = "accounts/"
 	Documents        = "documents/"        // Accounts + ":accountId" + Documents
 	Trading          = "trading/accounts/" // :accountId
