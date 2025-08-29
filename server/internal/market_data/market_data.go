@@ -1,6 +1,7 @@
 package marketdata
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -75,10 +76,33 @@ func (t TimeFrame) ValidTimeFrame() bool {
 }
 
 type User struct {
-	ID     int
 	Symbol string
 	ws     *websocket.Conn
 	send   chan map[string]any
+}
+
+func (u User) Read(hub *Hub) {
+	for {
+		_, message, err := u.ws.ReadMessage()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		if string(message) == "exit" {
+			hub.Unregister <- &u
+		}
+	}
+}
+
+func (u User) Write(hub *Hub) {
+	for data := range <-u.send {
+		err := u.ws.WriteJSON(data)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
 }
 
 type Message struct {
@@ -578,10 +602,17 @@ func GetTopMarketMovers(c *gin.Context) {
 }
 
 func GetRealTimeStocks(c *gin.Context, hub *Hub) {
+	symbol := c.Param("symbol")
+
 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		ErrorExit(c, http.StatusInternalServerError, "couldn't upgrade the connection to a websocket one", err)
 		return
 	}
-	defer ws.Close()
+
+	user := &User{Symbol: symbol, ws: ws, send: make(chan map[string]any)}
+	hub.Register <- user
+
+	go user.Read(hub)
+	go user.Write(hub)
 }
