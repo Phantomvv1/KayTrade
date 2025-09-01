@@ -81,25 +81,27 @@ type User struct {
 	send   chan map[string]any
 }
 
-func (u User) Read(hub *Hub) {
+func (u *User) Read(hub *Hub) {
 	for {
 		_, message, err := u.ws.ReadMessage()
 		if err != nil {
 			log.Println(err)
+			hub.Unregister <- u
 			return
 		}
 
 		if string(message) == "exit" {
-			hub.Unregister <- &u
+			hub.Unregister <- u
 		}
 	}
 }
 
-func (u User) Write(hub *Hub) {
-	for data := range <-u.send {
+func (u *User) Write(hub *Hub) {
+	for data := range u.send {
 		err := u.ws.WriteJSON(data)
 		if err != nil {
 			log.Println(err)
+			hub.Unregister <- u
 			return
 		}
 	}
@@ -140,7 +142,7 @@ func (h *Hub) Run() {
 			switch msg.Receiver {
 			case "all":
 				for user := range h.Users {
-					user.send <- msg.Data
+					user.send <- gin.H{"error": msg.Message}
 				}
 			case "":
 				for user := range h.Users {
@@ -181,6 +183,7 @@ func (h *Hub) Run() {
 func (h *Hub) Connect(symbol string) {
 	ws, _, err := websocket.DefaultDialer.Dial(RealTimeData, nil)
 	if err != nil {
+		log.Println(err)
 		h.Broadcast <- &Message{Receiver: "all", Message: "Error dialing the data stream"}
 		return
 	}
@@ -188,6 +191,7 @@ func (h *Hub) Connect(symbol string) {
 
 	var body []map[string]string
 	if err = ws.ReadJSON(&body); err != nil {
+		log.Println(err)
 		h.Broadcast <- &Message{Receiver: "all", Message: "Error dialing the data stream"}
 		return
 	}
@@ -205,18 +209,21 @@ func (h *Hub) Connect(symbol string) {
 	}
 
 	if err = ws.WriteJSON(authMsg); err != nil {
+		log.Println(err)
 		h.Broadcast <- &Message{Receiver: "all", Message: "Error writing in the data stream"}
 		return
 	}
 
-	if err = ws.ReadJSON(&body); err != nil {
+	var fbody []map[string]any
+	if err = ws.ReadJSON(&fbody); err != nil {
+		log.Println(err)
 		h.Broadcast <- &Message{Receiver: "all", Message: "Error reading in the data stream"}
 		return
 	}
 
-	if body[0]["T"] != "success" && body[0]["msg"] != "authenticated" {
+	if fbody[0]["T"].(string) != "success" && fbody[0]["msg"].(string) != "authenticated" {
 		h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't connect to the real time data stream. Please check if the market is open. " +
-			"If it's not, please wait for it. Otherwise try again."}
+			"If it's not, please wait for it to open. Otherwise try again."}
 		return
 	}
 
@@ -227,22 +234,25 @@ func (h *Hub) Subscribe(symbol string) {
 	if symbol == "" {
 		return
 	}
+	s := []string{symbol}
 
-	body := map[string]string{
+	body := map[string]any{
 		"action":   "subscribe",
-		"trades":   symbol,
-		"quotes":   symbol,
-		"bars":     symbol,
-		"statuses": "*",
+		"trades":   s,
+		"quotes":   s,
+		"bars":     s,
+		"statuses": []string{"*"},
 	}
 
 	if err := h.ws.WriteJSON(body); err != nil {
+		log.Println(err)
 		h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
 		return
 	}
 
 	var resp []map[string]any
 	if err := h.ws.ReadJSON(&resp); err != nil {
+		log.Println(err)
 		h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
 		return
 	}
@@ -607,6 +617,19 @@ func GetRealTimeStocks(c *gin.Context, hub *Hub) {
 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		ErrorExit(c, http.StatusInternalServerError, "couldn't upgrade the connection to a websocket one", err)
+		return
+	}
+
+	if symbol == "" {
+		ws.WriteJSON(gin.H{"error": "Error incorrectly provided symbol"})
+		ws.Close()
+		return
+	}
+
+	now := time.Now().UTC()
+	if (now.Hour() < 13 || now.Hour() >= 20) || (now.Hour() == 13 && now.Minute() < 30) {
+		ws.WriteJSON(gin.H{"error": "Error the market still hasn't opened. You can't listen to live market updates if it's not open"})
+		ws.Close()
 		return
 	}
 
