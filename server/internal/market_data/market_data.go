@@ -173,6 +173,7 @@ func (h *Hub) Run() {
 
 		case user := <-h.Unregister:
 			if _, ok := h.Users[user]; ok {
+				go h.Unsubscribe(user)
 				delete(h.Users, user)
 				close(user.send)
 			}
@@ -250,19 +251,19 @@ func (h *Hub) Subscribe(symbol string) {
 		return
 	}
 
-	var resp []map[string]any
-	if err := h.ws.ReadJSON(&resp); err != nil {
-		log.Println(err)
-		h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
-		return
-	}
-
-	if resp[0]["T"] != "subscription" {
-		h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
-		return
-	}
-
 	if !h.IsListening {
+		var resp []map[string]any
+		if err := h.ws.ReadJSON(&resp); err != nil {
+			log.Println(err)
+			h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
+			return
+		}
+
+		if resp[0]["T"].(string) != "subscription" {
+			h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
+			return
+		}
+
 		h.IsListening = true
 		go h.Listen()
 	}
@@ -276,7 +277,37 @@ func (h *Hub) Listen() {
 			return
 		}
 
-		h.Broadcast <- &Message{Receiver: "", Message: "", Symbol: body[0]["S"].(string), Data: body[0]}
+		switch body[0]["T"].(string) {
+		case "subscription":
+		case "error":
+			log.Println("There was an error doing the last action")
+			log.Println(body[0]["msg"])
+			log.Println(body[0]["code"])
+		default:
+			h.Broadcast <- &Message{Receiver: "", Message: "", Symbol: body[0]["S"].(string), Data: body[0]}
+		}
+	}
+}
+
+func (h *Hub) Unsubscribe(user *User) {
+	for u := range h.Users {
+		if u != user && user.Symbol == u.Symbol {
+			return
+		}
+	}
+
+	msg := map[string]any{
+		"action":   "unsubscribe",
+		"trades":   []string{user.Symbol},
+		"quotes":   []string{user.Symbol},
+		"bars":     []string{user.Symbol},
+		"statuses": []string{user.Symbol},
+	}
+
+	err := h.ws.WriteJSON(msg)
+	if err != nil {
+		log.Println(err)
+		return
 	}
 }
 
