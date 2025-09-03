@@ -90,5 +90,11 @@ func NewRouter() *gin.Engine {
 	data.GET("/stocks/most-active", marketdata.GetMostActiveStocks)
 	data.GET("/stocks/top-market-movers", marketdata.GetTopMarketMovers)
 
+	hub := marketdata.NewHub()
+	go hub.Run()
+	data.GET("/stocks/live/:symbol", func(c *gin.Context) {
+		marketdata.GetRealTimeStocks(c, hub)
+	})
+
 	return r
 }

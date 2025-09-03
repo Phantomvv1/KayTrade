@@ -1,14 +1,19 @@
 package marketdata
 
 import (
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
 	. "github.com/Phantomvv1/KayTrade/internal/requests"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
+
+var upgrader websocket.Upgrader
 
 type TimeFrame string
 
@@ -67,6 +72,241 @@ func (t TimeFrame) ValidTimeFrame() bool {
 		}
 	default:
 		return false
+	}
+}
+
+type User struct {
+	Symbol string
+	ws     *websocket.Conn
+	send   chan map[string]any
+}
+
+func (u *User) Read(hub *Hub) {
+	for {
+		_, message, err := u.ws.ReadMessage()
+		if err != nil {
+			log.Println(err)
+			hub.Unregister <- u
+			return
+		}
+
+		if string(message) == "exit" {
+			hub.Unregister <- u
+		}
+	}
+}
+
+func (u *User) Write(hub *Hub) {
+	for data := range u.send {
+		err := u.ws.WriteJSON(data)
+		if err != nil {
+			log.Println(err)
+			hub.Unregister <- u
+			return
+		}
+	}
+}
+
+type Message struct {
+	Receiver string
+	Message  string
+	Symbol   string
+	Data     map[string]any
+}
+
+type Hub struct {
+	Users       map[*User]struct{}
+	Broadcast   chan *Message
+	Register    chan *User
+	Unregister  chan *User
+	IsConnected bool
+	IsListening bool
+	ws          *websocket.Conn
+}
+
+func NewHub() *Hub {
+	return &Hub{
+		Users:       make(map[*User]struct{}),
+		Broadcast:   make(chan *Message),
+		Register:    make(chan *User),
+		Unregister:  make(chan *User),
+		IsConnected: false,
+		IsListening: false,
+	}
+}
+
+func (h *Hub) Run() {
+	for {
+		select {
+		case msg := <-h.Broadcast:
+			switch msg.Receiver {
+			case "all":
+				for user := range h.Users {
+					user.send <- gin.H{"error": msg.Message}
+				}
+			case "":
+				for user := range h.Users {
+					if user.Symbol == msg.Symbol {
+						user.send <- msg.Data
+					}
+				}
+			default:
+			}
+
+		case user := <-h.Register:
+			h.Users[user] = struct{}{}
+			if !h.IsConnected {
+				h.IsConnected = true
+				go h.Connect(user.Symbol)
+			}
+
+			alreadySubscribed := false
+			for existingUser := range h.Users {
+				if user.Symbol == existingUser.Symbol {
+					alreadySubscribed = true
+				}
+			}
+
+			if !alreadySubscribed {
+				go h.Subscribe(user.Symbol)
+			}
+
+		case user := <-h.Unregister:
+			if _, ok := h.Users[user]; ok {
+				go h.Unsubscribe(user)
+				delete(h.Users, user)
+				close(user.send)
+			}
+		}
+	}
+}
+
+func (h *Hub) Connect(symbol string) {
+	ws, _, err := websocket.DefaultDialer.Dial(RealTimeData, nil)
+	if err != nil {
+		log.Println(err)
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error dialing the data stream"}
+		return
+	}
+	h.ws = ws
+
+	var body []map[string]string
+	if err = ws.ReadJSON(&body); err != nil {
+		log.Println(err)
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error dialing the data stream"}
+		return
+	}
+
+	if body[0]["T"] != "success" && body[0]["msg"] != "connected" {
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't connect to the real time data stream. Please check if the market is open. " +
+			"If it's not, please wait for it. Otherwise try again."}
+		return
+	}
+
+	authMsg := map[string]string{
+		"action": "auth",
+		"key":    os.Getenv("API_KEY"),
+		"secret": os.Getenv("SECRET_KEY"),
+	}
+
+	if err = ws.WriteJSON(authMsg); err != nil {
+		log.Println(err)
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error writing in the data stream"}
+		return
+	}
+
+	var fbody []map[string]any
+	if err = ws.ReadJSON(&fbody); err != nil {
+		log.Println(err)
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error reading in the data stream"}
+		return
+	}
+
+	if fbody[0]["T"].(string) != "success" && fbody[0]["msg"].(string) != "authenticated" {
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't connect to the real time data stream. Please check if the market is open. " +
+			"If it's not, please wait for it to open. Otherwise try again."}
+		return
+	}
+
+	h.Subscribe(symbol)
+}
+
+func (h *Hub) Subscribe(symbol string) {
+	if symbol == "" {
+		return
+	}
+	s := []string{symbol}
+
+	body := map[string]any{
+		"action":   "subscribe",
+		"trades":   s,
+		"quotes":   s,
+		"bars":     s,
+		"statuses": []string{"*"},
+	}
+
+	if err := h.ws.WriteJSON(body); err != nil {
+		log.Println(err)
+		h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
+		return
+	}
+
+	if !h.IsListening {
+		var resp []map[string]any
+		if err := h.ws.ReadJSON(&resp); err != nil {
+			log.Println(err)
+			h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
+			return
+		}
+
+		if resp[0]["T"].(string) != "subscription" {
+			h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
+			return
+		}
+
+		h.IsListening = true
+		go h.Listen()
+	}
+}
+
+func (h *Hub) Listen() {
+	for {
+		var body []map[string]any
+		if err := h.ws.ReadJSON(&body); err != nil {
+			h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
+			return
+		}
+
+		switch body[0]["T"].(string) {
+		case "subscription":
+		case "error":
+			log.Println("There was an error doing the last action")
+			log.Println(body[0])
+		default:
+			h.Broadcast <- &Message{Receiver: "", Message: "", Symbol: body[0]["S"].(string), Data: body[0]}
+		}
+	}
+}
+
+func (h *Hub) Unsubscribe(user *User) {
+	for u := range h.Users {
+		if u != user && user.Symbol == u.Symbol {
+			return
+		}
+	}
+
+	msg := map[string]any{
+		"action":   "unsubscribe",
+		"trades":   []string{user.Symbol},
+		"quotes":   []string{user.Symbol},
+		"bars":     []string{user.Symbol},
+		"statuses": []string{user.Symbol},
+	}
+
+	err := h.ws.WriteJSON(msg)
+	if err != nil {
+		log.Println(err)
+		return
 	}
 }
 
@@ -399,4 +639,33 @@ func GetTopMarketMovers(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, body)
+}
+
+func GetRealTimeStocks(c *gin.Context, hub *Hub) {
+	symbol := c.Param("symbol")
+
+	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't upgrade the connection to a websocket one", err)
+		return
+	}
+
+	if symbol == "" {
+		ws.WriteJSON(gin.H{"error": "Error incorrectly provided symbol"})
+		ws.Close()
+		return
+	}
+
+	now := time.Now().UTC()
+	if (now.Hour() < 13 || now.Hour() >= 20) || (now.Hour() == 13 && now.Minute() < 30) {
+		ws.WriteJSON(gin.H{"error": "Error the market still hasn't opened. You can't listen to live market updates if it's not open"})
+		ws.Close()
+		return
+	}
+
+	user := &User{Symbol: symbol, ws: ws, send: make(chan map[string]any)}
+	hub.Register <- user
+
+	go user.Read(hub)
+	go user.Write(hub)
 }
