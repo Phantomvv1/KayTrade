@@ -281,8 +281,7 @@ func (h *Hub) Listen() {
 		case "subscription":
 		case "error":
 			log.Println("There was an error doing the last action")
-			log.Println(body[0]["msg"])
-			log.Println(body[0]["code"])
+			log.Println(body[0])
 		default:
 			h.Broadcast <- &Message{Receiver: "", Message: "", Symbol: body[0]["S"].(string), Data: body[0]}
 		}
