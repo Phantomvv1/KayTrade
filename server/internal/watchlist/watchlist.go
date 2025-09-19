@@ -2,6 +2,9 @@ package watchlist
 
 import (
 	"context"
+	"encoding/base64"
+	"errors"
+	"io"
 	"net/http"
 	"os"
 
@@ -159,20 +162,10 @@ func AddSymbolToWatchlist(c *gin.Context) {
 	c.JSON(http.StatusOK, nil)
 }
 
-func GetSymbolsFromWatchlist(c *gin.Context) {
-	id := c.Param("id")
-
-	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
-	if err != nil {
-		ErrorExit(c, http.StatusInternalServerError, "couldn't connect to the database", err)
-		return
-	}
-	defer conn.Close(context.Background())
-
+func getSymbols(conn *pgx.Conn, id string) ([]string, error) {
 	rows, err := conn.Query(context.Background(), "select symbol from wishlist w where w.user_id = $1", id)
 	if err != nil {
-		ErrorExit(c, http.StatusInternalServerError, "couldn't get the symbols from the database", nil)
-		return
+		return nil, err
 	}
 
 	symbols, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (string, error) {
@@ -185,6 +178,24 @@ func GetSymbolsFromWatchlist(c *gin.Context) {
 		return symbol, nil
 	})
 	if err != nil {
+		return nil, errors.New("Error reading the symbols from the database")
+	}
+
+	return symbols, nil
+}
+
+func GetSymbolsFromWatchlist(c *gin.Context) {
+	id := c.Param("id")
+
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't connect to the database", err)
+		return
+	}
+	defer conn.Close(context.Background())
+
+	symbols, err := getSymbols(conn, id)
+	if err != nil {
 		ErrorExit(c, http.StatusInternalServerError, "couldn't get the symbols from the database", err)
 		return
 	}
@@ -193,5 +204,61 @@ func GetSymbolsFromWatchlist(c *gin.Context) {
 }
 
 func GetInformationForSymbols(c *gin.Context) {
+	id := c.Param("id")
 
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't connect to the database", nil)
+		return
+	}
+	defer conn.Close(context.Background())
+
+	symbols, err := getSymbols(conn, id)
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't get the symbols from the database", err)
+		return
+	}
+
+	res := make(chan result)
+	for _, symbol := range symbols {
+		go fetchLogo(symbol, res)
+	}
+
+	for range len(symbols) * 2 {
+
+	}
+}
+
+type result struct {
+	logo []byte
+	err  error
+}
+
+func fetchLogo(symbol string, res chan<- result) {
+	req, err := http.NewRequest(http.MethodGet, "https://broker-api.sandbox.alpaca.markets/v1beta1/logos/"+symbol, nil)
+	if err != nil {
+		res <- result{logo: nil, err: err}
+		return
+	}
+
+	credentials := os.Getenv("API_KEY") + ":" + os.Getenv("SECRET_KEY")
+	out := base64.StdEncoding.EncodeToString([]byte(credentials))
+
+	req.Header.Add("Authorization", "Basic "+out)
+	req.Header.Add("accept", "image/png")
+
+	response, err := http.DefaultClient.Do(req)
+	if err != nil {
+		res <- result{logo: nil, err: err}
+		return
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		res <- result{logo: nil, err: err}
+		return
+	}
+
+	res <- result{logo: body, err: nil}
 }
