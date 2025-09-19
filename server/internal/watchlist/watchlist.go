@@ -1,14 +1,22 @@
 package watchlist
 
 import (
+	"context"
 	"net/http"
+	"os"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
 	. "github.com/Phantomvv1/KayTrade/internal/requests"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 )
 
-func CreateWatchlist(c *gin.Context) {
+func CreateWatchlistTable(conn *pgx.Conn) error {
+	_, err := conn.Exec(context.Background(), "create table if not exists wishlist(user_id uuid references authentication(id), symbol text)")
+	return err
+}
+
+func CreateWatchlistAlpaca(c *gin.Context) {
 	id := c.Param("id")
 
 	headers := BasicAuth()
@@ -22,7 +30,7 @@ func CreateWatchlist(c *gin.Context) {
 	c.JSON(http.StatusOK, body)
 }
 
-func GetWatchlist(c *gin.Context) {
+func GetWatchlistAlpaca(c *gin.Context) {
 	id := c.Param("id")
 
 	headers := BasicAuth()
@@ -36,7 +44,7 @@ func GetWatchlist(c *gin.Context) {
 	c.JSON(http.StatusOK, body)
 }
 
-func ManageWatchlist(c *gin.Context) {
+func ManageWatchlistAlpaca(c *gin.Context) {
 	id := c.Param("id")
 	watchlistID := c.Param("watchlistId")
 
@@ -51,7 +59,7 @@ func ManageWatchlist(c *gin.Context) {
 	c.JSON(http.StatusOK, body)
 }
 
-func UpdateWatchlist(c *gin.Context) {
+func UpdateWatchlistAlpaca(c *gin.Context) {
 	id := c.Param("id")
 	watchlistID := c.Param("watchlistId")
 
@@ -66,7 +74,7 @@ func UpdateWatchlist(c *gin.Context) {
 	c.JSON(http.StatusOK, body)
 }
 
-func DeleteWatchlist(c *gin.Context) {
+func DeleteWatchlistAlpaca(c *gin.Context) {
 	id := c.Param("id")
 	watchlistID := c.Param("watchlistId")
 
@@ -81,7 +89,7 @@ func DeleteWatchlist(c *gin.Context) {
 	c.JSON(http.StatusOK, body)
 }
 
-func AddAssetWatchlist(c *gin.Context) {
+func AddAssetWatchlistAlpaca(c *gin.Context) {
 	id := c.Param("id")
 	watchlistID := c.Param("watchlistId")
 
@@ -101,7 +109,7 @@ func AddAssetWatchlist(c *gin.Context) {
 	c.JSON(http.StatusOK, body)
 }
 
-func RemoveSymbolFromWatchlist(c *gin.Context) {
+func RemoveSymbolFromWatchlistAlpaca(c *gin.Context) {
 	id := c.Param("id")
 	watchlistID := c.Param("watchlistId")
 	symbol := c.Param("symbol")
@@ -119,4 +127,67 @@ func RemoveSymbolFromWatchlist(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, body)
+}
+
+func AddSymbolToWatchlist(c *gin.Context) {
+	id := c.Param("id")
+	symbol := c.Param("symbol")
+
+	if id == "" || symbol == "" {
+		ErrorExit(c, http.StatusBadRequest, "incorrectly provided parameters for adding a symbol to the watchlist", nil)
+		return
+	}
+
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't conenct to the database", err)
+		return
+	}
+	defer conn.Close(context.Background())
+
+	if err = CreateWatchlistTable(conn); err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't create the table for the watchlist", err)
+		return
+	}
+
+	_, err = conn.Exec(context.Background(), "insert into wishlist (user_id, symbol) values ($1, $2)", id, symbol)
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't insert the information into the database", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, nil)
+}
+
+func GetSymbolsFromWatchlist(c *gin.Context) {
+	id := c.Param("id")
+
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't connect to the database", err)
+		return
+	}
+	defer conn.Close(context.Background())
+
+	rows, err := conn.Query(context.Background(), "select symbol from wishlist w where w.user_id = $1", id)
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't get the symbols from the database", nil)
+		return
+	}
+
+	symbols, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (string, error) {
+		symbol := ""
+		err := rows.Scan(&symbol)
+		if err != nil {
+			return "", err
+		}
+
+		return symbol, nil
+	})
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't get the symbols from the database", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, symbols)
 }
