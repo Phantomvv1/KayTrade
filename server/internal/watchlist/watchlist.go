@@ -191,3 +191,7 @@ func GetSymbolsFromWatchlist(c *gin.Context) {
 
 	c.JSON(http.StatusOK, symbols)
 }
+
+func GetInformationForSymbols(c *gin.Context) {
+
+}
