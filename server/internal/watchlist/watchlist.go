@@ -3,10 +3,12 @@ package watchlist
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
 	. "github.com/Phantomvv1/KayTrade/internal/requests"
@@ -203,6 +205,13 @@ func GetSymbolsFromWatchlist(c *gin.Context) {
 	c.JSON(http.StatusOK, symbols)
 }
 
+type Response struct {
+	Symbol       string `json:"symbol"`
+	OpeningPrice int    `json:"opening_price"`
+	ClosingPrice int    `json:"closing_price"`
+	Logo         []byte `json:"logo"`
+}
+
 func GetInformationForSymbols(c *gin.Context) {
 	id := c.Param("id")
 
@@ -220,24 +229,41 @@ func GetInformationForSymbols(c *gin.Context) {
 	}
 
 	res := make(chan result)
+	go getInformation(symbols, res)
 	for _, symbol := range symbols {
-		go fetchLogo(symbol, res)
+		go getLogo(symbol, res)
 	}
 
-	for range len(symbols) * 2 {
+	var response []Response
+	for range len(symbols) + 1 {
+		result := <-res
+		if result.result == 0 {
+			r := Response{Symbol: result.symbol, Logo: result.logo}
+			for i, stock := range response {
+				if stock.Symbol == r.Symbol {
+					response[i].Logo = result.logo
+				}
+			}
 
+			response = append(response, r)
+		} else {
+
+		}
 	}
 }
 
 type result struct {
-	logo []byte
-	err  error
+	result      byte // 0 - logo; 1 - information
+	information []map[string]any
+	logo        []byte
+	err         error
+	symbol      string
 }
 
-func fetchLogo(symbol string, res chan<- result) {
+func getLogo(symbol string, res chan<- result) {
 	req, err := http.NewRequest(http.MethodGet, "https://broker-api.sandbox.alpaca.markets/v1beta1/logos/"+symbol, nil)
 	if err != nil {
-		res <- result{logo: nil, err: err}
+		res <- result{logo: nil, result: 0, symbol: symbol, err: err}
 		return
 	}
 
@@ -249,16 +275,47 @@ func fetchLogo(symbol string, res chan<- result) {
 
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
-		res <- result{logo: nil, err: err}
+		res <- result{logo: nil, result: 0, symbol: symbol, err: err}
 		return
 	}
 	defer response.Body.Close()
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		res <- result{logo: nil, err: err}
+		res <- result{logo: nil, result: 0, symbol: symbol, err: err}
 		return
 	}
 
-	res <- result{logo: body, err: nil}
+	res <- result{logo: body, result: 0, symbol: symbol, err: nil}
+}
+
+func getInformation(symbols []string, res chan<- result) {
+	s := strings.Join(symbols, ",")
+	req, err := http.NewRequest(http.MethodGet, "https://data.alpaca.markets/v2/stocks/bars/latest?symbols="+s, nil)
+	if err != nil {
+		res <- result{information: nil, result: 1, symbol: "", err: err}
+		return
+	}
+
+	credentials := os.Getenv("API_KEY") + ":" + os.Getenv("SECRET_KEY")
+	out := base64.StdEncoding.EncodeToString([]byte(credentials))
+
+	req.Header.Add("Authorization", "Basic "+out)
+	req.Header.Add("accept", "application/json")
+
+	response, err := http.DefaultClient.Do(req)
+	if err != nil {
+		res <- result{information: nil, result: 1, symbol: "", err: err}
+		return
+	}
+	defer response.Body.Close()
+
+	var body []map[string]any
+	err = json.NewDecoder(response.Body).Decode(&body)
+	if err != nil {
+		res <- result{information: nil, result: 1, symbol: "", err: err}
+		return
+	}
+
+	res <- result{information: body, result: 1, symbol: "", err: nil}
 }
