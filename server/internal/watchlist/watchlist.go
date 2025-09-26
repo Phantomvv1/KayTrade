@@ -3,12 +3,14 @@ package watchlist
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
 	"github.com/Phantomvv1/KayTrade/internal/requests"
@@ -207,10 +209,10 @@ func GetSymbolsFromWatchlist(c *gin.Context) {
 }
 
 type Response struct {
-	Symbol       string `json:"symbol"`
-	OpeningPrice int    `json:"opening_price"`
-	ClosingPrice int    `json:"closing_price"`
-	Logo         []byte `json:"logo"`
+	Symbol       string  `json:"symbol"`
+	OpeningPrice float64 `json:"opening_price"`
+	ClosingPrice float64 `json:"closing_price"`
+	Logo         []byte  `json:"logo"`
 }
 
 func GetInformationForSymbols(c *gin.Context) {
@@ -229,33 +231,98 @@ func GetInformationForSymbols(c *gin.Context) {
 		return
 	}
 
+	now := time.Now().UTC()
+	start := "&start="
+	if now.Hour() < 13 || now.Hour() >= 20 { // market opens at 13:30 UTC and closes at 20:00 UTC
+		if now.Weekday() == time.Monday {
+			start += now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
+		} else {
+			start += now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
+		}
+	}
+	if now.Hour() == 13 && now.Minute() < 30 {
+		if now.Weekday() == time.Monday {
+			start += now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
+		} else {
+			start += now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
+		}
+	}
+	start += time.Now().UTC().Truncate(24 * time.Hour).Format(time.RFC3339)
+
 	res := make(chan result)
-	go getInformation(symbols, res)
+	go getInformation(symbols, start, res)
 	for _, symbol := range symbols {
 		go getLogo(symbol, res)
 	}
 
 	var response []Response
-	for range len(symbols) + 1 {
-		result := <-res
-		if result.result == 0 {
-			r := Response{Symbol: result.symbol, Logo: result.logo}
-			for i, stock := range response {
-				if stock.Symbol == r.Symbol {
-					response[i].Logo = result.logo
+	mu := sync.Mutex{}
+	needsLock := true
+	go func() {
+		for range len(symbols) + 1 {
+			result := <-res
+			if result.result == 0 {
+				if needsLock {
+					mu.Lock()
 				}
+
+				if result.err != nil {
+					ErrorExit(c, http.StatusFailedDependency, "couldn't get the logo", result.err)
+					return
+				}
+
+				for i, stock := range response {
+					if stock.Symbol == result.symbol {
+						response[i].Logo = result.logo
+					}
+				}
+
+				r := Response{Symbol: result.symbol, Logo: result.logo}
+				response = append(response, r)
+
+				if needsLock {
+					mu.Unlock()
+				}
+			} else {
+				mu.Lock()
+				if result.err != nil {
+					ErrorExit(c, http.StatusFailedDependency, "couldn't get the opening and closing price", result.err)
+					return
+				}
+
+				for symbol, info := range result.information {
+					if index := ContainsSymbol(response, symbol); index != -1 {
+						openingPrice := info[0]["o"].(float64)
+						closingPrice := info[0]["c"].(float64)
+						response[index].OpeningPrice = openingPrice
+						response[index].ClosingPrice = closingPrice
+					} else {
+						response = append(response, Response{OpeningPrice: info[0]["o"].(float64), ClosingPrice: info[0]["c"].(float64)})
+					}
+				}
+
+				needsLock = false
+				mu.Unlock()
 			}
+		}
+	}()
 
-			response = append(response, r)
-		} else {
+	c.JSON(http.StatusOK, gin.H{"information": response})
+}
 
+func ContainsSymbol(response []Response, symbol string) int {
+	for i, res := range response {
+		if res.Symbol == symbol {
+			return i
 		}
 	}
+
+	return -1
 }
 
 type result struct {
 	result      byte // 0 - logo; 1 - information
-	information []map[string]any
+	information map[string][]map[string]any
 	logo        []byte
 	err         error
 	symbol      string
@@ -290,7 +357,7 @@ func getLogo(symbol string, res chan<- result) {
 	res <- result{logo: body, result: 0, symbol: symbol, err: nil}
 }
 
-func getInformation(symbols []string, res chan<- result) {
+func getInformation(symbols []string, start string, res chan<- result) {
 	s := strings.Join(symbols, ",")
 	headers := BasicAuth()
 
@@ -301,11 +368,11 @@ func getInformation(symbols []string, res chan<- result) {
 		500: "Internal server error. We recommend retrying these later",
 	}
 
-	body, err := SendRequest[[]map[string]any](http.MethodGet, requests.MarketData+"/stocks/bars/latest?symbols="+s, nil, errs, headers)
+	body, err := SendRequest[map[string]map[string][]map[string]any](http.MethodGet, requests.MarketData+"/stocks/bars?timeframe=1D&start="+start+"&symbols="+s, nil, errs, headers)
 	if err != nil {
 		res <- result{information: nil, result: 1, symbol: "", err: err}
 		return
 	}
 
-	res <- result{information: body, result: 1, symbol: "", err: nil}
+	res <- result{information: body["bars"], result: 1, symbol: "", err: nil}
 }

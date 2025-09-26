@@ -73,7 +73,7 @@ func NewRouter() *gin.Engine {
 	watch.GET("/:watchlistId", watchlist.ManageWatchlistAlpaca)
 	watch.PUT("/:watchlistId", watchlist.UpdateWatchlistAlpaca)
 	watch.DELETE("/:watchlistId", watchlist.DeleteWatchlistAlpaca)
-	watch.POST("/:watchlistId", watchlist.AddAssetWatchlistAlpaca)
+	watch.POST("alpaca/:watchlistId", watchlist.AddAssetWatchlistAlpaca)
 	watch.DELETE("/:watchlistId/:symbol", watchlist.RemoveSymbolFromWatchlistAlpaca)
 	watch.POST("/:symbol", watchlist.AddSymbolToWatchlist)
 	watch.GET("", watchlist.GetSymbolsFromWatchlist)
