@@ -258,54 +258,52 @@ func GetInformationForSymbols(c *gin.Context) {
 	var response []Response
 	mu := sync.Mutex{}
 	needsLock := true
-	go func() {
-		for range len(symbols) + 1 {
-			result := <-res
-			if result.result == 0 {
-				if needsLock {
-					mu.Lock()
-				}
-
-				if result.err != nil {
-					ErrorExit(c, http.StatusFailedDependency, "couldn't get the logo", result.err)
-					return
-				}
-
-				for i, stock := range response {
-					if stock.Symbol == result.symbol {
-						response[i].Logo = result.logo
-					}
-				}
-
-				r := Response{Symbol: result.symbol, Logo: result.logo}
-				response = append(response, r)
-
-				if needsLock {
-					mu.Unlock()
-				}
-			} else {
+	for range len(symbols) + 1 {
+		result := <-res
+		if result.result == 0 {
+			if needsLock {
 				mu.Lock()
-				if result.err != nil {
-					ErrorExit(c, http.StatusFailedDependency, "couldn't get the opening and closing price", result.err)
-					return
-				}
+			}
 
-				for symbol, info := range result.information {
-					if index := ContainsSymbol(response, symbol); index != -1 {
-						openingPrice := info[0]["o"].(float64)
-						closingPrice := info[0]["c"].(float64)
-						response[index].OpeningPrice = openingPrice
-						response[index].ClosingPrice = closingPrice
-					} else {
-						response = append(response, Response{OpeningPrice: info[0]["o"].(float64), ClosingPrice: info[0]["c"].(float64)})
-					}
-				}
+			if result.err != nil {
+				ErrorExit(c, http.StatusFailedDependency, "couldn't get the logo", result.err)
+				return
+			}
 
-				needsLock = false
+			for i, stock := range response {
+				if stock.Symbol == result.symbol {
+					response[i].Logo = result.logo
+				}
+			}
+
+			r := Response{Symbol: result.symbol, Logo: result.logo}
+			response = append(response, r)
+
+			if needsLock {
 				mu.Unlock()
 			}
+		} else {
+			mu.Lock()
+			if result.err != nil {
+				ErrorExit(c, http.StatusFailedDependency, "couldn't get the opening and closing price", result.err)
+				return
+			}
+
+			for symbol, info := range result.information {
+				if index := ContainsSymbol(response, symbol); index != -1 {
+					openingPrice := info[0]["o"].(float64)
+					closingPrice := info[0]["c"].(float64)
+					response[index].OpeningPrice = openingPrice
+					response[index].ClosingPrice = closingPrice
+				} else {
+					response = append(response, Response{OpeningPrice: info[0]["o"].(float64), ClosingPrice: info[0]["c"].(float64)})
+				}
+			}
+
+			needsLock = false
+			mu.Unlock()
 		}
-	}()
+	}
 
 	c.JSON(http.StatusOK, gin.H{"information": response})
 }
