@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
+	"github.com/Phantomvv1/KayTrade/internal/requests"
 	. "github.com/Phantomvv1/KayTrade/internal/requests"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -291,27 +292,16 @@ func getLogo(symbol string, res chan<- result) {
 
 func getInformation(symbols []string, res chan<- result) {
 	s := strings.Join(symbols, ",")
-	req, err := http.NewRequest(http.MethodGet, "https://data.alpaca.markets/v2/stocks/bars/latest?symbols="+s, nil)
-	if err != nil {
-		res <- result{information: nil, result: 1, symbol: "", err: err}
-		return
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		400: "One of the request parameters is invalid",
+		403: "Authentication headers are missing or invalid. Make sure you authenticate your request with a valid API key",
+		429: "Too many requests",
+		500: "Internal server error. We recommend retrying these later",
 	}
 
-	credentials := os.Getenv("API_KEY") + ":" + os.Getenv("SECRET_KEY")
-	out := base64.StdEncoding.EncodeToString([]byte(credentials))
-
-	req.Header.Add("Authorization", "Basic "+out)
-	req.Header.Add("accept", "application/json")
-
-	response, err := http.DefaultClient.Do(req)
-	if err != nil {
-		res <- result{information: nil, result: 1, symbol: "", err: err}
-		return
-	}
-	defer response.Body.Close()
-
-	var body []map[string]any
-	err = json.NewDecoder(response.Body).Decode(&body)
+	body, err := SendRequest[[]map[string]any](http.MethodGet, requests.MarketData+"/stocks/bars/latest?symbols="+s, nil, errs, headers)
 	if err != nil {
 		res <- result{information: nil, result: 1, symbol: "", err: err}
 		return
