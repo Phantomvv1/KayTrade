@@ -9,7 +9,7 @@ import (
 )
 
 func GetAllDocuments(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	headers := BasicAuth()
 
@@ -27,7 +27,7 @@ func GetAllDocuments(c *gin.Context) {
 }
 
 func DownloadDocument(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 	documentID := c.Param("documentId")
 
 	headers := BasicAuth()

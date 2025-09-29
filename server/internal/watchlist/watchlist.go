@@ -25,7 +25,7 @@ func CreateWatchlistTable(conn *pgx.Conn) error {
 }
 
 func CreateWatchlistAlpaca(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	headers := BasicAuth()
 
@@ -39,7 +39,7 @@ func CreateWatchlistAlpaca(c *gin.Context) {
 }
 
 func GetWatchlistAlpaca(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	headers := BasicAuth()
 
@@ -53,7 +53,7 @@ func GetWatchlistAlpaca(c *gin.Context) {
 }
 
 func ManageWatchlistAlpaca(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 	watchlistID := c.Param("watchlistId")
 
 	headers := BasicAuth()
@@ -68,7 +68,7 @@ func ManageWatchlistAlpaca(c *gin.Context) {
 }
 
 func UpdateWatchlistAlpaca(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 	watchlistID := c.Param("watchlistId")
 
 	headers := BasicAuth()
@@ -83,7 +83,7 @@ func UpdateWatchlistAlpaca(c *gin.Context) {
 }
 
 func DeleteWatchlistAlpaca(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 	watchlistID := c.Param("watchlistId")
 
 	headers := BasicAuth()
@@ -98,7 +98,7 @@ func DeleteWatchlistAlpaca(c *gin.Context) {
 }
 
 func AddAssetWatchlistAlpaca(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 	watchlistID := c.Param("watchlistId")
 
 	headers := BasicAuth()
@@ -118,7 +118,7 @@ func AddAssetWatchlistAlpaca(c *gin.Context) {
 }
 
 func RemoveSymbolFromWatchlistAlpaca(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 	watchlistID := c.Param("watchlistId")
 	symbol := c.Param("symbol")
 
@@ -138,10 +138,10 @@ func RemoveSymbolFromWatchlistAlpaca(c *gin.Context) {
 }
 
 func AddSymbolToWatchlist(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 	symbol := c.Param("symbol")
 
-	if id == "" || symbol == "" {
+	if symbol == "" {
 		ErrorExit(c, http.StatusBadRequest, "incorrectly provided parameters for adding a symbol to the watchlist", nil)
 		return
 	}
@@ -190,7 +190,7 @@ func getSymbols(conn *pgx.Conn, id string) ([]string, error) {
 }
 
 func GetSymbolsFromWatchlist(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -216,7 +216,7 @@ type Response struct {
 }
 
 func GetInformationForSymbols(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -232,22 +232,28 @@ func GetInformationForSymbols(c *gin.Context) {
 	}
 
 	now := time.Now().UTC()
-	start := "&start="
+	start := ""
+	checkPassed := false
 	if now.Hour() < 13 || now.Hour() >= 20 { // market opens at 13:30 UTC and closes at 20:00 UTC
 		if now.Weekday() == time.Monday {
-			start += now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
+			log.Println(now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339))
+			start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
 		} else {
-			start += now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
+			start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
 		}
+
+		checkPassed = true
 	}
 	if now.Hour() == 13 && now.Minute() < 30 {
 		if now.Weekday() == time.Monday {
-			start += now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
+			start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
 		} else {
-			start += now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
+			start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
 		}
+		checkPassed = true
+	} else if !checkPassed {
+		start = time.Now().UTC().Truncate(24 * time.Hour).Format(time.RFC3339)
 	}
-	start += time.Now().UTC().Truncate(24 * time.Hour).Format(time.RFC3339)
 
 	res := make(chan result)
 	go getInformation(symbols, start, res)
@@ -290,7 +296,7 @@ func GetInformationForSymbols(c *gin.Context) {
 			}
 
 			for symbol, info := range result.information {
-				if index := ContainsSymbol(response, symbol); index != -1 {
+				if index := containsSymbol(response, symbol); index != -1 {
 					openingPrice := info[0]["o"].(float64)
 					closingPrice := info[0]["c"].(float64)
 					response[index].OpeningPrice = openingPrice
@@ -308,7 +314,7 @@ func GetInformationForSymbols(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"information": response})
 }
 
-func ContainsSymbol(response []Response, symbol string) int {
+func containsSymbol(response []Response, symbol string) int {
 	for i, res := range response {
 		if res.Symbol == symbol {
 			return i
