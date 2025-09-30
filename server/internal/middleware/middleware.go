@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AuthParserMiddleware(c *gin.Context) {
+func AuthMiddleware(c *gin.Context) {
 	token := c.GetHeader("Authorization")
 	if token == "" || !strings.HasPrefix(token, "Bearer ") {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Error only authorized users can access this resource"})

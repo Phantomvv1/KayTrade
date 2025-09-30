@@ -352,6 +352,7 @@ func getLogo(symbol string, res chan<- result) {
 	}
 	defer response.Body.Close()
 
+	log.Println(response)
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		res <- result{logo: nil, result: 0, symbol: symbol, err: err}
@@ -379,4 +380,30 @@ func getInformation(symbols []string, start string, res chan<- result) {
 	}
 
 	res <- result{information: body["bars"], result: 1, symbol: "", err: nil}
+}
+
+func RemoveSymbolFromWatchlist(c *gin.Context) {
+	id := c.GetString("id")
+	symbol := c.Param("symbol")
+
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't connect to the database", err)
+		return
+	}
+	defer conn.Close(context.Background())
+
+	check := ""
+	err = conn.QueryRow(context.Background(), "delete from watchlist where user_id = $1 and symbol = $2 returning user_id", id, symbol).Scan(&check)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			ErrorExit(c, http.StatusConflict, "there is no such symbol in your watchlist", err)
+			return
+		}
+
+		ErrorExit(c, http.StatusInternalServerError, "couldn't delete the symbol from the database", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, nil)
 }
