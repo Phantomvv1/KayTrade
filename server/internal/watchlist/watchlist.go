@@ -2,9 +2,7 @@ package watchlist
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -140,6 +138,7 @@ func RemoveSymbolFromWatchlistAlpaca(c *gin.Context) {
 func AddSymbolToWatchlist(c *gin.Context) {
 	id := c.GetString("id")
 	symbol := c.Param("symbol")
+	symbol = strings.ToUpper(symbol)
 
 	if symbol == "" {
 		ErrorExit(c, http.StatusBadRequest, "incorrectly provided parameters for adding a symbol to the watchlist", nil)
@@ -209,10 +208,10 @@ func GetSymbolsFromWatchlist(c *gin.Context) {
 }
 
 type Response struct {
-	Symbol       string  `json:"symbol"`
-	OpeningPrice float64 `json:"opening_price"`
-	ClosingPrice float64 `json:"closing_price"`
-	Logo         []byte  `json:"logo"`
+	Symbol       string         `json:"symbol"`
+	OpeningPrice float64        `json:"opening_price"`
+	ClosingPrice float64        `json:"closing_price"`
+	Logo         map[string]any `json:"logo"`
 }
 
 func GetInformationForSymbols(c *gin.Context) {
@@ -272,7 +271,7 @@ func GetInformationForSymbols(c *gin.Context) {
 			}
 
 			if result.err != nil {
-				ErrorExit(c, http.StatusFailedDependency, "couldn't get the logo", result.err)
+				ErrorExit(c, http.StatusFailedDependency, "couldn't get the logo", result.err) // change that later
 				return
 			}
 
@@ -282,6 +281,7 @@ func GetInformationForSymbols(c *gin.Context) {
 				}
 			}
 
+			log.Println(result.symbol)
 			r := Response{Symbol: result.symbol, Logo: result.logo}
 			response = append(response, r)
 
@@ -327,33 +327,24 @@ func containsSymbol(response []Response, symbol string) int {
 type result struct {
 	result      byte // 0 - logo; 1 - information
 	information map[string][]map[string]any
-	logo        []byte
+	logo        map[string]any
 	err         error
 	symbol      string
 }
 
 func getLogo(symbol string, res chan<- result) {
-	req, err := http.NewRequest(http.MethodGet, "https://broker-api.sandbox.alpaca.markets/v1beta1/logos/"+symbol, nil)
-	if err != nil {
-		res <- result{logo: nil, result: 0, symbol: symbol, err: err}
-		return
+	errs := map[int]string{
+		400: "Bad Request",
+		401: "Unauthorized",
+		404: "Not Found or Invalid Domain Name",
+		429: "API key quota exceeded",
 	}
 
-	credentials := os.Getenv("API_KEY") + ":" + os.Getenv("SECRET_KEY")
-	out := base64.StdEncoding.EncodeToString([]byte(credentials))
-
-	req.Header.Add("Authorization", "Basic "+out)
-	req.Header.Add("accept", "image/png")
-
-	response, err := http.DefaultClient.Do(req)
-	if err != nil {
-		res <- result{logo: nil, result: 0, symbol: symbol, err: err}
-		return
+	header := map[string]string{
+		"Authorization": "Bearer " + os.Getenv("BRANDFETCH_API_KEY"),
 	}
-	defer response.Body.Close()
 
-	log.Println(response)
-	body, err := io.ReadAll(response.Body)
+	body, err := SendRequest[map[string]any](http.MethodGet, "https://api.brandfetch.io/v2/brands/"+symbol, nil, errs, header)
 	if err != nil {
 		res <- result{logo: nil, result: 0, symbol: symbol, err: err}
 		return
@@ -382,7 +373,7 @@ func getInformation(symbols []string, start string, res chan<- result) {
 	res <- result{information: body["bars"], result: 1, symbol: "", err: nil}
 }
 
-func RemoveSymbolFromWatchlist(c *gin.Context) {
+func RemoveSymbolFromWatchlist(c *gin.Context) { // to test
 	id := c.GetString("id")
 	symbol := c.Param("symbol")
 
@@ -408,7 +399,7 @@ func RemoveSymbolFromWatchlist(c *gin.Context) {
 	c.JSON(http.StatusOK, nil)
 }
 
-func RemoveAllSymbolsFromWatchlist(c *gin.Context) {
+func RemoveAllSymbolsFromWatchlist(c *gin.Context) { // to test
 	id := c.GetString("id")
 
 	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
