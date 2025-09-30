@@ -407,3 +407,22 @@ func RemoveSymbolFromWatchlist(c *gin.Context) {
 
 	c.JSON(http.StatusOK, nil)
 }
+
+func RemoveAllSymbolsFromWatchlist(c *gin.Context) {
+	id := c.GetString("id")
+
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't connect to the database", err)
+		return
+	}
+	defer conn.Close(context.Background())
+
+	_, err = conn.Exec(context.Background(), "delete from watchlist where user_id = $1", id)
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't delete the symbols from the database", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, nil)
+}

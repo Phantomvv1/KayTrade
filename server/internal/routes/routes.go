@@ -82,6 +82,7 @@ func NewRouter() *gin.Engine {
 	watch.GET("", watchlist.GetSymbolsFromWatchlist)
 	watch.GET("/info", watchlist.GetInformationForSymbols)
 	watch.DELETE("/:symbol", watchlist.RemoveSymbolFromWatchlist)
+	watch.DELETE("", watchlist.RemoveAllSymbolsFromWatchlist)
 
 	data := r.Group("/data")
 	data.GET("/auctions", SymbolsParserMiddleware, marketdata.GetHistoricalAuctions)
