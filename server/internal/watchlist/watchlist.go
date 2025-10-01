@@ -275,15 +275,12 @@ func GetInformationForSymbols(c *gin.Context) {
 				return
 			}
 
-			for i, stock := range response {
-				if stock.Symbol == result.symbol {
-					response[i].Logo = result.logo
-				}
+			if index := containsSymbol(response, result.symbol); index != -1 {
+				response[index].Logo = result.logo
+			} else {
+				r := Response{Symbol: result.symbol, Logo: result.logo}
+				response = append(response, r)
 			}
-
-			log.Println(result.symbol)
-			r := Response{Symbol: result.symbol, Logo: result.logo}
-			response = append(response, r)
 
 			if needsLock {
 				mu.Unlock()
