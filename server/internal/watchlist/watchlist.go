@@ -212,7 +212,15 @@ type Response struct {
 	OpeningPrice float64        `json:"opening_price"`
 	ClosingPrice float64        `json:"closing_price"`
 	Logo         map[string]any `json:"logo"`
+	Name         string         `json:"name"`
+	History      string         `json:"history"`
+	IsNSFW       bool           `json:"isNsfw"`
+	Description  string         `json:"description"`
+	FoundedYear  int            `json:"founded_year"`
+	Domain       string         `json:"domain"`
 }
+
+// var logoCache map[string]string
 
 func GetInformationForSymbols(c *gin.Context) {
 	id := c.GetString("id")
@@ -277,8 +285,23 @@ func GetInformationForSymbols(c *gin.Context) {
 
 			if index := containsSymbol(response, result.symbol); index != -1 {
 				response[index].Logo = result.logo
+				response[index].Name = result.logo["name"].(string)
+				response[index].Domain = result.logo["domain"].(string)
+				response[index].Description = result.logo["description"].(string)
+				response[index].IsNSFW = result.logo["isNsfw"].(bool)
+				response[index].History = result.logo["longDescription"].(string)
+				response[index].FoundedYear = result.logo["foundedYear"].(int)
 			} else {
-				r := Response{Symbol: result.symbol, Logo: result.logo}
+				r := Response{
+					Symbol:      result.symbol,
+					Logo:        result.logo,
+					Name:        result.logo["name"].(string),
+					Domain:      result.logo["domain"].(string),
+					Description: result.logo["description"].(string),
+					IsNSFW:      result.logo["isNsfw"].(bool),
+					History:     result.logo["longDescription"].(string),
+					FoundedYear: result.logo["foundedYear"].(int),
+				}
 				response = append(response, r)
 			}
 
@@ -299,7 +322,7 @@ func GetInformationForSymbols(c *gin.Context) {
 					response[index].OpeningPrice = openingPrice
 					response[index].ClosingPrice = closingPrice
 				} else {
-					response = append(response, Response{OpeningPrice: info[0]["o"].(float64), ClosingPrice: info[0]["c"].(float64)})
+					response = append(response, Response{Symbol: symbol, OpeningPrice: info[0]["o"].(float64), ClosingPrice: info[0]["c"].(float64)})
 				}
 			}
 
