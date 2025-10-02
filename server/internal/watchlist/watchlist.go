@@ -220,7 +220,7 @@ type Response struct {
 	Domain       string         `json:"domain"`
 }
 
-// var logoCache map[string]string
+// var logoCache map[string]string = make(map[string]string)
 
 func GetInformationForSymbols(c *gin.Context) {
 	id := c.GetString("id")
@@ -290,8 +290,18 @@ func GetInformationForSymbols(c *gin.Context) {
 				response[index].Description = result.logo["description"].(string)
 				response[index].IsNSFW = result.logo["isNsfw"].(bool)
 				response[index].History = result.logo["longDescription"].(string)
-				response[index].FoundedYear = result.logo["foundedYear"].(int)
+				foundedYear, ok := result.logo["foundedYear"].(float64)
+				if !ok {
+					response[index].FoundedYear = 0
+				} else {
+					response[index].FoundedYear = int(foundedYear)
+				}
 			} else {
+				foundedYear, ok := result.logo["foundedYear"].(float64)
+				if !ok {
+					foundedYear = 0
+				}
+
 				r := Response{
 					Symbol:      result.symbol,
 					Logo:        result.logo,
@@ -300,7 +310,7 @@ func GetInformationForSymbols(c *gin.Context) {
 					Description: result.logo["description"].(string),
 					IsNSFW:      result.logo["isNsfw"].(bool),
 					History:     result.logo["longDescription"].(string),
-					FoundedYear: result.logo["foundedYear"].(int),
+					FoundedYear: int(foundedYear),
 				}
 				response = append(response, r)
 			}
@@ -332,6 +342,24 @@ func GetInformationForSymbols(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"information": response})
+}
+
+func chooseLogo(info map[string]any) string {
+	logos := info["logos"].([]map[string][]map[string]any)
+	formats := logos[0]["formats"]
+	for _, variant := range formats {
+		if variant["background"] == "transparent" && variant["format"] == "png" {
+			return variant["src"].(string)
+		}
+	}
+
+	for _, variant := range formats {
+		if variant["format"] == "png" {
+			return variant["src"].(string)
+		}
+	}
+
+	return ""
 }
 
 func containsSymbol(response []Response, symbol string) int {
