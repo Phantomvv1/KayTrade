@@ -3,7 +3,6 @@ package watchlist
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -157,6 +156,16 @@ func AddSymbolToWatchlist(c *gin.Context) {
 		return
 	}
 
+	check := ""
+	err = conn.QueryRow(context.Background(), "select symbol from wishlist w where w.user_id = $1 and symbol = $2", id, symbol).Scan(&check)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't check if this symbol is already in your watchlist", err)
+		return
+	} else if err == nil {
+		ErrorExit(c, http.StatusConflict, "this symbol is already in your watchlist", nil)
+		return
+	}
+
 	_, err = conn.Exec(context.Background(), "insert into wishlist (user_id, symbol) values ($1, $2)", id, symbol)
 	if err != nil {
 		ErrorExit(c, http.StatusInternalServerError, "couldn't insert the information into the database", err)
@@ -220,7 +229,7 @@ type Response struct {
 	Domain       string         `json:"domain"`
 }
 
-// var logoCache map[string]string = make(map[string]string)
+var informationCache = make(map[string]map[string]any)
 
 func GetInformationForSymbols(c *gin.Context) {
 	id := c.GetString("id")
@@ -243,7 +252,6 @@ func GetInformationForSymbols(c *gin.Context) {
 	checkPassed := false
 	if now.Hour() < 13 || now.Hour() >= 20 { // market opens at 13:30 UTC and closes at 20:00 UTC
 		if now.Weekday() == time.Monday {
-			log.Println(now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339))
 			start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
 		} else {
 			start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
@@ -344,6 +352,17 @@ func GetInformationForSymbols(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"information": response})
 }
 
+func getInfoAndLogo(symbol string) map[string]any {
+	companyInfo := informationCache[symbol]
+	if !time.Now().UTC().After(companyInfo["expiryDate"].(time.Time)) {
+		return companyInfo
+	} else {
+		// redisLookUp()
+		// informationCache[symbol] = lookUpResult
+		return informationCache[symbol]
+	}
+}
+
 func chooseLogo(info map[string]any) string {
 	logos := info["logos"].([]map[string][]map[string]any)
 	formats := logos[0]["formats"]
@@ -424,6 +443,7 @@ func getInformation(symbols []string, start string, res chan<- result) {
 func RemoveSymbolFromWatchlist(c *gin.Context) { // to test
 	id := c.GetString("id")
 	symbol := c.Param("symbol")
+	symbol = strings.ToUpper(symbol)
 
 	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -433,7 +453,7 @@ func RemoveSymbolFromWatchlist(c *gin.Context) { // to test
 	defer conn.Close(context.Background())
 
 	check := ""
-	err = conn.QueryRow(context.Background(), "delete from watchlist where user_id = $1 and symbol = $2 returning user_id", id, symbol).Scan(&check)
+	err = conn.QueryRow(context.Background(), "delete from wishlist where user_id = $1 and symbol = $2 returning user_id", id, symbol).Scan(&check)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			ErrorExit(c, http.StatusConflict, "there is no such symbol in your watchlist", err)
@@ -457,7 +477,7 @@ func RemoveAllSymbolsFromWatchlist(c *gin.Context) { // to test
 	}
 	defer conn.Close(context.Background())
 
-	_, err = conn.Exec(context.Background(), "delete from watchlist where user_id = $1", id)
+	_, err = conn.Exec(context.Background(), "delete from wishlist where user_id = $1", id)
 	if err != nil {
 		ErrorExit(c, http.StatusInternalServerError, "couldn't delete the symbols from the database", err)
 		return
