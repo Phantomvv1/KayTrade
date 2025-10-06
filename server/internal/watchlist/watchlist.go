@@ -380,7 +380,7 @@ func getInfoAndLogo(symbol string) (*CompanyInfo, error) {
 		return companyInfo, nil
 	} else {
 		rdb := redis.NewClient(&redis.Options{
-			Addr: "localhost:6379",
+			Addr: os.Getenv("REDIS_URL"),
 			DB:   0,
 		})
 
