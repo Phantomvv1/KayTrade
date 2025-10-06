@@ -474,10 +474,10 @@ func GetUser(c *gin.Context) {
 
 func UpdateUser(c *gin.Context) {
 	// name &| email
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	name := c.GetString("name")
-	email := c.GetString("email")
+	email := c.GetString("json_email")
 	if name == "" && email == "" {
 		ErrorExit(c, http.StatusBadRequest, "no new information given", nil)
 	}
@@ -513,7 +513,7 @@ func UpdateUser(c *gin.Context) {
 // This endpoint makes an external API call,
 // only use it if you want to update more information about the user
 func UpdateUserAlpaca(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	headers := BasicAuth()
 
@@ -532,7 +532,7 @@ func UpdateUserAlpaca(c *gin.Context) {
 }
 
 func DeleteUser(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {

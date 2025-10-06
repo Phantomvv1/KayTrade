@@ -2,7 +2,9 @@ package watchlist
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -14,7 +16,24 @@ import (
 	. "github.com/Phantomvv1/KayTrade/internal/requests"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/redis/go-redis/v9"
 )
+
+type CompanyInfo struct {
+	Symbol         string         `json:"symbol"`
+	OpeningPrice   float64        `json:"opening_price"`
+	ClosingPrice   float64        `json:"closing_price"`
+	Logo           map[string]any `json:"logo"`
+	Name           string         `json:"name"`
+	History        string         `json:"history"`
+	IsNSFW         bool           `json:"isNsfw"`
+	Description    string         `json:"description"`
+	FoundedYear    int            `json:"founded_year"`
+	Domain         string         `json:"domain"`
+	expirationDate time.Time
+}
+
+var missingInfo = errors.New("There is no information for this company in redis")
 
 func CreateWatchlistTable(conn *pgx.Conn) error {
 	_, err := conn.Exec(context.Background(), "create table if not exists wishlist(user_id uuid references authentication(id), symbol text)")
@@ -216,20 +235,7 @@ func GetSymbolsFromWatchlist(c *gin.Context) {
 	c.JSON(http.StatusOK, symbols)
 }
 
-type Response struct {
-	Symbol       string         `json:"symbol"`
-	OpeningPrice float64        `json:"opening_price"`
-	ClosingPrice float64        `json:"closing_price"`
-	Logo         map[string]any `json:"logo"`
-	Name         string         `json:"name"`
-	History      string         `json:"history"`
-	IsNSFW       bool           `json:"isNsfw"`
-	Description  string         `json:"description"`
-	FoundedYear  int            `json:"founded_year"`
-	Domain       string         `json:"domain"`
-}
-
-var informationCache = make(map[string]map[string]any)
+var informationCache = make(map[string]*CompanyInfo)
 
 func GetInformationForSymbols(c *gin.Context) {
 	id := c.GetString("id")
@@ -270,13 +276,38 @@ func GetInformationForSymbols(c *gin.Context) {
 		start = time.Now().UTC().Truncate(24 * time.Hour).Format(time.RFC3339)
 	}
 
-	res := make(chan result)
-	go getInformation(symbols, start, res)
+	// Check for cached symbols
+	var response []CompanyInfo
+	var uncachedSymbols []string
 	for _, symbol := range symbols {
+		info, err := getInfoAndLogo(symbol)
+		if err != nil {
+			if errors.Is(err, missingInfo) {
+				continue
+			}
+
+			log.Println(err)
+			uncachedSymbols = append(uncachedSymbols, symbol)
+		}
+
+		response = append(response, CompanyInfo{
+			Symbol:      info.Symbol,
+			Logo:        info.Logo,
+			Name:        info.Name,
+			History:     info.History,
+			IsNSFW:      info.IsNSFW,
+			Description: info.Description,
+			FoundedYear: info.FoundedYear,
+			Domain:      info.Domain,
+		})
+	}
+
+	res := make(chan result)
+	go getPriceInformation(symbols, start, res)
+	for _, symbol := range uncachedSymbols {
 		go getLogo(symbol, res)
 	}
 
-	var response []Response
 	mu := sync.Mutex{}
 	needsLock := true
 	for range len(symbols) + 1 {
@@ -310,7 +341,7 @@ func GetInformationForSymbols(c *gin.Context) {
 					foundedYear = 0
 				}
 
-				r := Response{
+				r := CompanyInfo{
 					Symbol:      result.symbol,
 					Logo:        result.logo,
 					Name:        result.logo["name"].(string),
@@ -340,7 +371,7 @@ func GetInformationForSymbols(c *gin.Context) {
 					response[index].OpeningPrice = openingPrice
 					response[index].ClosingPrice = closingPrice
 				} else {
-					response = append(response, Response{Symbol: symbol, OpeningPrice: info[0]["o"].(float64), ClosingPrice: info[0]["c"].(float64)})
+					response = append(response, CompanyInfo{Symbol: symbol, OpeningPrice: info[0]["o"].(float64), ClosingPrice: info[0]["c"].(float64)})
 				}
 			}
 
@@ -352,16 +383,40 @@ func GetInformationForSymbols(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"information": response})
 }
 
-func getInfoAndLogo(symbol string) map[string]any {
+func getInfoAndLogo(symbol string) (*CompanyInfo, error) {
 	companyInfo := informationCache[symbol]
-	if !time.Now().UTC().After(companyInfo["expiryDate"].(time.Time)) {
-		return companyInfo
+	if !time.Now().UTC().After(companyInfo.expirationDate) {
+		return companyInfo, nil
 	} else {
-		// redisLookUp()
-		// informationCache[symbol] = lookUpResult
-		return informationCache[symbol]
+		rdb := redis.NewClient(&redis.Options{
+			Addr: "localhost:6379",
+			DB:   0,
+		})
+
+		info, err := rdb.Get(context.Background(), symbol).Result()
+		if err != nil {
+			if errors.Is(err, redis.Nil) {
+				return nil, missingInfo
+			}
+
+			return nil, err
+		}
+
+		var companyInfo CompanyInfo
+		err = json.Unmarshal([]byte(info), &companyInfo)
+		if err != nil {
+			return nil, err
+		}
+
+		informationCache[symbol] = &companyInfo
+
+		return &companyInfo, nil
 	}
 }
+
+// func cacheInfo(symbol string, info *CompanyInfo) error {
+// 	return nil
+// }
 
 func chooseLogo(info map[string]any) string {
 	logos := info["logos"].([]map[string][]map[string]any)
@@ -381,7 +436,7 @@ func chooseLogo(info map[string]any) string {
 	return ""
 }
 
-func containsSymbol(response []Response, symbol string) int {
+func containsSymbol(response []CompanyInfo, symbol string) int {
 	for i, res := range response {
 		if res.Symbol == symbol {
 			return i
@@ -420,7 +475,7 @@ func getLogo(symbol string, res chan<- result) {
 	res <- result{logo: body, result: 0, symbol: symbol, err: nil}
 }
 
-func getInformation(symbols []string, start string, res chan<- result) {
+func getPriceInformation(symbols []string, start string, res chan<- result) {
 	s := strings.Join(symbols, ",")
 	headers := BasicAuth()
 
