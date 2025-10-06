@@ -375,10 +375,8 @@ func GetInformationForSymbols(c *gin.Context) {
 }
 
 func getInfoAndLogo(symbol string) (*CompanyInfo, error) {
-	companyInfo := informationCache[symbol]
-	if !time.Now().UTC().After(companyInfo.expirationDate) {
-		return companyInfo, nil
-	} else {
+	companyInfo, ok := informationCache[symbol]
+	if !ok {
 		rdb := redis.NewClient(&redis.Options{
 			Addr: os.Getenv("REDIS_URL"),
 			DB:   0,
@@ -409,11 +407,32 @@ func getInfoAndLogo(symbol string) (*CompanyInfo, error) {
 
 		return &companyInfo, nil
 	}
+
+	if !time.Now().UTC().After(companyInfo.expirationDate) {
+		return companyInfo, nil
+	} else {
+		return nil, errors.New("The information for this company has expired")
+	}
 }
 
-// func cacheInfo(symbol string, info *CompanyInfo) error {
-// 	return nil
-// }
+func cacheInfo(symbol string, info *CompanyInfo) error {
+	rdb := redis.NewClient(&redis.Options{
+		Addr: os.Getenv("REDIS_URL"),
+		DB:   0,
+	})
+
+	body, err := json.Marshal(info)
+	if err != nil {
+		return err
+	}
+
+	err = rdb.Set(context.Background(), symbol, body, time.Now().UTC().Add(14*24*time.Hour).Sub(time.Now().UTC())).Err() // 2 weeks TTL
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func chooseLogo(info map[string]any) string {
 	logos := info["logos"].([]map[string][]map[string]any)
