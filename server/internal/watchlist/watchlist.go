@@ -290,16 +290,7 @@ func GetInformationForSymbols(c *gin.Context) {
 			uncachedSymbols = append(uncachedSymbols, symbol)
 		}
 
-		response = append(response, CompanyInfo{
-			Symbol:      info.Symbol,
-			Logo:        info.Logo,
-			Name:        info.Name,
-			History:     info.History,
-			IsNSFW:      info.IsNSFW,
-			Description: info.Description,
-			FoundedYear: info.FoundedYear,
-			Domain:      info.Domain,
-		})
+		response = append(response, *info)
 	}
 
 	res := make(chan result)
@@ -407,6 +398,12 @@ func getInfoAndLogo(symbol string) (*CompanyInfo, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		expiration, err := rdb.TTL(context.Background(), symbol).Result()
+		if err != nil {
+			return nil, err
+		}
+		companyInfo.expirationDate = time.Now().UTC().Add(expiration)
 
 		informationCache[symbol] = &companyInfo
 
