@@ -21,8 +21,8 @@ import (
 
 type CompanyInfo struct {
 	Symbol         string         `json:"symbol"`
-	OpeningPrice   float64        `json:"opening_price"`
-	ClosingPrice   float64        `json:"closing_price"`
+	OpeningPrice   float64        `json:"opening_price,omitempty"`
+	ClosingPrice   float64        `json:"closing_price,omitempty"`
 	Logo           map[string]any `json:"logo"`
 	Name           string         `json:"name"`
 	History        string         `json:"history"`
@@ -326,6 +326,12 @@ func GetInformationForSymbols(c *gin.Context) {
 				} else {
 					response[index].FoundedYear = int(foundedYear)
 				}
+
+				err := cacheInfo(response[index])
+				if err != nil {
+					log.Println(err)
+					log.Println("Couldn't cache the information about " + response[index].Symbol)
+				}
 			} else {
 				foundedYear, ok := result.logo["foundedYear"].(float64)
 				if !ok {
@@ -343,6 +349,12 @@ func GetInformationForSymbols(c *gin.Context) {
 					FoundedYear: int(foundedYear),
 				}
 				response = append(response, r)
+
+				err := cacheInfo(r)
+				if err != nil {
+					log.Println(err)
+					log.Println("Couldn't cache the information about " + r.Symbol)
+				}
 			}
 
 			if needsLock {
@@ -415,7 +427,10 @@ func getInfoAndLogo(symbol string) (*CompanyInfo, error) {
 	}
 }
 
-func cacheInfo(symbol string, info *CompanyInfo) error {
+func cacheInfo(info CompanyInfo) error {
+	info.OpeningPrice = 0.0
+	info.ClosingPrice = 0.0
+
 	rdb := redis.NewClient(&redis.Options{
 		Addr: os.Getenv("REDIS_URL"),
 		DB:   0,
@@ -426,7 +441,7 @@ func cacheInfo(symbol string, info *CompanyInfo) error {
 		return err
 	}
 
-	err = rdb.Set(context.Background(), symbol, body, time.Now().UTC().Add(14*24*time.Hour).Sub(time.Now().UTC())).Err() // 2 weeks TTL
+	err = rdb.Set(context.Background(), info.Symbol, body, time.Now().UTC().Add(14*24*time.Hour).Sub(time.Now().UTC())).Err() // 2 weeks TTL
 	if err != nil {
 		return err
 	}
