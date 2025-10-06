@@ -310,7 +310,7 @@ func GetInformationForSymbols(c *gin.Context) {
 
 	mu := sync.Mutex{}
 	needsLock := true
-	for range len(symbols) + 1 {
+	for range len(uncachedSymbols) + 1 {
 		result := <-res
 		if result.result == 0 {
 			if needsLock {
