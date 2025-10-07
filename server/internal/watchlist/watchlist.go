@@ -283,14 +283,13 @@ func GetInformationForSymbols(c *gin.Context) {
 		info, err := getInfoAndLogo(symbol)
 		if err != nil {
 			if errors.Is(err, missingInfo) {
-				continue
+				uncachedSymbols = append(uncachedSymbols, symbol)
+			} else {
+				log.Println(err)
 			}
-
-			log.Println(err)
-			uncachedSymbols = append(uncachedSymbols, symbol)
+		} else {
+			response = append(response, *info)
 		}
-
-		response = append(response, *info)
 	}
 
 	res := make(chan result)
@@ -326,6 +325,7 @@ func GetInformationForSymbols(c *gin.Context) {
 				} else {
 					response[index].FoundedYear = int(foundedYear)
 				}
+				log.Println(foundedYear)
 
 				err := cacheInfo(response[index])
 				if err != nil {
@@ -337,6 +337,7 @@ func GetInformationForSymbols(c *gin.Context) {
 				if !ok {
 					foundedYear = 0
 				}
+				log.Println(foundedYear)
 
 				r := CompanyInfo{
 					Symbol:      result.symbol,
@@ -393,6 +394,7 @@ func getInfoAndLogo(symbol string) (*CompanyInfo, error) {
 			Addr: os.Getenv("REDIS_URL"),
 			DB:   0,
 		})
+		defer rdb.Close()
 
 		info, err := rdb.Get(context.Background(), symbol).Result()
 		if err != nil {
@@ -435,6 +437,7 @@ func cacheInfo(info CompanyInfo) error {
 		Addr: os.Getenv("REDIS_URL"),
 		DB:   0,
 	})
+	defer rdb.Close()
 
 	body, err := json.Marshal(info)
 	if err != nil {
