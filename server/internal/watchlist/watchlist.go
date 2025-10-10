@@ -20,16 +20,16 @@ import (
 )
 
 type CompanyInfo struct {
-	Symbol         string         `json:"symbol"`
-	OpeningPrice   float64        `json:"opening_price,omitempty"`
-	ClosingPrice   float64        `json:"closing_price,omitempty"`
-	Logo           map[string]any `json:"logo"`
-	Name           string         `json:"name"`
-	History        string         `json:"history"`
-	IsNSFW         bool           `json:"isNsfw"`
-	Description    string         `json:"description"`
-	FoundedYear    int            `json:"founded_year"`
-	Domain         string         `json:"domain"`
+	Symbol         string  `json:"symbol"`
+	OpeningPrice   float64 `json:"opening_price,omitempty"`
+	ClosingPrice   float64 `json:"closing_price,omitempty"`
+	Logo           string  `json:"logo"`
+	Name           string  `json:"name"`
+	History        string  `json:"history"`
+	IsNSFW         bool    `json:"isNsfw"`
+	Description    string  `json:"description"`
+	FoundedYear    int     `json:"founded_year"`
+	Domain         string  `json:"domain"`
 	expirationDate time.Time
 }
 
@@ -313,19 +313,19 @@ func GetInformationForSymbols(c *gin.Context) {
 			}
 
 			if index := containsSymbol(response, result.symbol); index != -1 {
-				response[index].Logo = result.logo
+				company := result.logo["company"].(map[string]any)
+				response[index].Logo = chooseLogo(result.logo)
 				response[index].Name = result.logo["name"].(string)
 				response[index].Domain = result.logo["domain"].(string)
 				response[index].Description = result.logo["description"].(string)
 				response[index].IsNSFW = result.logo["isNsfw"].(bool)
 				response[index].History = result.logo["longDescription"].(string)
-				foundedYear, ok := result.logo["foundedYear"].(float64)
+				foundedYear, ok := company["foundedYear"].(float64)
 				if !ok {
 					response[index].FoundedYear = 0
 				} else {
 					response[index].FoundedYear = int(foundedYear)
 				}
-				log.Println(foundedYear)
 
 				err := cacheInfo(response[index])
 				if err != nil {
@@ -333,15 +333,15 @@ func GetInformationForSymbols(c *gin.Context) {
 					log.Println("Couldn't cache the information about " + response[index].Symbol)
 				}
 			} else {
-				foundedYear, ok := result.logo["foundedYear"].(float64)
+				company := result.logo["company"].(map[string]any)
+				foundedYear, ok := company["foundedYear"].(float64)
 				if !ok {
 					foundedYear = 0
 				}
-				log.Println(foundedYear)
 
 				r := CompanyInfo{
 					Symbol:      result.symbol,
-					Logo:        result.logo,
+					Logo:        chooseLogo(result.logo),
 					Name:        result.logo["name"].(string),
 					Domain:      result.logo["domain"].(string),
 					Description: result.logo["description"].(string),
@@ -405,7 +405,7 @@ func getInfoAndLogo(symbol string) (*CompanyInfo, error) {
 			return nil, err
 		}
 
-		var companyInfo CompanyInfo
+		companyInfo := CompanyInfo{}
 		err = json.Unmarshal([]byte(info), &companyInfo)
 		if err != nil {
 			return nil, err
@@ -452,9 +452,25 @@ func cacheInfo(info CompanyInfo) error {
 	return nil
 }
 
+// This function looks across all logos and chooses a png with transperant background and with dark theme if possible
 func chooseLogo(info map[string]any) string {
-	logos := info["logos"].([]map[string][]map[string]any)
-	formats := logos[0]["formats"]
+	logos := info["logos"].([]any)
+	var formats []map[string]any
+	safety := false
+	for _, format := range logos {
+		theme := format.(map[string]any)
+		if !safety {
+			safety = true
+			formats = decodeAnyArray(theme["formats"].([]any))
+		}
+
+		if theme["theme"] == "dark" {
+			formats = decodeAnyArray(theme["formats"].([]any))
+			break
+		}
+
+	}
+
 	for _, variant := range formats {
 		if variant["background"] == "transparent" && variant["format"] == "png" {
 			return variant["src"].(string)
@@ -468,6 +484,16 @@ func chooseLogo(info map[string]any) string {
 	}
 
 	return ""
+}
+
+func decodeAnyArray(info []any) []map[string]any {
+	result := make([]map[string]any, 0)
+	for _, logoInfo := range info {
+		res := logoInfo.(map[string]any)
+		result = append(result, res)
+	}
+
+	return result
 }
 
 func containsSymbol(response []CompanyInfo, symbol string) int {
