@@ -33,7 +33,7 @@ func CreateOrdersTable(conn *pgx.Conn) error {
 }
 
 func CreateOrder(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	var reader *bytes.Reader
 
@@ -114,7 +114,7 @@ func CreateOrder(c *gin.Context) {
 }
 
 func GetOrders(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -148,7 +148,7 @@ func GetOrders(c *gin.Context) {
 }
 
 func GetOrdersAlpaca(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 	status := c.Query("status")
 	if status == "" {
 		status = "open"
@@ -171,7 +171,7 @@ func GetOrdersAlpaca(c *gin.Context) {
 }
 
 func ReplaceOrder(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 	orderID := c.Param("orderId")
 
 	headers := BasicAuth()
@@ -196,7 +196,7 @@ type result struct {
 }
 
 func CancelOrder(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 	orderID := c.Param("orderId")
 
 	headers := BasicAuth()
@@ -266,7 +266,7 @@ func CancelOrder(c *gin.Context) {
 }
 
 func EstimateOrder(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	headers := BasicAuth()
 
@@ -280,7 +280,7 @@ func EstimateOrder(c *gin.Context) {
 }
 
 func GetOrderByID(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 	orderID := c.Param("orderId")
 
 	headers := BasicAuth()
@@ -300,7 +300,7 @@ func GetOrderByID(c *gin.Context) {
 }
 
 func GetAccountProtfolioHistory(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	headers := BasicAuth()
 
@@ -314,7 +314,7 @@ func GetAccountProtfolioHistory(c *gin.Context) {
 }
 
 func GetOpenPositions(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	headers := BasicAuth()
 
@@ -328,7 +328,7 @@ func GetOpenPositions(c *gin.Context) {
 }
 
 func CloseAllOpenPositions(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	headers := BasicAuth()
 
@@ -346,7 +346,7 @@ func CloseAllOpenPositions(c *gin.Context) {
 }
 
 func GetOpenPosition(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 	symbolOrAssetID := c.Param("symbol_or_asset_id")
 	if symbolOrAssetID == "" {
 		ErrorExit(c, http.StatusBadRequest, "missing a parameter", nil)
@@ -369,7 +369,7 @@ func GetOpenPosition(c *gin.Context) {
 }
 
 func ClosePosition(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 	symbolOrAssetID := c.Param("symbol_or_asset_id")
 	if symbolOrAssetID == "" {
 		ErrorExit(c, http.StatusBadRequest, "missing a parameter", nil)

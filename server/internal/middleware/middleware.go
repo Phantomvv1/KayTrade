@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AuthParserMiddleware(c *gin.Context) {
+func AuthMiddleware(c *gin.Context) {
 	token := c.GetHeader("Authorization")
 	if token == "" || !strings.HasPrefix(token, "Bearer ") {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Error only authorized users can access this resource"})
@@ -28,7 +28,7 @@ func AuthParserMiddleware(c *gin.Context) {
 
 	c.Set("id", id)
 	c.Set("accountType", accountType)
-	c.Set("token_email", email)
+	c.Set("email", email)
 
 	c.Next()
 }
@@ -54,26 +54,17 @@ func JSONParserMiddleware(c *gin.Context) {
 	}
 
 	for k, v := range information {
+		switch k {
+		case "id":
+			c.Set("json_id", v)
+		case "accountType":
+			c.Set("json_accountType", v)
+		case "email":
+			c.Set("json_email", v)
+		case "json_id", "json_accountType", "json_email":
+			continue
+		}
 		c.Set(k, v)
-	}
-
-	c.Next()
-}
-
-func AuthProtectMiddleware(c *gin.Context) {
-	userID := c.Param("id")
-	if strings.HasPrefix(userID, "/") && strings.HasSuffix(userID, "/") {
-		userID = strings.TrimPrefix(userID, "/")
-		userID = strings.TrimSuffix(userID, "/")
-	}
-
-	id := c.GetString("id")
-	acc, _ := c.Get("accountType")
-	accountType := acc.(byte)
-
-	if accountType != Admin && id != userID {
-		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Error only admins and the user themselves can access this resource"})
-		return
 	}
 
 	c.Next()

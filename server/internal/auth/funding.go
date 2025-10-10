@@ -28,7 +28,7 @@ func CreateBankTable(conn *pgx.Conn) error {
 }
 
 func CreateBankRelationship(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	headers := BasicAuth()
 
@@ -68,7 +68,7 @@ func CreateBankRelationship(c *gin.Context) {
 }
 
 func GetBankRelationships(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -106,7 +106,7 @@ func GetBankRelationships(c *gin.Context) {
 // This is an alpaca endpoint. Only use it if you want more information about the
 // relationships or the banks.
 func GetBankRelationshipsAlpaca(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	headers := BasicAuth()
 
@@ -124,7 +124,7 @@ func GetBankRelationshipsAlpaca(c *gin.Context) {
 }
 
 func DeleteBankRelationship(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 	bankID := c.GetString("bank_id")
 
 	headers := BasicAuth()
@@ -195,7 +195,7 @@ func DeleteBankRelationship(c *gin.Context) {
 }
 
 func GetAllTransfers(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	headers := BasicAuth()
 
@@ -209,7 +209,7 @@ func GetAllTransfers(c *gin.Context) {
 }
 
 func NewTransfer(c *gin.Context) {
-	id := c.Param("id")
+	id := c.GetString("id")
 
 	headers := BasicAuth()
 
