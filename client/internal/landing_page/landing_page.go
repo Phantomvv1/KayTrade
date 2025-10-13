@@ -1,39 +1,47 @@
 package landingpage
 
 import (
+	"errors"
+
+	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
+	"github.com/Phantomvv1/KayTrade/internal/messages"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	figure "github.com/common-nighthawk/go-figure"
 )
 
 type LandingPage struct {
-	width, height int
-	quitting      bool
+	baseModel basemodel.BaseModel
+	quitting  bool
 }
 
-func (m LandingPage) Init() tea.Cmd {
+func (l LandingPage) Init() tea.Cmd {
 	return nil
 }
 
-func (m LandingPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (l LandingPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width, m.height = msg.Width, msg.Height
+		l.baseModel.Width, l.baseModel.Height = msg.Width, msg.Height
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
-			m.quitting = true
-			return m, tea.Quit
+			l.quitting = true
+			return l, tea.Quit
 		default:
-			// "continue" → quit landing page for now
-			return m, tea.Quit
+			return l, func() tea.Msg {
+				return messages.PageSwitchMsg{
+					Page: messages.ErrorPageNumber,
+					Err:  errors.New("Incorrectly passign pages"),
+				}
+			}
 		}
 	}
-	return m, nil
+	return l, nil
 }
 
-func (m LandingPage) View() string {
-	if m.quitting {
+func (l LandingPage) View() string {
+	if l.quitting {
 		return ""
 	}
 
@@ -52,7 +60,7 @@ func (m LandingPage) View() string {
 	content := lipgloss.JoinVertical(lipgloss.Center, titleStyle.Render(title), subtitle)
 
 	ui := lipgloss.Place(
-		m.width, m.height,
+		l.baseModel.Width, l.baseModel.Height,
 		lipgloss.Center, lipgloss.Center,
 		content,
 	)
