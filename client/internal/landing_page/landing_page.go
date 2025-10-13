@@ -6,20 +6,16 @@ import (
 	figure "github.com/common-nighthawk/go-figure"
 )
 
-type Model struct {
+type LandingPage struct {
 	width, height int
 	quitting      bool
 }
 
-func NewLandingPageModel() Model {
-	return Model{}
-}
-
-func (m Model) Init() tea.Cmd {
+func (m LandingPage) Init() tea.Cmd {
 	return nil
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m LandingPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -36,7 +32,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) View() string {
+func (m LandingPage) View() string {
 	if m.quitting {
 		return ""
 	}
