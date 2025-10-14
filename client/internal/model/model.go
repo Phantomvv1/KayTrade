@@ -1,6 +1,8 @@
 package model
 
 import (
+	"log"
+
 	errorpage "github.com/Phantomvv1/KayTrade/internal/error_page"
 	landingpage "github.com/Phantomvv1/KayTrade/internal/landing_page"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
@@ -11,6 +13,8 @@ type Model struct {
 	landingPage landingpage.LandingPage
 	errorPage   errorpage.ErrorPage
 	currentPage int
+	width       int
+	height      int
 }
 
 func NewModel() Model {
@@ -34,6 +38,9 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		log.Printf("Size msg!")
+		m.width, m.height = msg.Width, msg.Height
 	case messages.PageSwitchMsg:
 		m.currentPage = msg.Page
 		m.errorPage.Err = msg.Err
@@ -44,9 +51,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var page tea.Model
 	switch m.currentPage {
 	case messages.LandingPageNumber:
+		m.landingPage.BaseModel.Width = m.width
+		m.landingPage.BaseModel.Height = m.height
+
 		page, cmd = m.landingPage.Update(msg)
 		m.landingPage = page.(landingpage.LandingPage)
 	case messages.ErrorPageNumber:
+		m.errorPage.BaseModel.Width = m.width
+		m.errorPage.BaseModel.Height = m.height
+		log.Printf("%d, %d. Error page before going in.", m.errorPage.BaseModel.Width, m.errorPage.BaseModel.Height)
+
 		page, cmd = m.errorPage.Update(msg)
 		m.errorPage = page.(errorpage.ErrorPage)
 	}

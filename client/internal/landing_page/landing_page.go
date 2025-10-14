@@ -2,6 +2,7 @@ package landingpage
 
 import (
 	"errors"
+	"log"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
@@ -11,7 +12,7 @@ import (
 )
 
 type LandingPage struct {
-	baseModel basemodel.BaseModel
+	BaseModel basemodel.BaseModel
 	quitting  bool
 }
 
@@ -21,8 +22,6 @@ func (l LandingPage) Init() tea.Cmd {
 
 func (l LandingPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		l.baseModel.Width, l.baseModel.Height = msg.Width, msg.Height
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
@@ -41,6 +40,7 @@ func (l LandingPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (l LandingPage) View() string {
+	log.Printf("%d, %d. Landing page", l.BaseModel.Width, l.BaseModel.Height)
 	if l.quitting {
 		return ""
 	}
@@ -60,7 +60,7 @@ func (l LandingPage) View() string {
 	content := lipgloss.JoinVertical(lipgloss.Center, titleStyle.Render(title), subtitle)
 
 	ui := lipgloss.Place(
-		l.baseModel.Width, l.baseModel.Height,
+		l.BaseModel.Width, l.BaseModel.Height,
 		lipgloss.Center, lipgloss.Center,
 		content,
 	)

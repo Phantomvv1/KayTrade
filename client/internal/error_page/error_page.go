@@ -1,13 +1,15 @@
 package errorpage
 
 import (
+	"log"
+
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 type ErrorPage struct {
-	baseModel basemodel.BaseModel
+	BaseModel basemodel.BaseModel
 	Err       error
 }
 
@@ -17,8 +19,6 @@ func (e ErrorPage) Init() tea.Cmd {
 
 func (e ErrorPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		e.baseModel.Width, e.baseModel.Height = msg.Width, msg.Height
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -32,9 +32,9 @@ func (e ErrorPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (e ErrorPage) View() string {
-	title := lipgloss.PlaceHorizontal(e.baseModel.Width, lipgloss.Center, e.Err.Error())
-	subtitle := lipgloss.PlaceHorizontal(e.baseModel.Width, lipgloss.Center, "Press any key to continue • Press q to quit")
-	ui := lipgloss.JoinVertical(lipgloss.Center, title, subtitle)
+	log.Printf("Width: %d, Height: %d . Error page!", e.BaseModel.Width, e.BaseModel.Height)
+	content := lipgloss.JoinVertical(lipgloss.Center, e.Err.Error(), "Press any key to continue • Press q to quit")
+	ui := lipgloss.JoinVertical(lipgloss.Center, content)
 
-	return lipgloss.Place(e.baseModel.Width, e.baseModel.Height, lipgloss.Center, lipgloss.Center, ui)
+	return lipgloss.Place(e.BaseModel.Width, e.BaseModel.Height, lipgloss.Center, lipgloss.Center, ui)
 }
