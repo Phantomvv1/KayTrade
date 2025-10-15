@@ -40,7 +40,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		log.Printf("Size msg!")
-		m.width, m.height = msg.Width, msg.Height
+		m.SetSize(msg.Width, msg.Height)
+		return m, nil
 	case messages.PageSwitchMsg:
 		m.currentPage = msg.Page
 		m.errorPage.Err = msg.Err
@@ -77,4 +78,11 @@ func (m Model) View() string {
 	default:
 		return ""
 	}
+}
+
+func (m *Model) SetSize(width, height int) {
+	m.landingPage.BaseModel.Width = width
+	m.landingPage.BaseModel.Height = height
+	m.errorPage.BaseModel.Width = width
+	m.errorPage.BaseModel.Height = height
 }
