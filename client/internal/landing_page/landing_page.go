@@ -1,7 +1,6 @@
 package landingpage
 
 import (
-	"errors"
 	"log"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
@@ -30,8 +29,7 @@ func (l LandingPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		default:
 			return l, func() tea.Msg {
 				return messages.PageSwitchMsg{
-					Page: messages.ErrorPageNumber,
-					Err:  errors.New("Incorrectly passign pages"),
+					Page: messages.WatchlistPageNumber,
 				}
 			}
 		}

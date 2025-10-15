@@ -6,15 +6,15 @@ import (
 	errorpage "github.com/Phantomvv1/KayTrade/internal/error_page"
 	landingpage "github.com/Phantomvv1/KayTrade/internal/landing_page"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
+	watchlistpage "github.com/Phantomvv1/KayTrade/internal/watchlist_page"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type Model struct {
-	landingPage landingpage.LandingPage
-	errorPage   errorpage.ErrorPage
-	currentPage int
-	width       int
-	height      int
+	landingPage   landingpage.LandingPage
+	errorPage     errorpage.ErrorPage
+	watchlistPage watchlistpage.WatchlistPage
+	currentPage   int
 }
 
 func NewModel() Model {
@@ -26,9 +26,10 @@ func NewModel() Model {
 	// client := http.Client{Jar: jar}
 
 	return Model{
-		landingPage: landingpage.LandingPage{},
-		errorPage:   errorpage.ErrorPage{},
-		currentPage: messages.LandingPageNumber,
+		landingPage:   landingpage.LandingPage{},
+		errorPage:     errorpage.ErrorPage{},
+		watchlistPage: watchlistpage.NewWatchlistPage(),
+		currentPage:   messages.LandingPageNumber,
 	}
 }
 
@@ -52,18 +53,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var page tea.Model
 	switch m.currentPage {
 	case messages.LandingPageNumber:
-		m.landingPage.BaseModel.Width = m.width
-		m.landingPage.BaseModel.Height = m.height
-
 		page, cmd = m.landingPage.Update(msg)
 		m.landingPage = page.(landingpage.LandingPage)
 	case messages.ErrorPageNumber:
-		m.errorPage.BaseModel.Width = m.width
-		m.errorPage.BaseModel.Height = m.height
-		log.Printf("%d, %d. Error page before going in.", m.errorPage.BaseModel.Width, m.errorPage.BaseModel.Height)
-
 		page, cmd = m.errorPage.Update(msg)
 		m.errorPage = page.(errorpage.ErrorPage)
+	case messages.WatchlistPageNumber:
+		page, cmd = m.watchlistPage.Update(msg)
+		m.watchlistPage = page.(watchlistpage.WatchlistPage)
 	}
 
 	return m, cmd
@@ -75,6 +72,8 @@ func (m Model) View() string {
 		return m.landingPage.View()
 	case messages.ErrorPageNumber:
 		return m.errorPage.View()
+	case messages.WatchlistPageNumber:
+		return m.watchlistPage.View()
 	default:
 		return ""
 	}
@@ -83,6 +82,10 @@ func (m Model) View() string {
 func (m *Model) SetSize(width, height int) {
 	m.landingPage.BaseModel.Width = width
 	m.landingPage.BaseModel.Height = height
+
 	m.errorPage.BaseModel.Width = width
 	m.errorPage.BaseModel.Height = height
+
+	m.watchlistPage.BaseModel.Width = width
+	m.watchlistPage.BaseModel.Height = height
 }
