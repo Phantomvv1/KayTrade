@@ -2,6 +2,8 @@ package model
 
 import (
 	"log"
+	"net/http"
+	"net/http/cookiejar"
 
 	errorpage "github.com/Phantomvv1/KayTrade/internal/error_page"
 	landingpage "github.com/Phantomvv1/KayTrade/internal/landing_page"
@@ -18,17 +20,17 @@ type Model struct {
 }
 
 func NewModel() Model {
-	// jar, err := cookiejar.New(nil)
-	// if err != nil {
-	// 	log.Println(err)
-	// }
-	//
-	// client := http.Client{Jar: jar}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		log.Println(err)
+	}
+
+	client := &http.Client{Jar: jar}
 
 	return Model{
 		landingPage:   landingpage.LandingPage{},
 		errorPage:     errorpage.ErrorPage{},
-		watchlistPage: watchlistpage.NewWatchlistPage(),
+		watchlistPage: watchlistpage.NewWatchlistPage(client),
 		currentPage:   messages.LandingPageNumber,
 	}
 }
