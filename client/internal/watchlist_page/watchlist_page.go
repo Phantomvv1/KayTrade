@@ -223,7 +223,6 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			w.help.ShowAll = !w.help.ShowAll
 		}
 	case spinner.TickMsg:
-		log.Println("Spinner message")
 		var cmd tea.Cmd
 		w.spinner, cmd = w.spinner.Update(msg)
 		return w, cmd

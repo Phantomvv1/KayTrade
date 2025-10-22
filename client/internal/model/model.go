@@ -62,7 +62,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		page, cmd = m.errorPage.Update(msg)
 		m.errorPage = page.(errorpage.ErrorPage)
 	case messages.WatchlistPageNumber:
-		log.Println("Watchlist update")
 		page, cmd = m.watchlistPage.Update(msg)
 		m.watchlistPage = page.(watchlistpage.WatchlistPage)
 	}
