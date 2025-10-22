@@ -266,9 +266,11 @@ func (w WatchlistPage) View() string {
 			changeColor = red
 		}
 
-		line := fmt.Sprintf("%s  ", m.Symbol)
-		price := lipgloss.NewStyle().Foreground(changeColor).Render(fmt.Sprintf("%.2f ", m.Price))
-		line += price + fmt.Sprintf("%.2f %.2f", m.Change, m.PercentChange)
+		line := fmt.Sprintf("%s"+strings.Repeat(" ", 7-len(m.Symbol)), m.Symbol) // allign price
+		p := fmt.Sprintf("%.2f", m.Price)
+		price := lipgloss.NewStyle().Foreground(changeColor).Render(p + strings.Repeat(" ", 6-len(p))) // allign change
+		c := fmt.Sprintf("%.2f", m.Change)
+		line += price + fmt.Sprintf(c+strings.Repeat(" ", 7-len(c))+"%.2f", m.PercentChange) // allign percent change
 		moverCards = append(moverCards, line)
 	}
 
