@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -28,6 +29,7 @@ type WatchlistPage struct {
 	help      help.Model
 	loadErr   error
 	loaded    bool
+	spinner   spinner.Model
 }
 
 type CompanyInfo struct {
@@ -73,6 +75,10 @@ func (c companyItem) FilterValue() string { return c.company.Name }
 
 func NewWatchlistPage(client *http.Client) WatchlistPage {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	s := spinner.New()
+	s.Spinner = spinner.Line
+	spinnerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("69"))
+	s.Style = spinnerStyle
 
 	return WatchlistPage{
 		BaseModel: basemodel.BaseModel{Client: client},
@@ -80,6 +86,7 @@ func NewWatchlistPage(client *http.Client) WatchlistPage {
 		cursor:    0,
 		titleBar:  "📈 Watchlist",
 		companies: l,
+		spinner:   s,
 	}
 }
 
@@ -135,58 +142,59 @@ var keys = keyMap{
 	),
 }
 
-func (w WatchlistPage) Init() tea.Cmd {
-	return func() tea.Msg {
-		wg := sync.WaitGroup{}
-		wg.Add(2)
+func (w WatchlistPage) init() tea.Msg {
+	log.Println("Init works")
+	wg := sync.WaitGroup{}
+	wg.Add(2)
 
-		var companies []CompanyInfo
-		var movers MarketMovers
-		var err1, err2 error
+	var companies []CompanyInfo
+	var movers MarketMovers
+	var err1, err2 error
 
-		go func() {
-			defer wg.Done()
-			log.Println("Inside top market movers")
-			resp, err := http.DefaultClient.Get("http://localhost:42069/watchlist/info")
-			if err != nil {
-				err1 = err
-				return
-			}
-			defer resp.Body.Close()
-			data, _ := io.ReadAll(resp.Body)
-			json.Unmarshal(data, &companies)
-			log.Println("Done from user's watchlist")
-		}()
-
-		go func() {
-			defer wg.Done()
-			log.Println("Inside top market movers")
-			resp, err := http.DefaultClient.Get("http://localhost:42069/data/stocks/top-market-movers?top=5")
-			if err != nil {
-				err2 = err
-				return
-			}
-			defer resp.Body.Close()
-			data, _ := io.ReadAll(resp.Body)
-			json.Unmarshal(data, &movers)
-			log.Println("Done from top market movers")
-		}()
-
-		go func() {
-			wg.Wait()
-		}()
-
-		if err1 != nil || err2 != nil {
-			return errors.New("Error unable to fetch the data")
-		}
-
-		updated, err := time.Parse(time.RFC3339, movers.Updated)
+	go func() {
+		defer wg.Done()
+		resp, err := http.DefaultClient.Get("http://localhost:42069/watchlist/info")
 		if err != nil {
-			return err
+			err1 = err
+			return
 		}
+		defer resp.Body.Close()
+		data, _ := io.ReadAll(resp.Body)
+		json.Unmarshal(data, &companies)
+		log.Println("Done from user's watchlist")
+	}()
 
-		return initResult{Companies: companies, Gainers: movers.Gainers, Losers: movers.Losers, Updated: updated}
+	go func() {
+		defer wg.Done()
+		resp, err := http.DefaultClient.Get("http://localhost:42069/data/stocks/top-market-movers?top=5")
+		if err != nil {
+			err2 = err
+			return
+		}
+		defer resp.Body.Close()
+		data, _ := io.ReadAll(resp.Body)
+		json.Unmarshal(data, &movers)
+		log.Println("Done from top market movers")
+	}()
+
+	go func() {
+		wg.Wait()
+	}()
+
+	if err1 != nil || err2 != nil {
+		return errors.New("Error unable to fetch the data")
 	}
+
+	updated, err := time.Parse(time.RFC3339, movers.Updated)
+	if err != nil {
+		return err
+	}
+
+	return initResult{Companies: companies, Gainers: movers.Gainers, Losers: movers.Losers, Updated: updated}
+}
+
+func (w WatchlistPage) Init() tea.Cmd {
+	return tea.Batch(w.init, w.spinner.Tick)
 }
 
 func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -218,6 +226,11 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Help):
 			w.help.ShowAll = !w.help.ShowAll
 		}
+	case spinner.TickMsg:
+		log.Println("Spinner message")
+		var cmd tea.Cmd
+		w.spinner, cmd = w.spinner.Update(msg)
+		return w, cmd
 	}
 
 	return w, nil
@@ -245,8 +258,7 @@ func (w WatchlistPage) View() string {
 	}
 
 	if !w.loaded {
-		return lipgloss.PlaceHorizontal(w.BaseModel.Width, lipgloss.Center,
-			lipgloss.NewStyle().Foreground(purple).Render("Loading watchlist and market movers..."))
+		return lipgloss.Place(w.BaseModel.Width, w.BaseModel.Height, lipgloss.Center, lipgloss.Center, w.spinner.View())
 	}
 
 	// Right panel (Top movers)

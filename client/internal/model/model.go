@@ -48,6 +48,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.PageSwitchMsg:
 		m.currentPage = msg.Page
 		m.errorPage.Err = msg.Err
+		model := m.getModelFromPageNumber()
+		f := model.Init()
+		tea.Sequence(f)
 		return m, nil
 	}
 
@@ -61,6 +64,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		page, cmd = m.errorPage.Update(msg)
 		m.errorPage = page.(errorpage.ErrorPage)
 	case messages.WatchlistPageNumber:
+		log.Println("Watchlist update")
 		page, cmd = m.watchlistPage.Update(msg)
 		m.watchlistPage = page.(watchlistpage.WatchlistPage)
 	}
@@ -90,4 +94,17 @@ func (m *Model) SetSize(width, height int) {
 
 	m.watchlistPage.BaseModel.Width = width
 	m.watchlistPage.BaseModel.Height = height
+}
+
+func (m Model) getModelFromPageNumber() tea.Model {
+	switch m.currentPage {
+	case messages.LandingPageNumber:
+		return m.landingPage
+	case messages.WatchlistPageNumber:
+		return m.watchlistPage
+	case messages.ErrorPageNumber:
+		return m.errorPage
+	default:
+		return nil
+	}
 }
