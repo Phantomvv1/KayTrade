@@ -49,9 +49,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentPage = msg.Page
 		m.errorPage.Err = msg.Err
 		model := m.getModelFromPageNumber()
-		f := model.Init()
-		tea.Sequence(f)
-		return m, nil
+		return m, model.Init()
 	}
 
 	var cmd tea.Cmd

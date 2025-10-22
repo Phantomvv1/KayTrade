@@ -161,7 +161,6 @@ func (w WatchlistPage) init() tea.Msg {
 		defer resp.Body.Close()
 		data, _ := io.ReadAll(resp.Body)
 		json.Unmarshal(data, &companies)
-		log.Println("Done from user's watchlist")
 	}()
 
 	go func() {
@@ -174,12 +173,9 @@ func (w WatchlistPage) init() tea.Msg {
 		defer resp.Body.Close()
 		data, _ := io.ReadAll(resp.Body)
 		json.Unmarshal(data, &movers)
-		log.Println("Done from top market movers")
 	}()
 
-	go func() {
-		wg.Wait()
-	}()
+	wg.Wait()
 
 	if err1 != nil || err2 != nil {
 		return errors.New("Error unable to fetch the data")
@@ -263,6 +259,7 @@ func (w WatchlistPage) View() string {
 
 	// Right panel (Top movers)
 	moverCards := []string{"Top Market Movers:\n"}
+	moverCards = append(moverCards, "ticker price change %change")
 	for i, m := range w.movers {
 		changeColor := green
 		if i >= 5 {
@@ -270,7 +267,7 @@ func (w WatchlistPage) View() string {
 		}
 
 		line := fmt.Sprintf("%s  ", m.Symbol)
-		price := lipgloss.NewStyle().Foreground(changeColor).Render(fmt.Sprintf("%.4f ", m.Price))
+		price := lipgloss.NewStyle().Foreground(changeColor).Render(fmt.Sprintf("%.2f ", m.Price))
 		line += price + fmt.Sprintf("%.2f %.2f", m.Change, m.PercentChange)
 		moverCards = append(moverCards, line)
 	}
