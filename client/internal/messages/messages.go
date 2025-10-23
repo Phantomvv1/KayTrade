@@ -3,6 +3,7 @@ package messages
 const (
 	LandingPageNumber = iota
 	WatchlistPageNumber
+	LoginPageNumber
 	ErrorPageNumber
 )
 
