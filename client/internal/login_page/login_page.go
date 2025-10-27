@@ -69,11 +69,13 @@ var keys = keyMap{
 func NewLoginPage() LoginPage {
 	email := textinput.New()
 	email.Placeholder = "email"
+	email.Width = 25
 	email.PlaceholderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#808080"))
 	email.Focus()
 
 	password := textinput.New()
 	password.Placeholder = "password"
+	password.Width = 25
 	password.PlaceholderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#808080"))
 	password.EchoMode = textinput.EchoPassword
 	password.EchoCharacter = '•'
