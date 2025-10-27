@@ -11,12 +11,13 @@ import (
 )
 
 type LoginPage struct {
-	BaseModel basemodel.BaseModel
-	email     textinput.Model
-	password  textinput.Model
-	help      help.Model
-	cursor    int
-	typing    bool
+	BaseModel       basemodel.BaseModel
+	email           textinput.Model
+	password        textinput.Model
+	help            help.Model
+	cursor          int
+	typing          bool
+	viewingPassword bool
 }
 
 type keyMap struct {
@@ -24,6 +25,7 @@ type keyMap struct {
 	Down    key.Binding
 	Unfucus key.Binding
 	Submit  key.Binding
+	View    key.Binding
 	Help    key.Binding
 	Quit    key.Binding
 }
@@ -34,8 +36,9 @@ func (k keyMap) ShortHelp() []key.Binding {
 
 func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Up, k.Down, k.Submit},
-		{k.Unfucus, k.Help, k.Quit},
+		{k.Help, k.Quit, k.Submit},
+		{k.Up, k.Down, k.Unfucus},
+		{k.View},
 	}
 }
 
@@ -55,6 +58,10 @@ var keys = keyMap{
 	Submit: key.NewBinding(
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "continue typing / submit"),
+	),
+	View: key.NewBinding(
+		key.WithKeys("ctrl+e"),
+		key.WithHelp("ctrl+e", "view password"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),
@@ -113,6 +120,14 @@ func (l LoginPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return l, l.submit
 			case key.Matches(msg, keys.Unfucus):
 				l.typing = !l.typing
+			case key.Matches(msg, keys.View):
+				if l.password.Focused() && !l.viewingPassword {
+					l.password.EchoMode = textinput.EchoNormal
+					l.viewingPassword = !l.viewingPassword
+				} else if l.password.Focused() && l.viewingPassword {
+					l.password.EchoMode = textinput.EchoPassword
+					l.viewingPassword = !l.viewingPassword
+				}
 			}
 		} else {
 			switch {
