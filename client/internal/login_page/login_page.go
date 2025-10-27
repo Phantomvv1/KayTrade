@@ -1,8 +1,6 @@
 package loginpage
 
 import (
-	"log"
-
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
 	"github.com/charmbracelet/bubbles/help"
@@ -43,12 +41,12 @@ func (k keyMap) FullHelp() [][]key.Binding {
 
 var keys = keyMap{
 	Up: key.NewBinding(
-		key.WithKeys("up", "k"),
-		key.WithHelp("↑/k", "move up"),
+		key.WithKeys("up", "ctrl+k"),
+		key.WithHelp("↑/ctrl+k", "move up (only when typing)"),
 	),
 	Down: key.NewBinding(
-		key.WithKeys("down", "j"),
-		key.WithHelp("↓/j", "move down"),
+		key.WithKeys("down", "ctrl+j"),
+		key.WithHelp("↓/ctrl+j", "move down (only when typing)"),
 	),
 	Unfucus: key.NewBinding(
 		key.WithKeys("esc"),
@@ -56,7 +54,7 @@ var keys = keyMap{
 	),
 	Submit: key.NewBinding(
 		key.WithKeys("enter"),
-		key.WithHelp("enter", "select the company"),
+		key.WithHelp("enter", "continue typing / submit"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),
@@ -99,38 +97,46 @@ func (l LoginPage) Init() tea.Cmd {
 func (l LoginPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, keys.Down):
-			if l.cursor < 1 {
-				l.cursor++
-			}
-		case key.Matches(msg, keys.Up):
-			if l.cursor > 0 {
-				l.cursor--
-			}
-		case key.Matches(msg, keys.Submit):
-			l.submit()
-			return l, func() tea.Msg {
-				return messages.PageSwitchMsg{
-					Page: messages.WatchlistPageNumber,
+		if l.typing {
+			switch {
+			case key.Matches(msg, keys.Down):
+				if l.cursor < 1 {
+					l.cursor++
 				}
+			case key.Matches(msg, keys.Up):
+				if l.cursor > 0 {
+					l.cursor--
+				}
+			case key.Matches(msg, keys.Submit):
+				return l, l.submit
+			case key.Matches(msg, keys.Unfucus):
+				l.typing = !l.typing
 			}
-		case key.Matches(msg, keys.Quit):
-			return l, tea.Quit
-		case key.Matches(msg, keys.Unfucus):
-			l.typing = false
+		} else {
+			switch {
+			case key.Matches(msg, keys.Help):
+				l.help.ShowAll = !l.help.ShowAll
+			case key.Matches(msg, keys.Submit):
+				l.typing = !l.typing
+			case key.Matches(msg, keys.Quit):
+				return l, tea.Quit
+			}
 		}
 	}
 
-	if l.cursor == 0 {
-		l.email.Focus()
-		l.password.Blur()
+	if l.typing {
+		if l.cursor == 0 {
+			l.email.Focus()
+			l.password.Blur()
+		} else {
+			l.email.Blur()
+			l.password.Focus()
+		}
 	} else {
 		l.email.Blur()
-		l.password.Focus()
+		l.password.Blur()
 	}
 
-	log.Println(l.cursor)
 	var cmd tea.Cmd
 	if l.cursor == 0 {
 		l.email, cmd = l.email.Update(msg)
@@ -147,8 +153,25 @@ func (l LoginPage) View() string {
 		Padding(0, 1).
 		Width(32)
 
-	emailView := inputStyle.Render(l.email.View())
-	passwordView := inputStyle.Render(l.password.View())
+	focusedStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#828282")).
+		Padding(0, 1).
+		Width(32)
+
+	emailView, passwordView := "", ""
+	if l.typing {
+		if l.email.Focused() {
+			emailView = focusedStyle.Render(l.email.View())
+			passwordView = inputStyle.Render(l.password.View())
+		} else {
+			emailView = inputStyle.Render(l.email.View())
+			passwordView = focusedStyle.Render(l.password.View())
+		}
+	} else {
+		emailView = inputStyle.Render(l.email.View())
+		passwordView = inputStyle.Render(l.password.View())
+	}
 
 	ui := lipgloss.JoinVertical(
 		lipgloss.Center,
@@ -165,6 +188,8 @@ func (l LoginPage) View() string {
 	) + "\n" + l.help.View(keys)
 }
 
-func (l LoginPage) submit() {
-
+func (l LoginPage) submit() tea.Msg {
+	return messages.PageSwitchMsg{
+		Page: messages.WatchlistPageNumber,
+	}
 }

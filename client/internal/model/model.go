@@ -68,6 +68,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.LoginPageNumber:
 		page, cmd = m.loginPage.Update(msg)
 		m.loginPage = page.(loginpage.LoginPage)
+	default:
+		m.currentPage = messages.ErrorPageNumber
+		m.errorPage.Err = errors.New("Unkown error")
 	}
 
 	return m, cmd
@@ -84,7 +87,6 @@ func (m Model) View() string {
 	case messages.LoginPageNumber:
 		return m.loginPage.View()
 	default:
-		m.errorPage.Err = errors.New("Unkown error")
 		return m.errorPage.View()
 	}
 }
