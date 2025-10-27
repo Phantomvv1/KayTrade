@@ -1,8 +1,14 @@
 package loginpage
 
 import (
+	"bytes"
+	"encoding/json"
+	"log"
+	"net/http"
+
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
+	"github.com/Phantomvv1/KayTrade/internal/requests"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -73,7 +79,7 @@ var keys = keyMap{
 	),
 }
 
-func NewLoginPage() LoginPage {
+func NewLoginPage(client *http.Client) LoginPage {
 	email := textinput.New()
 	email.Placeholder = "email"
 	email.Width = 25
@@ -91,11 +97,12 @@ func NewLoginPage() LoginPage {
 	help := help.New()
 
 	return LoginPage{
-		email:    email,
-		password: password,
-		help:     help,
-		cursor:   0,
-		typing:   true,
+		email:     email,
+		password:  password,
+		help:      help,
+		cursor:    0,
+		typing:    true,
+		BaseModel: basemodel.BaseModel{Client: client},
 	}
 }
 
@@ -206,7 +213,43 @@ func (l LoginPage) View() string {
 }
 
 func (l LoginPage) submit() tea.Msg {
-	return messages.PageSwitchMsg{
-		Page: messages.WatchlistPageNumber,
+	info := map[string]string{
+		"email":    l.email.Value(),
+		"password": l.password.Value(),
+	}
+
+	reqBody, err := json.Marshal(info)
+	if err != nil {
+		log.Println(err)
+		return messages.PageSwitchMsg{
+			Err:  err,
+			Page: messages.ErrorPageNumber,
+		}
+	}
+
+	reader := bytes.NewReader(reqBody)
+	body, err := requests.MakeRequest(http.MethodPost, requests.BaseURL+"/log-in", reader, l.BaseModel.Client)
+	if err != nil {
+		log.Println(err)
+		return messages.PageSwitchMsg{
+			Err:  err,
+			Page: messages.ErrorPageNumber,
+		}
+	}
+
+	info = nil
+	err = json.Unmarshal(body, &info)
+	if err != nil {
+		log.Println(err)
+		return messages.PageSwitchMsg{
+			Err:  err,
+			Page: messages.ErrorPageNumber,
+		}
+	}
+
+	log.Println(info["token"])
+	return messages.LoginSuccessMsg{
+		Token: info["token"],
+		Page:  messages.WatchlistPageNumber,
 	}
 }

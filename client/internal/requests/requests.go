@@ -1,6 +1,7 @@
 package requests
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -8,7 +9,8 @@ import (
 )
 
 var ErrorTokenExpired = errors.New("Error token has expired")
-var ErrorUnexpected = errors.New("Unexpected error")
+
+var BaseURL = "http://localhost:42069"
 
 func MakeRequest(method string, url string, reader io.Reader, client *http.Client) ([]byte, error) {
 	req, err := http.NewRequest(method, url, reader)
@@ -28,13 +30,14 @@ func MakeRequest(method string, url string, reader io.Reader, client *http.Clien
 	}
 
 	errMsg := fmt.Sprintf("{\"%s\": \"%s\"}", "error", "Error only authorized users can access this resource")
-
 	if string(body) == errMsg {
 		return nil, ErrorTokenExpired
 	}
 
 	if res.StatusCode/100 != 2 {
-		return body, ErrorUnexpected
+		var info map[string]string
+		json.Unmarshal(body, &info)
+		return nil, errors.New(info["error"])
 	}
 
 	return body, nil

@@ -4,6 +4,7 @@ import (
 	"log"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
+	"github.com/Phantomvv1/KayTrade/internal/messages"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -11,6 +12,7 @@ import (
 type ErrorPage struct {
 	BaseModel basemodel.BaseModel
 	Err       error
+	PrevPage  int
 }
 
 func (e ErrorPage) Init() tea.Cmd {
@@ -24,7 +26,11 @@ func (e ErrorPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return e, tea.Quit
 		default:
-			return e, tea.Quit
+			return e, func() tea.Msg {
+				return messages.PageSwitchMsg{
+					Page: e.PrevPage,
+				}
+			}
 		}
 	}
 
