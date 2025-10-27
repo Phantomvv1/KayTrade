@@ -1,6 +1,7 @@
 package watchlistpage
 
 import (
+	"net/http"
 	"strings"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
@@ -18,9 +19,9 @@ type WatchlistPage struct {
 	help      help.Model
 }
 
-func NewWatchlistPage() WatchlistPage {
+func NewWatchlistPage(client *http.Client) WatchlistPage {
 	return WatchlistPage{
-		BaseModel: basemodel.BaseModel{},
+		BaseModel: basemodel.BaseModel{Client: client},
 		help:      help.New(),
 		cursor:    0,
 		titleBar:  "String",

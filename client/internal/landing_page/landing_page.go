@@ -29,7 +29,7 @@ func (l LandingPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		default:
 			return l, func() tea.Msg {
 				return messages.PageSwitchMsg{
-					Page: messages.WatchlistPageNumber,
+					Page: messages.LoginPageNumber,
 				}
 			}
 		}
