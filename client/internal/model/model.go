@@ -1,12 +1,14 @@
 package model
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 
 	errorpage "github.com/Phantomvv1/KayTrade/internal/error_page"
 	landingpage "github.com/Phantomvv1/KayTrade/internal/landing_page"
+	loginpage "github.com/Phantomvv1/KayTrade/internal/login_page"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
 	watchlistpage "github.com/Phantomvv1/KayTrade/internal/watchlist_page"
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,6 +18,7 @@ type Model struct {
 	landingPage   landingpage.LandingPage
 	errorPage     errorpage.ErrorPage
 	watchlistPage watchlistpage.WatchlistPage
+	loginPage     loginpage.LoginPage
 	currentPage   int
 }
 
@@ -31,6 +34,7 @@ func NewModel() Model {
 		landingPage:   landingpage.LandingPage{},
 		errorPage:     errorpage.ErrorPage{},
 		watchlistPage: watchlistpage.NewWatchlistPage(client),
+		loginPage:     loginpage.NewLoginPage(client),
 		currentPage:   messages.LandingPageNumber,
 	}
 }
@@ -43,13 +47,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		log.Printf("Size msg!")
-		m.SetSize(msg.Width, msg.Height)
+		m.setSize(msg.Width, msg.Height)
 		return m, nil
 	case messages.PageSwitchMsg:
-		m.currentPage = msg.Page
+		m.errorPage.PrevPage = m.currentPage
 		m.errorPage.Err = msg.Err
-		model := m.getModelFromPageNumber()
-		return m, model.Init()
+		m.currentPage = msg.Page
+		return m, nil
+	case messages.TokenSwitchMsg:
+		m.updateToken(msg.Token)
+		return m, msg.RetryFunc
+	case messages.LoginSuccessMsg:
+		m.updateToken(msg.Token)
+		m.currentPage = msg.Page
+		return m, nil
 	}
 
 	var cmd tea.Cmd
@@ -64,6 +75,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.WatchlistPageNumber:
 		page, cmd = m.watchlistPage.Update(msg)
 		m.watchlistPage = page.(watchlistpage.WatchlistPage)
+	case messages.LoginPageNumber:
+		page, cmd = m.loginPage.Update(msg)
+		m.loginPage = page.(loginpage.LoginPage)
+	default:
+		m.currentPage = messages.ErrorPageNumber
+		m.errorPage.Err = errors.New("Unkown error")
 	}
 
 	return m, cmd
@@ -77,12 +94,14 @@ func (m Model) View() string {
 		return m.errorPage.View()
 	case messages.WatchlistPageNumber:
 		return m.watchlistPage.View()
+	case messages.LoginPageNumber:
+		return m.loginPage.View()
 	default:
-		return ""
+		return m.errorPage.View()
 	}
 }
 
-func (m *Model) SetSize(width, height int) {
+func (m *Model) setSize(width, height int) {
 	m.landingPage.BaseModel.Width = width
 	m.landingPage.BaseModel.Height = height
 
@@ -91,6 +110,16 @@ func (m *Model) SetSize(width, height int) {
 
 	m.watchlistPage.BaseModel.Width = width
 	m.watchlistPage.BaseModel.Height = height
+
+	m.loginPage.BaseModel.Width = width
+	m.loginPage.BaseModel.Height = height
+}
+
+func (m *Model) updateToken(token string) {
+	m.watchlistPage.BaseModel.Token = token
+	m.errorPage.BaseModel.Token = token
+	m.landingPage.BaseModel.Token = token
+	m.loginPage.BaseModel.Token = token
 }
 
 func (m Model) getModelFromPageNumber() tea.Model {
