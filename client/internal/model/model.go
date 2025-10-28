@@ -53,7 +53,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorPage.PrevPage = m.currentPage
 		m.errorPage.Err = msg.Err
 		m.currentPage = msg.Page
-		return m, nil
+		model := m.getModelFromPageNumber()
+		return m, model.Init()
 	case messages.TokenSwitchMsg:
 		m.updateToken(msg.Token)
 		return m, msg.RetryFunc
