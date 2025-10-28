@@ -31,6 +31,7 @@ type keyMap struct {
 	Down    key.Binding
 	Unfucus key.Binding
 	Submit  key.Binding
+	Switch  key.Binding
 	View    key.Binding
 	Help    key.Binding
 	Quit    key.Binding
@@ -44,7 +45,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Help, k.Quit, k.Submit},
 		{k.Up, k.Down, k.Unfucus},
-		{k.View},
+		{k.View, k.Switch},
 	}
 }
 
@@ -64,6 +65,10 @@ var keys = keyMap{
 	Submit: key.NewBinding(
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "continue typing / submit"),
+	),
+	Switch: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "switch input field"),
 	),
 	View: key.NewBinding(
 		key.WithKeys("ctrl+e"),
@@ -134,6 +139,12 @@ func (l LoginPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else if l.password.Focused() && l.viewingPassword {
 					l.password.EchoMode = textinput.EchoPassword
 					l.viewingPassword = !l.viewingPassword
+				}
+			case key.Matches(msg, keys.Switch):
+				if l.cursor == 0 {
+					l.cursor++
+				} else {
+					l.cursor--
 				}
 			}
 		} else {
