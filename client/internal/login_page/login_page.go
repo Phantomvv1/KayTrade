@@ -37,7 +37,7 @@ type keyMap struct {
 }
 
 func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Help, k.Quit}
+	return []key.Binding{k.Help, k.Unfucus, k.Quit}
 }
 
 func (k keyMap) FullHelp() [][]key.Binding {
