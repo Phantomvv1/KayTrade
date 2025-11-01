@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -21,15 +20,16 @@ import (
 )
 
 type WatchlistPage struct {
-	BaseModel basemodel.BaseModel
-	titleBar  string
-	companies list.Model
-	movers    []MarketMover
-	cursor    int
-	help      help.Model
-	loadErr   error
-	loaded    bool
-	spinner   spinner.Model
+	BaseModel      basemodel.BaseModel
+	titleBar       string
+	companies      list.Model
+	movers         []MarketMover
+	cursor         int
+	help           help.Model
+	loadErr        error
+	loaded         bool
+	spinner        spinner.Model
+	emptyWatchlist bool
 }
 
 type CompanyInfo struct {
@@ -143,7 +143,6 @@ var keys = keyMap{
 }
 
 func (w WatchlistPage) init() tea.Msg {
-	log.Println("Init started")
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
@@ -186,7 +185,6 @@ func (w WatchlistPage) init() tea.Msg {
 		return err
 	}
 
-	log.Println("Init finished")
 	return initResult{Companies: companies, Gainers: movers.Gainers, Losers: movers.Losers, Updated: updated}
 }
 
@@ -203,6 +201,10 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var items []list.Item
 		for _, company := range msg.Companies {
 			items = append(items, companyItem{company: company})
+		}
+
+		if items == nil {
+			w.emptyWatchlist = true
 		}
 
 		w.movers = append(msg.Gainers, msg.Losers...)
@@ -280,10 +282,23 @@ func (w WatchlistPage) View() string {
 		Padding(1, 2).
 		Render(strings.Join(moverCards, "\n"))
 
-	content := lipgloss.JoinHorizontal(lipgloss.Top,
-		lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).Render(w.companies.View()),
-		lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).Render(right),
-	)
+	content := ""
+	if !w.emptyWatchlist {
+		content = lipgloss.JoinHorizontal(lipgloss.Top,
+			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).Render(w.companies.View()),
+			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).Render(right),
+		)
+	} else {
+		msg := lipgloss.NewStyle().
+			Padding(1, 1).
+			MarginLeft(20).
+			Render("There are no companies in your watchlist.\nAdd some in order to see them here.")
+
+		content = lipgloss.JoinHorizontal(lipgloss.Center,
+			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).Render(msg),
+			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).Render(right),
+		)
+	}
 
 	helpView := w.help.View(keys)
 	height := 8 - strings.Count(helpView, "\n")
