@@ -12,6 +12,8 @@ import (
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
 	"github.com/Phantomvv1/KayTrade/internal/requests"
+	_ "github.com/blacktop/go-termimg"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -70,8 +72,18 @@ func (c companyItem) Title() string       { return c.company.Name }
 func (c companyItem) Description() string { return c.company.Description }
 func (c companyItem) FilterValue() string { return c.company.Name }
 
+func (c companyItem) IsURL() bool {
+	if strings.HasPrefix(c.company.Logo, "http://") {
+		return true
+	}
+
+	return false
+}
+
 func NewWatchlistPage(client *http.Client) WatchlistPage {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	l.KeyMap.Quit = key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit"))
+
 	s := spinner.New()
 	s.Spinner = spinner.Line
 	spinnerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("69"))
@@ -166,6 +178,12 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		var cmd tea.Cmd
 		w.companies, cmd = w.companies.Update(msg)
+		selectedItem := w.companies.SelectedItem()
+		item := selectedItem.(companyItem)
+		if item.IsURL() {
+			// Make the req and cache the result
+		}
+
 		return w, cmd
 	case spinner.TickMsg:
 		var cmd tea.Cmd
@@ -221,7 +239,7 @@ func (w WatchlistPage) View() string {
 	content := ""
 	if !w.emptyWatchlist {
 		content = lipgloss.JoinHorizontal(lipgloss.Top,
-			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).Render(w.companies.View()),
+			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).MarginLeft(20).Render(w.companies.View()),
 			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).MarginLeft(20).Render(right),
 		)
 	} else {
