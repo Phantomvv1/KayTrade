@@ -2,17 +2,16 @@ package watchlistpage
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
+	"github.com/Phantomvv1/KayTrade/internal/messages"
+	"github.com/Phantomvv1/KayTrade/internal/requests"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -24,12 +23,10 @@ type WatchlistPage struct {
 	titleBar       string
 	companies      list.Model
 	movers         []MarketMover
-	cursor         int
-	help           help.Model
-	loadErr        error
 	loaded         bool
 	spinner        spinner.Model
 	emptyWatchlist bool
+	focusedList    bool
 }
 
 type CompanyInfo struct {
@@ -81,65 +78,13 @@ func NewWatchlistPage(client *http.Client) WatchlistPage {
 	s.Style = spinnerStyle
 
 	return WatchlistPage{
-		BaseModel: basemodel.BaseModel{Client: client},
-		help:      help.New(),
-		cursor:    0,
-		titleBar:  "📈 Watchlist",
-		companies: l,
-		spinner:   s,
+		BaseModel:      basemodel.BaseModel{Client: client},
+		titleBar:       "📈 Watchlist",
+		companies:      l,
+		spinner:        s,
+		emptyWatchlist: false,
+		focusedList:    true,
 	}
-}
-
-type keyMap struct {
-	Up     key.Binding
-	Down   key.Binding
-	Left   key.Binding
-	Right  key.Binding
-	Select key.Binding
-	Help   key.Binding
-	Quit   key.Binding
-}
-
-func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Help, k.Quit}
-}
-
-func (k keyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{k.Up, k.Down, k.Left, k.Right},
-		{k.Select, k.Help, k.Quit},
-	}
-}
-
-var keys = keyMap{
-	Up: key.NewBinding(
-		key.WithKeys("up", "k"),
-		key.WithHelp("↑/k", "move up"),
-	),
-	Down: key.NewBinding(
-		key.WithKeys("down", "j"),
-		key.WithHelp("↓/j", "move down"),
-	),
-	Left: key.NewBinding(
-		key.WithKeys("left", "h"),
-		key.WithHelp("←/h", "move left"),
-	),
-	Right: key.NewBinding(
-		key.WithKeys("right", "l"),
-		key.WithHelp("→/l", "move right"),
-	),
-	Select: key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", "select the company"),
-	),
-	Help: key.NewBinding(
-		key.WithKeys("?"),
-		key.WithHelp("?", "toggle help"),
-	),
-	Quit: key.NewBinding(
-		key.WithKeys("q", "ctrl+c"),
-		key.WithHelp("q", "quit"),
-	),
 }
 
 func (w WatchlistPage) init() tea.Msg {
@@ -152,32 +97,35 @@ func (w WatchlistPage) init() tea.Msg {
 
 	go func() {
 		defer wg.Done()
-		resp, err := http.DefaultClient.Get("http://localhost:42069/watchlist/info")
+		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/watchlist/info", nil, http.DefaultClient, w.BaseModel.Token)
 		if err != nil {
 			err1 = err
 			return
 		}
-		defer resp.Body.Close()
-		data, _ := io.ReadAll(resp.Body)
-		json.Unmarshal(data, &companies)
+
+		var info map[string][]CompanyInfo
+		err1 = json.Unmarshal(body, &info)
+		companies = info["information"]
 	}()
 
 	go func() {
 		defer wg.Done()
-		resp, err := http.DefaultClient.Get("http://localhost:42069/data/stocks/top-market-movers?top=5")
+		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/data/stocks/top-market-movers?top=5", nil, http.DefaultClient, "")
 		if err != nil {
 			err2 = err
 			return
 		}
-		defer resp.Body.Close()
-		data, _ := io.ReadAll(resp.Body)
-		json.Unmarshal(data, &movers)
+		err2 = json.Unmarshal(body, &movers)
 	}()
 
 	wg.Wait()
 
 	if err1 != nil || err2 != nil {
-		return errors.New("Error unable to fetch the data")
+		if err1 != nil {
+			return err1
+		} else {
+			return err2
+		}
 	}
 
 	updated, err := time.Parse(time.RFC3339, movers.Updated)
@@ -195,36 +143,30 @@ func (w WatchlistPage) Init() tea.Cmd {
 func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case error:
-		w.loadErr = msg
+		return w, func() tea.Msg {
+			return messages.PageSwitchMsg{
+				Page: messages.ErrorPageNumber,
+				Err:  msg,
+			}
+		}
 	case initResult:
 		w.loaded = true
-		var items []list.Item
-		for _, company := range msg.Companies {
-			items = append(items, companyItem{company: company})
+		log.Println(msg.Companies)
+		for i, company := range msg.Companies {
+			w.companies.InsertItem(i, companyItem{company: company})
 		}
+		w.companies.SetSize(w.BaseModel.Width/2-4, w.BaseModel.Height-8)
 
-		if items == nil {
+		if len(w.companies.Items()) == 0 {
 			w.emptyWatchlist = true
 		}
 
 		w.movers = append(msg.Gainers, msg.Losers...)
+		w.companies.FilterInput.Focus()
 	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, keys.Quit):
-			return w, tea.Quit
-		case key.Matches(msg, keys.Up):
-			if w.cursor > 0 {
-				w.cursor--
-			}
-		case key.Matches(msg, keys.Down):
-			if w.cursor < len(w.companies.Items())-1 {
-				w.cursor++
-			}
-		case key.Matches(msg, keys.Select):
-			return w, tea.Quit
-		case key.Matches(msg, keys.Help):
-			w.help.ShowAll = !w.help.ShowAll
-		}
+		var cmd tea.Cmd
+		w.companies, cmd = w.companies.Update(msg)
+		return w, cmd
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		w.spinner, cmd = w.spinner.Update(msg)
@@ -236,7 +178,6 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (w WatchlistPage) View() string {
 	cyan := lipgloss.Color("#00FFFF")
 	purple := lipgloss.Color("#A020F0")
-	errRed := lipgloss.Color("#ED2923")
 	red := lipgloss.Color("#D30000")
 	green := lipgloss.Color("#0B6623")
 
@@ -249,11 +190,6 @@ func (w WatchlistPage) View() string {
 		Align(lipgloss.Center)
 
 	header := headerStyle.Render(w.titleBar) + "\n\n"
-
-	if w.loadErr != nil {
-		return lipgloss.PlaceHorizontal(w.BaseModel.Width, lipgloss.Center,
-			lipgloss.NewStyle().Foreground(errRed).Render("Error loading data: "+w.loadErr.Error()))
-	}
 
 	if !w.loaded {
 		return lipgloss.Place(w.BaseModel.Width, w.BaseModel.Height, lipgloss.Center, lipgloss.Center, w.spinner.View())
@@ -286,7 +222,7 @@ func (w WatchlistPage) View() string {
 	if !w.emptyWatchlist {
 		content = lipgloss.JoinHorizontal(lipgloss.Top,
 			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).Render(w.companies.View()),
-			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).Render(right),
+			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).MarginLeft(20).Render(right),
 		)
 	} else {
 		msg := lipgloss.NewStyle().
@@ -300,10 +236,7 @@ func (w WatchlistPage) View() string {
 		)
 	}
 
-	helpView := w.help.View(keys)
-	height := 8 - strings.Count(helpView, "\n")
-
 	header = lipgloss.PlaceHorizontal(w.BaseModel.Width, lipgloss.Center, header)
 
-	return header + content + strings.Repeat("\n", height) + helpView
+	return header + content
 }

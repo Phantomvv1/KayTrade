@@ -17,7 +17,7 @@ type BaseModel struct {
 
 func (b BaseModel) Refresh() (string, error) {
 	reader := strings.NewReader(fmt.Sprintf("{\"token\": \"%s\"}", b.Token))
-	body, err := requests.MakeRequest(http.MethodPost, "http://localhost:42069/refresh", reader, b.Client)
+	body, err := requests.MakeRequest(http.MethodPost, "http://localhost:42069/refresh", reader, b.Client, "")
 	if err != nil {
 		return "", err
 	}
