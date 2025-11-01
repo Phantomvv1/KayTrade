@@ -61,7 +61,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.LoginSuccessMsg:
 		m.updateToken(msg.Token)
 		m.currentPage = msg.Page
-		return m, nil
+		model := m.getModelFromPageNumber()
+		return m, model.Init()
 	}
 
 	var cmd tea.Cmd
@@ -131,6 +132,8 @@ func (m Model) getModelFromPageNumber() tea.Model {
 		return m.watchlistPage
 	case messages.ErrorPageNumber:
 		return m.errorPage
+	case messages.LoginPageNumber:
+		return m.loginPage
 	default:
 		return nil
 	}

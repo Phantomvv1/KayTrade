@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -142,6 +143,7 @@ var keys = keyMap{
 }
 
 func (w WatchlistPage) init() tea.Msg {
+	log.Println("Init started")
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
@@ -184,6 +186,7 @@ func (w WatchlistPage) init() tea.Msg {
 		return err
 	}
 
+	log.Println("Init finished")
 	return initResult{Companies: companies, Gainers: movers.Gainers, Losers: movers.Losers, Updated: updated}
 }
 
