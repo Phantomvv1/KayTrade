@@ -1,7 +1,6 @@
 package watchlistpage
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -179,32 +178,32 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		var cmd tea.Cmd
 		w.companies, cmd = w.companies.Update(msg)
-		selectedItem := w.companies.SelectedItem()
-		item := selectedItem.(companyItem)
-		switch msg.String() {
-		case "j", "down", "k", "up":
-			l, err := getLogo(item.company)
-			if err != nil {
-				return w, func() tea.Msg {
-					return messages.PageSwitchMsg{
-						Page: messages.ErrorPageNumber,
-						Err:  err,
-					}
-				}
-			}
-
-			w.logoToDisplay = l.logo
-
-			if w.logoToDisplay != nil {
-				w.logoToDisplay = w.logoToDisplay.Width(25).Height(10)
-				renderedImg, err := w.logoToDisplay.Render()
-				if err != nil {
-					w.renderedLogo = "Error loading the logo of the current company"
-				} else {
-					w.renderedLogo = renderedImg
-				}
-			}
-		}
+		// selectedItem := w.companies.SelectedItem()
+		// item := selectedItem.(companyItem)
+		// switch msg.String() {
+		// case "j", "down", "k", "up":
+		// 	l, err := getLogo(item.company)
+		// 	if err != nil {
+		// 		return w, func() tea.Msg {
+		// 			return messages.PageSwitchMsg{
+		// 				Page: messages.ErrorPageNumber,
+		// 				Err:  err,
+		// 			}
+		// 		}
+		// 	}
+		//
+		// 	w.logoToDisplay = l.logo
+		//
+		// 	if w.logoToDisplay != nil {
+		// 		w.logoToDisplay = w.logoToDisplay.Width(35).Height(15)
+		// 		renderedImg, err := w.logoToDisplay.Render()
+		// 		if err != nil {
+		// 			w.renderedLogo = "Error loading the logo of the current company"
+		// 		} else {
+		// 			w.renderedLogo = renderedImg
+		// 		}
+		// 	}
+		// }
 
 		return w, cmd
 	case spinner.TickMsg:
@@ -260,11 +259,12 @@ func (w WatchlistPage) View() string {
 
 	content := ""
 	if !w.emptyWatchlist {
-		content = lipgloss.JoinHorizontal(lipgloss.Center,
-			lipgloss.NewStyle().MarginLeft(1).Render(w.renderedLogo),
-			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).MarginLeft(20).Render(w.companies.View()),
+		content = lipgloss.JoinHorizontal(lipgloss.Top,
+			// lipgloss.NewStyle().MarginLeft(1).Render(w.renderedLogo),
+			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).MarginLeft(1).Render(w.companies.View()),
 			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).MarginLeft(20).Render(right),
 		)
+
 	} else {
 		msg := lipgloss.NewStyle().
 			Padding(1, 1).
@@ -282,33 +282,33 @@ func (w WatchlistPage) View() string {
 	return header + content
 }
 
-func getLogo(company CompanyInfo) (*logo, error) {
-	cachedLogo, ok := logoCache[company.Symbol]
-	if !ok {
-		return fetchLogo(company)
-	}
-
-	if time.Now().UTC().After(cachedLogo.expirationDate) {
-		return fetchLogo(company)
-	}
-
-	return cachedLogo, nil
-}
-
-func fetchLogo(company CompanyInfo) (*logo, error) {
-	body, err := requests.MakeRequest(http.MethodGet, company.Logo, nil, http.DefaultClient, "")
-	if err != nil {
-		return nil, err
-	}
-
-	reader := bytes.NewReader(body)
-	img, err := termimg.From(reader)
-	if err != nil {
-		return nil, err
-	}
-
-	res := &logo{logo: img, expirationDate: time.Now().UTC().Add(24 * time.Hour * 2)} // 2 days
-	logoCache[company.Symbol] = res
-
-	return res, nil
-}
+// func getLogo(company CompanyInfo) (*logo, error) {
+// 	cachedLogo, ok := logoCache[company.Symbol]
+// 	if !ok {
+// 		return fetchLogo(company)
+// 	}
+//
+// 	if time.Now().UTC().After(cachedLogo.expirationDate) {
+// 		return fetchLogo(company)
+// 	}
+//
+// 	return cachedLogo, nil
+// }
+//
+// func fetchLogo(company CompanyInfo) (*logo, error) {
+// 	body, err := requests.MakeRequest(http.MethodGet, company.Logo, nil, http.DefaultClient, "")
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	reader := bytes.NewReader(body)
+// 	img, err := termimg.From(reader)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	res := &logo{logo: img, expirationDate: time.Now().UTC().Add(24 * time.Hour * 2)} // 2 days
+// 	logoCache[company.Symbol] = res
+//
+// 	return res, nil
+// }
