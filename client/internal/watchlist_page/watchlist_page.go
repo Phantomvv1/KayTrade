@@ -1,9 +1,9 @@
 package watchlistpage
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -12,6 +12,7 @@ import (
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
 	"github.com/Phantomvv1/KayTrade/internal/requests"
+	"github.com/blacktop/go-termimg"
 	_ "github.com/blacktop/go-termimg"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -29,6 +30,8 @@ type WatchlistPage struct {
 	spinner        spinner.Model
 	emptyWatchlist bool
 	focusedList    bool
+	logoToDisplay  *termimg.Image
+	renderedLogo   string
 }
 
 type CompanyInfo struct {
@@ -72,13 +75,12 @@ func (c companyItem) Title() string       { return c.company.Name }
 func (c companyItem) Description() string { return c.company.Description }
 func (c companyItem) FilterValue() string { return c.company.Name }
 
-func (c companyItem) IsURL() bool {
-	if strings.HasPrefix(c.company.Logo, "http://") {
-		return true
-	}
-
-	return false
+type logo struct {
+	logo           *termimg.Image
+	expirationDate time.Time
 }
+
+var logoCache = make(map[string]*logo)
 
 func NewWatchlistPage(client *http.Client) WatchlistPage {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
@@ -163,7 +165,6 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case initResult:
 		w.loaded = true
-		log.Println(msg.Companies)
 		for i, company := range msg.Companies {
 			w.companies.InsertItem(i, companyItem{company: company})
 		}
@@ -180,8 +181,29 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		w.companies, cmd = w.companies.Update(msg)
 		selectedItem := w.companies.SelectedItem()
 		item := selectedItem.(companyItem)
-		if item.IsURL() {
-			// Make the req and cache the result
+		switch msg.String() {
+		case "j", "down", "k", "up":
+			l, err := getLogo(item.company)
+			if err != nil {
+				return w, func() tea.Msg {
+					return messages.PageSwitchMsg{
+						Page: messages.ErrorPageNumber,
+						Err:  err,
+					}
+				}
+			}
+
+			w.logoToDisplay = l.logo
+
+			if w.logoToDisplay != nil {
+				w.logoToDisplay = w.logoToDisplay.Width(25).Height(10)
+				renderedImg, err := w.logoToDisplay.Render()
+				if err != nil {
+					w.renderedLogo = "Error loading the logo of the current company"
+				} else {
+					w.renderedLogo = renderedImg
+				}
+			}
 		}
 
 		return w, cmd
@@ -238,7 +260,8 @@ func (w WatchlistPage) View() string {
 
 	content := ""
 	if !w.emptyWatchlist {
-		content = lipgloss.JoinHorizontal(lipgloss.Top,
+		content = lipgloss.JoinHorizontal(lipgloss.Center,
+			lipgloss.NewStyle().MarginLeft(1).Render(w.renderedLogo),
 			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).MarginLeft(20).Render(w.companies.View()),
 			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).MarginLeft(20).Render(right),
 		)
@@ -257,4 +280,35 @@ func (w WatchlistPage) View() string {
 	header = lipgloss.PlaceHorizontal(w.BaseModel.Width, lipgloss.Center, header)
 
 	return header + content
+}
+
+func getLogo(company CompanyInfo) (*logo, error) {
+	cachedLogo, ok := logoCache[company.Symbol]
+	if !ok {
+		return fetchLogo(company)
+	}
+
+	if time.Now().UTC().After(cachedLogo.expirationDate) {
+		return fetchLogo(company)
+	}
+
+	return cachedLogo, nil
+}
+
+func fetchLogo(company CompanyInfo) (*logo, error) {
+	body, err := requests.MakeRequest(http.MethodGet, company.Logo, nil, http.DefaultClient, "")
+	if err != nil {
+		return nil, err
+	}
+
+	reader := bytes.NewReader(body)
+	img, err := termimg.From(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &logo{logo: img, expirationDate: time.Now().UTC().Add(24 * time.Hour * 2)} // 2 days
+	logoCache[company.Symbol] = res
+
+	return res, nil
 }
