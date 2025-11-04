@@ -352,7 +352,7 @@ func GetAllUsersAlpaca(c *gin.Context) {
 }
 
 func InvalidateRefreshTokens(conn *pgx.Conn, userID string) error {
-	_, err := conn.Exec(context.Background(), "update r_tokens set valid = false where user_id = $1 and valid = false", userID)
+	_, err := conn.Exec(context.Background(), "update r_tokens set valid = false where user_id = $1 and valid = true", userID)
 	return err
 }
 
@@ -414,7 +414,21 @@ func Refresh(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"error": "Error expried refresh token"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error expried refresh token"})
+		return
+	}
+
+	expired := false
+	err = conn.QueryRow(context.Background(), "select case when current_timestamp > expiration then true else false end from r_tokens where user_id = $1", id).Scan(&expired)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error unable to check the expiration ts of the refresh token"})
+		return
+	}
+
+	// Expired token. The user needs to log in again
+	if expired {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error expried refresh token"})
 		return
 	}
 
