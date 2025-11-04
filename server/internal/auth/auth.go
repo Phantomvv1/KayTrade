@@ -419,7 +419,7 @@ func Refresh(c *gin.Context) {
 	}
 
 	expired := false
-	err = conn.QueryRow(context.Background(), "select case when current_timestamp > expiration then true else false end from r_tokens where user_id = $1", id).Scan(&expired)
+	err = conn.QueryRow(context.Background(), "select case when current_timestamp > expiration then true else false end from r_tokens where user_id = $1 and token = $2", id, refresh).Scan(&expired)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error unable to check the expiration ts of the refresh token"})
