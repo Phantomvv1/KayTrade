@@ -1,19 +1,20 @@
 package watchlist
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
-	"github.com/Phantomvv1/KayTrade/internal/requests"
 	. "github.com/Phantomvv1/KayTrade/internal/requests"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -33,6 +34,15 @@ type CompanyInfo struct {
 	Domain         string  `json:"domain"`
 	expirationDate time.Time
 }
+
+type Asset struct {
+	Symbol     string `json:"symbol"`
+	Name       string `json:"name"`
+	distance   int
+	Expiration *time.Time `json:"expiration,omitempty"`
+}
+
+var assetCache = make(map[string][]Asset) // a map in order for the code to be concurrent freindly
 
 var missingInfo = errors.New("There is no information for this company in redis")
 
@@ -547,7 +557,7 @@ func getPriceInformation(symbols []string, start string, res chan<- result) {
 		500: "Internal server error. We recommend retrying these later",
 	}
 
-	body, err := SendRequest[map[string]map[string][]map[string]any](http.MethodGet, requests.MarketData+"/stocks/bars?timeframe=1D&start="+start+"&symbols="+s, nil, errs, headers)
+	body, err := SendRequest[map[string]map[string][]map[string]any](http.MethodGet, MarketData+"/stocks/bars?timeframe=1D&start="+start+"&symbols="+s, nil, errs, headers)
 	if err != nil {
 		res <- result{information: nil, result: 1, symbol: "", err: err}
 		return
@@ -635,5 +645,163 @@ func levenshtein(a, target string) int {
 }
 
 func SearchCompanies(c *gin.Context) {
+	symbol := c.Query("symbol")
+	name := c.Query("name")
 
+	if symbol != "" && name != "" {
+		ErrorExit(c, http.StatusBadRequest, "only 1 of the input choices needs to be used at a time", nil)
+		return
+	}
+
+	assets, err := getAssets()
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't get the assets in order to complete the search", err)
+		return
+	}
+
+	if symbol != "" {
+		for i := range assets {
+			assets[i].distance = levenshtein(assets[i].Symbol, symbol)
+		}
+
+		result := make([]Asset, 5)
+		for i := range 5 {
+			asset := slices.MinFunc(assets, func(a, b Asset) int {
+				return cmp.Compare(a.distance, b.distance)
+			})
+
+			index := slices.Index(assets, asset)
+			assets = append(assets[:index], assets[index+1:]...)
+
+			result[i] = asset
+		}
+
+		c.JSON(http.StatusOK, gin.H{"result": result})
+		return
+	} else if name != "" {
+		for i := range assets {
+			assets[i].distance = levenshtein(assets[i].Name, name)
+		}
+
+		result := make([]Asset, 5)
+		for i := range 5 {
+			asset := slices.MinFunc(assets, func(a, b Asset) int {
+				return cmp.Compare(a.distance, b.distance)
+			})
+
+			index := slices.Index(assets, asset)
+			assets = append(assets[:index], assets[index+1:]...)
+
+			result[i] = asset
+		}
+
+		c.JSON(http.StatusOK, gin.H{"result": result})
+		return
+	}
+
+	c.JSON(http.StatusBadRequest, gin.H{"error": "Error there are no parameters given"})
+}
+
+func getAssets() ([]Asset, error) {
+	cachedAssets, ok := assetCache["assets"]
+	if !ok {
+		rdb := redis.NewClient(&redis.Options{
+			Addr: os.Getenv("REDIS_URL"),
+			DB:   0,
+		})
+		defer rdb.Close()
+
+		assetString, err := rdb.Get(context.Background(), "assets").Result()
+		if err != nil {
+			if errors.Is(err, redis.Nil) {
+				assets, exp, err := fetchAssets()
+				if err != nil {
+					return nil, err
+				}
+
+				res, err := json.Marshal(assets)
+				if err != nil {
+					return nil, err
+				}
+
+				err = rdb.Set(context.Background(), "assets", res, exp.Sub(time.Now().UTC())).Err()
+				if err != nil {
+					return nil, err
+				}
+
+				assetCache["assets"] = assets
+
+				assets = clearExpiration(assets)
+				return assets, nil
+			}
+
+			return nil, err
+		}
+
+		var assets []Asset
+		err = json.Unmarshal([]byte(assetString), &assets)
+		if err != nil {
+			return nil, err
+		}
+
+		assetCache["assets"] = assets
+
+		assets = clearExpiration(assets)
+
+		return assets, nil
+	}
+	if time.Now().UTC().After(*cachedAssets[0].Expiration) {
+		assets, exp, err := fetchAssets()
+		if err != nil {
+			return nil, err
+		}
+
+		rdb := redis.NewClient(&redis.Options{
+			Addr: os.Getenv("REDIS_URL"),
+			DB:   0,
+		})
+		defer rdb.Close()
+
+		res, err := json.Marshal(assets)
+		if err != nil {
+			return nil, err
+		}
+
+		err = rdb.Set(context.Background(), "assets", res, exp.Sub(time.Now().UTC())).Err()
+		if err != nil {
+			return nil, err
+		}
+
+		assetCache["assets"] = assets
+
+		assets = clearExpiration(assets)
+		return assets, nil
+	}
+
+	cachedAssets = clearExpiration(cachedAssets)
+	return cachedAssets, nil
+}
+
+func clearExpiration(assets []Asset) []Asset {
+	for i := range assets {
+		assets[i].Expiration = nil
+	}
+
+	return assets
+}
+
+func fetchAssets() ([]Asset, *time.Time, error) {
+	headers := BasicAuth()
+
+	assets, err := SendRequest[[]Asset](http.MethodGet, BaseURL+Assets, nil, nil, headers)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	exp := time.Now().UTC().Add(24 * time.Hour * 5) // 5 days epiration
+	for i := range assets {
+		assets[i].Expiration = &exp
+	}
+
+	return assets, &exp, nil
 }

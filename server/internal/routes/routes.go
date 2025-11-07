@@ -29,6 +29,7 @@ func NewRouter() *gin.Engine {
 	r.DELETE("/users/:id", AuthMiddleware, DeleteUser)
 	r.POST("/refresh", JSONParserMiddleware, Refresh)
 	r.GET("/clock", clock.GetClock)
+	r.GET("/search", AuthMiddleware, watchlist.SearchCompanies)
 
 	f := r.Group("/funding")
 	f.Use(AuthMiddleware)
