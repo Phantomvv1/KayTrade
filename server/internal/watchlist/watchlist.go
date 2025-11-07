@@ -731,8 +731,10 @@ func getAssets() ([]Asset, error) {
 
 				assetCache["assets"] = assets
 
-				assets = clearExpiration(assets)
-				return assets, nil
+				assetsCopy := make([]Asset, len(assets))
+				copy(assetsCopy, assets)
+				assetsCopy = clearExpiration(assetsCopy)
+				return assetsCopy, nil
 			}
 
 			return nil, err
@@ -746,9 +748,10 @@ func getAssets() ([]Asset, error) {
 
 		assetCache["assets"] = assets
 
-		assets = clearExpiration(assets)
-
-		return assets, nil
+		assetsCopy := make([]Asset, len(assets))
+		copy(assetsCopy, assets)
+		assetsCopy = clearExpiration(assetsCopy)
+		return assetsCopy, nil
 	}
 	if time.Now().UTC().After(*cachedAssets[0].Expiration) {
 		assets, exp, err := fetchAssets()
@@ -774,11 +777,15 @@ func getAssets() ([]Asset, error) {
 
 		assetCache["assets"] = assets
 
-		assets = clearExpiration(assets)
-		return assets, nil
+		assetsCopy := make([]Asset, len(assets))
+		copy(assetsCopy, assets)
+		assetsCopy = clearExpiration(assetsCopy)
+		return assetsCopy, nil
 	}
 
-	cachedAssets = clearExpiration(cachedAssets)
+	assetsCopy := make([]Asset, len(cachedAssets))
+	copy(assetsCopy, cachedAssets)
+	assetsCopy = clearExpiration(assetsCopy)
 	return cachedAssets, nil
 }
 
