@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -42,7 +43,7 @@ type Asset struct {
 	Expiration *time.Time `json:"expiration,omitempty"`
 }
 
-var assetCache = make(map[string][]Asset) // a map in order for the code to be concurrent freindly
+var assetCache []Asset
 
 var missingInfo = errors.New("There is no information for this company in redis")
 
@@ -651,6 +652,9 @@ func SearchCompanies(c *gin.Context) {
 	if symbol != "" && name != "" {
 		ErrorExit(c, http.StatusBadRequest, "only 1 of the input choices needs to be used at a time", nil)
 		return
+	} else if symbol == "" && name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Error there are no parameters given"})
+		return
 	}
 
 	assets, err := getAssets()
@@ -678,33 +682,33 @@ func SearchCompanies(c *gin.Context) {
 
 		c.JSON(http.StatusOK, gin.H{"result": result})
 		return
-	} else if name != "" {
-		for i := range assets {
-			assets[i].distance = levenshtein(assets[i].Name, name)
-		}
+	} else {
+		result := make([]Asset, 0, 5)
+		i := 0
+		for _, asset := range assets {
+			if i >= 5 {
+				break
+			}
 
-		result := make([]Asset, 5)
-		for i := range 5 {
-			asset := slices.MinFunc(assets, func(a, b Asset) int {
-				return cmp.Compare(a.distance, b.distance)
-			})
+			ok, err := regexp.MatchString("^"+name+".*", asset.Name)
+			if err != nil {
+				ErrorExit(c, http.StatusInternalServerError, "couldn't match the given name to the names of the companies", err)
+				return
+			}
 
-			index := slices.Index(assets, asset)
-			assets = append(assets[:index], assets[index+1:]...)
-
-			result[i] = asset
+			if ok {
+				result = append(result, asset)
+				i++
+			}
 		}
 
 		c.JSON(http.StatusOK, gin.H{"result": result})
 		return
 	}
-
-	c.JSON(http.StatusBadRequest, gin.H{"error": "Error there are no parameters given"})
 }
 
 func getAssets() ([]Asset, error) {
-	cachedAssets, ok := assetCache["assets"]
-	if !ok {
+	if assetCache == nil {
 		rdb := redis.NewClient(&redis.Options{
 			Addr: os.Getenv("REDIS_URL"),
 			DB:   0,
@@ -719,6 +723,8 @@ func getAssets() ([]Asset, error) {
 					return nil, err
 				}
 
+				assets = cleanAssets(assets)
+
 				res, err := json.Marshal(assets)
 				if err != nil {
 					return nil, err
@@ -729,11 +735,9 @@ func getAssets() ([]Asset, error) {
 					return nil, err
 				}
 
-				assetCache["assets"] = assets
+				assetCache = assets
 
-				assetsCopy := make([]Asset, len(assets))
-				copy(assetsCopy, assets)
-				assetsCopy = clearExpiration(assetsCopy)
+				assetsCopy := clearExpiration(assets)
 				return assetsCopy, nil
 			}
 
@@ -746,18 +750,18 @@ func getAssets() ([]Asset, error) {
 			return nil, err
 		}
 
-		assetCache["assets"] = assets
+		assetCache = assets
 
-		assetsCopy := make([]Asset, len(assets))
-		copy(assetsCopy, assets)
-		assetsCopy = clearExpiration(assetsCopy)
+		assetsCopy := clearExpiration(assets)
 		return assetsCopy, nil
 	}
-	if time.Now().UTC().After(*cachedAssets[0].Expiration) {
+	if time.Now().UTC().After(*assetCache[0].Expiration) {
 		assets, exp, err := fetchAssets()
 		if err != nil {
 			return nil, err
 		}
+
+		assets = cleanAssets(assets)
 
 		rdb := redis.NewClient(&redis.Options{
 			Addr: os.Getenv("REDIS_URL"),
@@ -775,26 +779,25 @@ func getAssets() ([]Asset, error) {
 			return nil, err
 		}
 
-		assetCache["assets"] = assets
+		assetCache = assets
 
-		assetsCopy := make([]Asset, len(assets))
-		copy(assetsCopy, assets)
-		assetsCopy = clearExpiration(assetsCopy)
+		assetsCopy := clearExpiration(assets)
 		return assetsCopy, nil
 	}
 
-	assetsCopy := make([]Asset, len(cachedAssets))
-	copy(assetsCopy, cachedAssets)
-	assetsCopy = clearExpiration(assetsCopy)
-	return cachedAssets, nil
+	assetsCopy := clearExpiration(assetCache)
+	return assetsCopy, nil
 }
 
+// This function gets the assets makes a copy without the expiration set and returns said copy
 func clearExpiration(assets []Asset) []Asset {
+	assetsCopy := make([]Asset, len(assets))
+	copy(assetsCopy, assets)
 	for i := range assets {
-		assets[i].Expiration = nil
+		assetsCopy[i].Expiration = nil
 	}
 
-	return assets
+	return assetsCopy
 }
 
 func fetchAssets() ([]Asset, *time.Time, error) {
@@ -811,4 +814,16 @@ func fetchAssets() ([]Asset, *time.Time, error) {
 	}
 
 	return assets, &exp, nil
+}
+
+// The function removes assets that have no name
+func cleanAssets(assets []Asset) []Asset {
+	var result []Asset
+	for _, asset := range assets {
+		if asset.Name != "" {
+			result = append(result, asset)
+		}
+	}
+
+	return result
 }
