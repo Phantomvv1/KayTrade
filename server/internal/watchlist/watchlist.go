@@ -1,18 +1,21 @@
 package watchlist
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"os"
+	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
-	"github.com/Phantomvv1/KayTrade/internal/requests"
 	. "github.com/Phantomvv1/KayTrade/internal/requests"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -32,6 +35,15 @@ type CompanyInfo struct {
 	Domain         string  `json:"domain"`
 	expirationDate time.Time
 }
+
+type Asset struct {
+	Symbol     string `json:"symbol"`
+	Name       string `json:"name"`
+	distance   int
+	Expiration *time.Time `json:"expiration,omitempty"`
+}
+
+var assetCache []Asset
 
 var missingInfo = errors.New("There is no information for this company in redis")
 
@@ -546,7 +558,7 @@ func getPriceInformation(symbols []string, start string, res chan<- result) {
 		500: "Internal server error. We recommend retrying these later",
 	}
 
-	body, err := SendRequest[map[string]map[string][]map[string]any](http.MethodGet, requests.MarketData+"/stocks/bars?timeframe=1D&start="+start+"&symbols="+s, nil, errs, headers)
+	body, err := SendRequest[map[string]map[string][]map[string]any](http.MethodGet, MarketData+"/stocks/bars?timeframe=1D&start="+start+"&symbols="+s, nil, errs, headers)
 	if err != nil {
 		res <- result{information: nil, result: 1, symbol: "", err: err}
 		return
@@ -599,4 +611,309 @@ func RemoveAllSymbolsFromWatchlist(c *gin.Context) { // to test
 	}
 
 	c.JSON(http.StatusOK, nil)
+}
+
+func module(num int) int {
+	if num >= 0 {
+		return num
+	} else {
+		return -num
+	}
+}
+
+func levenshtein(a, target string) int {
+	if a == "" {
+		return utf8.RuneCountInString(target)
+	}
+	if target == "" {
+		return utf8.RuneCountInString(a)
+	}
+
+	targetLen := utf8.RuneCountInString(target)
+	difference := module(targetLen - utf8.RuneCountInString(a))
+
+	for i, r := range a {
+		if i >= targetLen {
+			break
+		}
+
+		if r != []rune(target)[i] {
+			difference++
+		}
+	}
+
+	return difference
+}
+
+func SearchCompanies(c *gin.Context) {
+	symbol := c.Query("symbol")
+	name := c.Query("name")
+
+	if symbol != "" && name != "" {
+		ErrorExit(c, http.StatusBadRequest, "only 1 of the input choices needs to be used at a time", nil)
+		return
+	} else if symbol == "" && name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Error there are no parameters given"})
+		return
+	}
+
+	assets, err := getAssets()
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't get the assets in order to complete the search", err)
+		return
+	}
+
+	if symbol != "" {
+		for i := range assets {
+			assets[i].distance = levenshtein(assets[i].Symbol, symbol)
+		}
+
+		result := make([]Asset, 5)
+		for i := range 5 {
+			asset := slices.MinFunc(assets, func(a, b Asset) int {
+				return cmp.Compare(a.distance, b.distance)
+			})
+
+			index := slices.Index(assets, asset)
+			assets = append(assets[:index], assets[index+1:]...)
+
+			result[i] = asset
+		}
+
+		c.JSON(http.StatusOK, gin.H{"result": result})
+		return
+	} else {
+		result := make([]Asset, 0, 5)
+		i := 0
+		for _, asset := range assets {
+			if i >= 5 {
+				break
+			}
+
+			ok, err := regexp.MatchString("^"+name+".*", asset.Name)
+			if err != nil {
+				ErrorExit(c, http.StatusInternalServerError, "couldn't match the given name to the names of the companies", err)
+				return
+			}
+
+			if ok {
+				result = append(result, asset)
+				i++
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{"result": result})
+		return
+	}
+}
+
+func getAssets() ([]Asset, error) {
+	if assetCache == nil {
+		rdb := redis.NewClient(&redis.Options{
+			Addr: os.Getenv("REDIS_URL"),
+			DB:   0,
+		})
+		defer rdb.Close()
+
+		assetString, err := rdb.Get(context.Background(), "assets").Result()
+		if err != nil {
+			if errors.Is(err, redis.Nil) {
+				assets, exp, err := fetchAssets()
+				if err != nil {
+					return nil, err
+				}
+
+				assets = cleanAssets(assets)
+
+				res, err := json.Marshal(assets)
+				if err != nil {
+					return nil, err
+				}
+
+				err = rdb.Set(context.Background(), "assets", res, exp.Sub(time.Now().UTC())).Err()
+				if err != nil {
+					return nil, err
+				}
+
+				assetCache = assets
+
+				assetsCopy := clearExpiration(assets)
+				return assetsCopy, nil
+			}
+
+			return nil, err
+		}
+
+		var assets []Asset
+		err = json.Unmarshal([]byte(assetString), &assets)
+		if err != nil {
+			return nil, err
+		}
+
+		assetCache = assets
+
+		assetsCopy := clearExpiration(assets)
+		return assetsCopy, nil
+	}
+	if time.Now().UTC().After(*assetCache[0].Expiration) {
+		assets, exp, err := fetchAssets()
+		if err != nil {
+			return nil, err
+		}
+
+		assets = cleanAssets(assets)
+
+		rdb := redis.NewClient(&redis.Options{
+			Addr: os.Getenv("REDIS_URL"),
+			DB:   0,
+		})
+		defer rdb.Close()
+
+		res, err := json.Marshal(assets)
+		if err != nil {
+			return nil, err
+		}
+
+		err = rdb.Set(context.Background(), "assets", res, exp.Sub(time.Now().UTC())).Err()
+		if err != nil {
+			return nil, err
+		}
+
+		assetCache = assets
+
+		assetsCopy := clearExpiration(assets)
+		return assetsCopy, nil
+	}
+
+	assetsCopy := clearExpiration(assetCache)
+	return assetsCopy, nil
+}
+
+// This function gets the assets makes a copy without the expiration set and returns said copy
+func clearExpiration(assets []Asset) []Asset {
+	assetsCopy := make([]Asset, len(assets))
+	copy(assetsCopy, assets)
+	for i := range assets {
+		assetsCopy[i].Expiration = nil
+	}
+
+	return assetsCopy
+}
+
+func fetchAssets() ([]Asset, *time.Time, error) {
+	headers := BasicAuth()
+
+	assets, err := SendRequest[[]Asset](http.MethodGet, BaseURL+Assets, nil, nil, headers)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	exp := time.Now().UTC().Add(24 * time.Hour * 5) // 5 days epiration
+	for i := range assets {
+		assets[i].Expiration = &exp
+	}
+
+	return assets, &exp, nil
+}
+
+// The function removes assets that have no name
+func cleanAssets(assets []Asset) []Asset {
+	var result []Asset
+	for _, asset := range assets {
+		if asset.Name != "" {
+			result = append(result, asset)
+		}
+	}
+
+	return result
+}
+
+func GetCompanyInformation(c *gin.Context) {
+	symbol := c.Param("symbol")
+
+	response, err := getInfoAndLogo(symbol)
+	if err != nil {
+		if errors.Is(err, missingInfo) {
+			now := time.Now().UTC()
+			start := ""
+			checkPassed := false
+			if now.Hour() < 13 || now.Hour() >= 20 { // market opens at 13:30 UTC and closes at 20:00 UTC
+				if now.Weekday() == time.Monday {
+					start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
+				} else {
+					start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
+				}
+
+				checkPassed = true
+			}
+			if now.Hour() == 13 && now.Minute() < 30 {
+				if now.Weekday() == time.Monday {
+					start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
+				} else {
+					start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
+				}
+				checkPassed = true
+			} else if !checkPassed {
+				start = time.Now().UTC().Truncate(24 * time.Hour).Format(time.RFC3339)
+			}
+
+			res := make(chan result)
+			go getLogo(symbol, res)
+			go getPriceInformation([]string{symbol}, start, res)
+
+			innerResponse := CompanyInfo{}
+			for range 2 {
+				result := <-res
+
+				if result.result == 0 {
+					if result.err != nil {
+						ErrorExit(c, http.StatusFailedDependency, "couldn't get the logo", result.err) // change that later
+						return
+					}
+
+					company := result.logo["company"].(map[string]any)
+					innerResponse.Logo = chooseLogo(result.logo)
+					innerResponse.Name = result.logo["name"].(string)
+					innerResponse.Domain = result.logo["domain"].(string)
+					innerResponse.Description = result.logo["description"].(string)
+					innerResponse.IsNSFW = result.logo["isNsfw"].(bool)
+					innerResponse.History = result.logo["longDescription"].(string)
+					foundedYear, ok := company["foundedYear"].(float64)
+					if !ok {
+						innerResponse.FoundedYear = 0
+					} else {
+						innerResponse.FoundedYear = int(foundedYear)
+					}
+
+					err := cacheInfo(innerResponse)
+					if err != nil {
+						log.Println(err)
+						log.Println("Couldn't cache the information about " + innerResponse.Symbol)
+					}
+				} else {
+					if result.err != nil {
+						ErrorExit(c, http.StatusFailedDependency, "couldn't get the opening and closing price", result.err)
+						return
+					}
+
+					for _, info := range result.information {
+						openingPrice := info[0]["o"].(float64)
+						closingPrice := info[0]["c"].(float64)
+						innerResponse.OpeningPrice = openingPrice
+						innerResponse.ClosingPrice = closingPrice
+					}
+				}
+			}
+
+			c.JSON(http.StatusOK, gin.H{"information": innerResponse})
+			return
+
+		}
+
+		log.Println(err)
+		ErrorExit(c, http.StatusInternalServerError, "couldn't check if the information about this company is cached", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"information": response})
 }
