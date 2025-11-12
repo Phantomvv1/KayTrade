@@ -861,7 +861,7 @@ func GetCompanyInformation(c *gin.Context) {
 			go getLogo(symbol, res)
 			go getPriceInformation([]string{symbol}, start, res)
 
-			innerResponse := CompanyInfo{}
+			innerResponse := CompanyInfo{Symbol: symbol}
 			for range 2 {
 				result := <-res
 
