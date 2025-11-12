@@ -906,6 +906,7 @@ func GetCompanyInformation(c *gin.Context) {
 			}
 
 			c.JSON(http.StatusOK, gin.H{"information": innerResponse})
+			return
 
 		}
 
