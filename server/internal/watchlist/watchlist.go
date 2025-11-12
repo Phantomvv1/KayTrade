@@ -827,3 +827,92 @@ func cleanAssets(assets []Asset) []Asset {
 
 	return result
 }
+
+func GetCompanyInformation(c *gin.Context) {
+	symbol := c.Param("symbol")
+
+	response, err := getInfoAndLogo(symbol)
+	if err != nil {
+		if errors.Is(err, missingInfo) {
+			now := time.Now().UTC()
+			start := ""
+			checkPassed := false
+			if now.Hour() < 13 || now.Hour() >= 20 { // market opens at 13:30 UTC and closes at 20:00 UTC
+				if now.Weekday() == time.Monday {
+					start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
+				} else {
+					start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
+				}
+
+				checkPassed = true
+			}
+			if now.Hour() == 13 && now.Minute() < 30 {
+				if now.Weekday() == time.Monday {
+					start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
+				} else {
+					start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
+				}
+				checkPassed = true
+			} else if !checkPassed {
+				start = time.Now().UTC().Truncate(24 * time.Hour).Format(time.RFC3339)
+			}
+
+			res := make(chan result)
+			go getLogo(symbol, res)
+			go getPriceInformation([]string{symbol}, start, res)
+
+			innerResponse := CompanyInfo{}
+			for range 2 {
+				result := <-res
+
+				if result.result == 0 {
+					if result.err != nil {
+						ErrorExit(c, http.StatusFailedDependency, "couldn't get the logo", result.err) // change that later
+						return
+					}
+
+					company := result.logo["company"].(map[string]any)
+					innerResponse.Logo = chooseLogo(result.logo)
+					innerResponse.Name = result.logo["name"].(string)
+					innerResponse.Domain = result.logo["domain"].(string)
+					innerResponse.Description = result.logo["description"].(string)
+					innerResponse.IsNSFW = result.logo["isNsfw"].(bool)
+					innerResponse.History = result.logo["longDescription"].(string)
+					foundedYear, ok := company["foundedYear"].(float64)
+					if !ok {
+						innerResponse.FoundedYear = 0
+					} else {
+						innerResponse.FoundedYear = int(foundedYear)
+					}
+
+					err := cacheInfo(innerResponse)
+					if err != nil {
+						log.Println(err)
+						log.Println("Couldn't cache the information about " + innerResponse.Symbol)
+					}
+				} else {
+					if result.err != nil {
+						ErrorExit(c, http.StatusFailedDependency, "couldn't get the opening and closing price", result.err)
+						return
+					}
+
+					for _, info := range result.information {
+						openingPrice := info[0]["o"].(float64)
+						closingPrice := info[0]["c"].(float64)
+						innerResponse.OpeningPrice = openingPrice
+						innerResponse.ClosingPrice = closingPrice
+					}
+				}
+			}
+
+			c.JSON(http.StatusOK, gin.H{"information": innerResponse})
+
+		}
+
+		log.Println(err)
+		ErrorExit(c, http.StatusInternalServerError, "couldn't check if the information about this company is cached", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"information": response})
+}

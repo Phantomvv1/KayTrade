@@ -30,6 +30,7 @@ func NewRouter() *gin.Engine {
 	r.POST("/refresh", JSONParserMiddleware, Refresh)
 	r.GET("/clock", clock.GetClock)
 	r.GET("/search", AuthMiddleware, watchlist.SearchCompanies)
+	r.GET("/company-information/:symbol", AuthMiddleware, watchlist.GetCompanyInformation)
 
 	f := r.Group("/funding")
 	f.Use(AuthMiddleware)
