@@ -46,6 +46,46 @@ type CompanyInfo struct {
 	Domain       string  `json:"domain"`
 }
 
+func (c CompanyInfo) SymbolInfo() string {
+	return c.Symbol
+}
+
+func (c CompanyInfo) OpeningPriceInfo() float64 {
+	return c.OpeningPrice
+}
+
+func (c CompanyInfo) ClosingPriceInfo() float64 {
+	return c.ClosingPrice
+}
+
+func (c CompanyInfo) LogoInfo() string {
+	return c.Logo
+}
+
+func (c CompanyInfo) NameInfo() string {
+	return c.Name
+}
+
+func (c CompanyInfo) HistoryInfo() string {
+	return c.History
+}
+
+func (c CompanyInfo) IsNSFWInfo() bool {
+	return c.IsNSFW
+}
+
+func (c CompanyInfo) DescriptionInfo() string {
+	return c.Description
+}
+
+func (c CompanyInfo) FoundedYearInfo() int {
+	return c.FoundedYear
+}
+
+func (c CompanyInfo) DomainInfo() string {
+	return c.Domain
+}
+
 type MarketMover struct {
 	Change        float64 `json:"change"`
 	PercentChange float64 `json:"percent_change"`
@@ -74,12 +114,12 @@ func (c companyItem) Title() string       { return c.company.Name }
 func (c companyItem) Description() string { return c.company.Description }
 func (c companyItem) FilterValue() string { return c.company.Name }
 
-type logo struct {
-	logo           *termimg.Image
-	expirationDate time.Time
-}
+// type logo struct {
+// 	logo           *termimg.Image
+// 	expirationDate time.Time
+// }
 
-var logoCache = make(map[string]*logo)
+// var logoCache = make(map[string]*logo)
 
 func NewWatchlistPage(client *http.Client) WatchlistPage {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
@@ -178,6 +218,13 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		var cmd tea.Cmd
 		w.companies, cmd = w.companies.Update(msg)
+		if msg.String() == "s" {
+			return w, func() tea.Msg {
+				return messages.PageSwitchMsg{
+					Page: messages.SearchPage,
+				}
+			}
+		}
 		// selectedItem := w.companies.SelectedItem()
 		// item := selectedItem.(companyItem)
 		// switch msg.String() {
