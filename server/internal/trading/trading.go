@@ -27,7 +27,7 @@ type Order struct {
 }
 
 func CreateOrdersTable(conn *pgx.Conn) error {
-	_, err := conn.Exec(context.Background(), "create table if not exists orders(id uuid primary key, user_id uuid references authentication(id), "+
+	_, err := conn.Exec(context.Background(), "create table if not exists orders(id uuid primary key, user_id uuid references authentication(id) on delete cascade, "+
 		"symbol text, created_at timestamp, updated_at timestamp)")
 	return err
 }
