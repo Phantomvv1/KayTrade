@@ -22,7 +22,7 @@ type Bank struct {
 }
 
 func CreateBankTable(conn *pgx.Conn) error {
-	_, err := conn.Exec(context.Background(), "create table if not exists bank(id uuid primary key, user_id uuid references authentication(id), "+
+	_, err := conn.Exec(context.Background(), "create table if not exists bank(id uuid primary key, user_id uuid references authentication(id) on delete cascade, "+
 		"created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp)")
 	return err
 }
