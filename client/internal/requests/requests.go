@@ -12,10 +12,14 @@ var ErrorTokenExpired = errors.New("Error token has expired")
 
 var BaseURL = "http://localhost:42069"
 
-func MakeRequest(method string, url string, reader io.Reader, client *http.Client) ([]byte, error) {
+func MakeRequest(method string, url string, reader io.Reader, client *http.Client, token string) ([]byte, error) {
 	req, err := http.NewRequest(method, url, reader)
 	if err != nil {
 		return nil, err
+	}
+
+	if token != "" {
+		req.Header.Add("Authorization", "Bearer "+token)
 	}
 
 	res, err := client.Do(req)

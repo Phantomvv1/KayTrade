@@ -53,14 +53,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorPage.PrevPage = m.currentPage
 		m.errorPage.Err = msg.Err
 		m.currentPage = msg.Page
-		return m, nil
+		model := m.getModelFromPageNumber()
+		return m, model.Init()
 	case messages.TokenSwitchMsg:
 		m.updateToken(msg.Token)
 		return m, msg.RetryFunc
 	case messages.LoginSuccessMsg:
 		m.updateToken(msg.Token)
 		m.currentPage = msg.Page
-		return m, nil
+		model := m.getModelFromPageNumber()
+		return m, model.Init()
 	}
 
 	var cmd tea.Cmd
@@ -120,4 +122,19 @@ func (m *Model) updateToken(token string) {
 	m.errorPage.BaseModel.Token = token
 	m.landingPage.BaseModel.Token = token
 	m.loginPage.BaseModel.Token = token
+}
+
+func (m Model) getModelFromPageNumber() tea.Model {
+	switch m.currentPage {
+	case messages.LandingPageNumber:
+		return m.landingPage
+	case messages.WatchlistPageNumber:
+		return m.watchlistPage
+	case messages.ErrorPageNumber:
+		return m.errorPage
+	case messages.LoginPageNumber:
+		return m.loginPage
+	default:
+		return nil
+	}
 }
