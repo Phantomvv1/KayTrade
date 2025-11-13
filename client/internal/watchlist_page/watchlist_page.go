@@ -11,8 +11,6 @@ import (
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
 	"github.com/Phantomvv1/KayTrade/internal/requests"
-	"github.com/blacktop/go-termimg"
-	_ "github.com/blacktop/go-termimg"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -29,7 +27,6 @@ type WatchlistPage struct {
 	spinner        spinner.Model
 	emptyWatchlist bool
 	focusedList    bool
-	logoToDisplay  *termimg.Image
 	renderedLogo   string
 }
 
