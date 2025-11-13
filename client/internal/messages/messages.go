@@ -6,7 +6,8 @@ const (
 	LandingPageNumber = iota
 	WatchlistPageNumber
 	LoginPageNumber
-	SearchPage
+	SearchPageNumber
+	CompanyPageNumber
 	ErrorPageNumber
 )
 
@@ -24,6 +25,14 @@ type TokenSwitchMsg struct {
 type LoginSuccessMsg struct {
 	Token string
 	Page  int
+}
+
+type ReloadAndSwitchPageMsg struct {
+	Page int
+}
+
+type PageSwitchWithoutInit struct {
+	Page int
 }
 
 type Company interface {

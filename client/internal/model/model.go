@@ -10,6 +10,7 @@ import (
 	landingpage "github.com/Phantomvv1/KayTrade/internal/landing_page"
 	loginpage "github.com/Phantomvv1/KayTrade/internal/login_page"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
+	searchpage "github.com/Phantomvv1/KayTrade/internal/search_page"
 	watchlistpage "github.com/Phantomvv1/KayTrade/internal/watchlist_page"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -19,6 +20,7 @@ type Model struct {
 	errorPage     errorpage.ErrorPage
 	watchlistPage watchlistpage.WatchlistPage
 	loginPage     loginpage.LoginPage
+	searchPage    searchpage.SearchPage
 	currentPage   int
 }
 
@@ -35,6 +37,7 @@ func NewModel() Model {
 		errorPage:     errorpage.ErrorPage{},
 		watchlistPage: watchlistpage.NewWatchlistPage(client),
 		loginPage:     loginpage.NewLoginPage(client),
+		searchPage:    searchpage.NewSearchPage(client),
 		currentPage:   messages.LandingPageNumber,
 	}
 }
@@ -46,7 +49,6 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		log.Printf("Size msg!")
 		m.setSize(msg.Width, msg.Height)
 		return m, nil
 	case messages.PageSwitchMsg:
@@ -63,6 +65,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentPage = msg.Page
 		model := m.getModelFromPageNumber()
 		return m, model.Init()
+	case messages.ReloadAndSwitchPageMsg:
+		model := m.getModelFromPageNumber(msg.Page)
+		m.currentPage = msg.Page
+		return m, model.Init()
+	case messages.PageSwitchWithoutInit:
+		m.currentPage = msg.Page
+		return m, nil
 	}
 
 	var cmd tea.Cmd
@@ -80,6 +89,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.LoginPageNumber:
 		page, cmd = m.loginPage.Update(msg)
 		m.loginPage = page.(loginpage.LoginPage)
+	case messages.SearchPageNumber:
+		page, cmd = m.searchPage.Update(msg)
+		m.searchPage = page.(searchpage.SearchPage)
 	default:
 		m.currentPage = messages.ErrorPageNumber
 		m.errorPage.Err = errors.New("Unkown error")
@@ -98,6 +110,8 @@ func (m Model) View() string {
 		return m.watchlistPage.View()
 	case messages.LoginPageNumber:
 		return m.loginPage.View()
+	case messages.SearchPageNumber:
+		return m.searchPage.View()
 	default:
 		return m.errorPage.View()
 	}
@@ -115,6 +129,9 @@ func (m *Model) setSize(width, height int) {
 
 	m.loginPage.BaseModel.Width = width
 	m.loginPage.BaseModel.Height = height
+
+	m.searchPage.BaseModel.Width = width
+	m.searchPage.BaseModel.Height = height
 }
 
 func (m *Model) updateToken(token string) {
@@ -122,18 +139,45 @@ func (m *Model) updateToken(token string) {
 	m.errorPage.BaseModel.Token = token
 	m.landingPage.BaseModel.Token = token
 	m.loginPage.BaseModel.Token = token
+	m.searchPage.BaseModel.Token = token
 }
 
-func (m Model) getModelFromPageNumber() tea.Model {
-	switch m.currentPage {
+func (m *Model) getModelFromPageNumber(number ...int) tea.Model {
+	page := 0
+	reloadNeeded := false
+	if number != nil {
+		reloadNeeded = true
+		page = number[0]
+	} else {
+		page = m.currentPage
+	}
+
+	switch page {
 	case messages.LandingPageNumber:
+		if reloadNeeded {
+			m.landingPage.Reload()
+		}
 		return m.landingPage
 	case messages.WatchlistPageNumber:
+		if reloadNeeded {
+			m.watchlistPage.Reload()
+		}
 		return m.watchlistPage
 	case messages.ErrorPageNumber:
+		if reloadNeeded {
+			m.errorPage.Reload()
+		}
 		return m.errorPage
 	case messages.LoginPageNumber:
+		if reloadNeeded {
+			m.loginPage.Reload()
+		}
 		return m.loginPage
+	case messages.SearchPageNumber:
+		if reloadNeeded {
+			m.searchPage.Reload()
+		}
+		return m.searchPage
 	default:
 		return nil
 	}

@@ -211,7 +211,7 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "s" {
 			return w, func() tea.Msg {
 				return messages.PageSwitchMsg{
-					Page: messages.SearchPage,
+					Page: messages.SearchPageNumber,
 				}
 			}
 		}
@@ -271,7 +271,6 @@ func (w WatchlistPage) View() string {
 	content := ""
 	if !w.emptyWatchlist {
 		content = lipgloss.JoinHorizontal(lipgloss.Top,
-			// lipgloss.NewStyle().MarginLeft(1).Render(w.renderedLogo),
 			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).MarginLeft(1).Render(w.companies.View()),
 			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).MarginLeft(20).Render(right),
 		)
@@ -291,4 +290,8 @@ func (w WatchlistPage) View() string {
 	header = lipgloss.PlaceHorizontal(w.BaseModel.Width, lipgloss.Center, header)
 
 	return header + content
+}
+
+func (w *WatchlistPage) Reload() {
+	w.companies.SetItems([]list.Item{})
 }

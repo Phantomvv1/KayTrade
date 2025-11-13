@@ -263,3 +263,10 @@ func (l LoginPage) submit() tea.Msg {
 		Page:  messages.WatchlistPageNumber,
 	}
 }
+
+func (l *LoginPage) Reload() {
+	l.email.SetValue("")
+	l.password.SetValue("")
+	l.cursor = 0
+	l.typing = true
+}

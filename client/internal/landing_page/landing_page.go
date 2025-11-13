@@ -65,3 +65,5 @@ func (l LandingPage) View() string {
 
 	return ui
 }
+
+func (l *LandingPage) Reload() {}
