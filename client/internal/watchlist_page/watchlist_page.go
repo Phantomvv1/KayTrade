@@ -114,13 +114,6 @@ func (c companyItem) Title() string       { return c.company.Name }
 func (c companyItem) Description() string { return c.company.Description }
 func (c companyItem) FilterValue() string { return c.company.Name }
 
-// type logo struct {
-// 	logo           *termimg.Image
-// 	expirationDate time.Time
-// }
-
-// var logoCache = make(map[string]*logo)
-
 func NewWatchlistPage(client *http.Client) WatchlistPage {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	l.KeyMap.Quit = key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit"))
@@ -225,32 +218,6 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-		// selectedItem := w.companies.SelectedItem()
-		// item := selectedItem.(companyItem)
-		// switch msg.String() {
-		// case "j", "down", "k", "up":
-		// 	l, err := getLogo(item.company)
-		// 	if err != nil {
-		// 		return w, func() tea.Msg {
-		// 			return messages.PageSwitchMsg{
-		// 				Page: messages.ErrorPageNumber,
-		// 				Err:  err,
-		// 			}
-		// 		}
-		// 	}
-		//
-		// 	w.logoToDisplay = l.logo
-		//
-		// 	if w.logoToDisplay != nil {
-		// 		w.logoToDisplay = w.logoToDisplay.Width(35).Height(15)
-		// 		renderedImg, err := w.logoToDisplay.Render()
-		// 		if err != nil {
-		// 			w.renderedLogo = "Error loading the logo of the current company"
-		// 		} else {
-		// 			w.renderedLogo = renderedImg
-		// 		}
-		// 	}
-		// }
 
 		return w, cmd
 	case spinner.TickMsg:
@@ -328,34 +295,3 @@ func (w WatchlistPage) View() string {
 
 	return header + content
 }
-
-// func getLogo(company CompanyInfo) (*logo, error) {
-// 	cachedLogo, ok := logoCache[company.Symbol]
-// 	if !ok {
-// 		return fetchLogo(company)
-// 	}
-//
-// 	if time.Now().UTC().After(cachedLogo.expirationDate) {
-// 		return fetchLogo(company)
-// 	}
-//
-// 	return cachedLogo, nil
-// }
-//
-// func fetchLogo(company CompanyInfo) (*logo, error) {
-// 	body, err := requests.MakeRequest(http.MethodGet, company.Logo, nil, http.DefaultClient, "")
-// 	if err != nil {
-// 		return nil, err
-// 	}
-//
-// 	reader := bytes.NewReader(body)
-// 	img, err := termimg.From(reader)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-//
-// 	res := &logo{logo: img, expirationDate: time.Now().UTC().Add(24 * time.Hour * 2)} // 2 days
-// 	logoCache[company.Symbol] = res
-//
-// 	return res, nil
-// }
