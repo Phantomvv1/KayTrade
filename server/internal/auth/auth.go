@@ -263,42 +263,7 @@ func LogIn(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": jwtToken})
 }
 
-func GetCurrentProfile(c *gin.Context) {
-	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
-	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error couldn't connect to the database"})
-		return
-	}
-	defer conn.Close(context.Background())
-
-	userID, _ := c.Get("id")
-	id := userID.(string)
-
-	accountTypeUnk, _ := c.Get("accountType")
-	accountType := accountTypeUnk.(byte)
-
-	var name, email string
-	var createdAt, updatedAt time.Time
-	err = conn.QueryRow(context.Background(), "select full_name, email, created_at, updated_at from authentication where id = $1", id).Scan(&name, &email, &createdAt, &updatedAt)
-	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting information from the database"})
-		return
-	}
-
-	userProfile := Profile{
-		ID:        id,
-		Name:      name,
-		Email:     email,
-		Type:      accountType,
-		CreatedAt: createdAt,
-		UpdatedAt: updatedAt,
-	}
-
-	c.JSON(http.StatusOK, gin.H{"profile": userProfile})
-}
-
+// From local DB
 func GetAllUsers(c *gin.Context) {
 	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -459,6 +424,7 @@ func Refresh(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
+// From the local DB
 func GetUser(c *gin.Context) {
 	id := c.GetString("id")
 	acc, _ := c.Get("accountType")
@@ -570,6 +536,21 @@ func DeleteUser(c *gin.Context) {
 	_, err = conn.Exec(context.Background(), "delete from authentication where id = $1", id)
 	if err != nil {
 		ErrorExit(c, http.StatusInternalServerError, "deleting the person from the database", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}
+
+// All the profile information
+func GetUserAlpaca(c *gin.Context) {
+	id := c.GetString("id")
+
+	headers := BasicAuth()
+
+	body, err := SendRequest[any](http.MethodGet, BaseURL+Accounts+id, nil, nil, headers)
+	if err != nil {
+		RequestExit(c, body, err, "unable to get the account of the user")
 		return
 	}
 

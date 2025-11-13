@@ -48,7 +48,7 @@ var assetCache []Asset
 var missingInfo = errors.New("There is no information for this company in redis")
 
 func CreateWatchlistTable(conn *pgx.Conn) error {
-	_, err := conn.Exec(context.Background(), "create table if not exists wishlist(user_id uuid references authentication(id), symbol text)")
+	_, err := conn.Exec(context.Background(), "create table if not exists wishlist(user_id uuid references authentication(id) on delete cascade, symbol text)")
 	return err
 }
 
