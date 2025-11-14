@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 
+	companypage "github.com/Phantomvv1/KayTrade/internal/company_page"
 	errorpage "github.com/Phantomvv1/KayTrade/internal/error_page"
 	landingpage "github.com/Phantomvv1/KayTrade/internal/landing_page"
 	loginpage "github.com/Phantomvv1/KayTrade/internal/login_page"
@@ -21,6 +22,7 @@ type Model struct {
 	watchlistPage watchlistpage.WatchlistPage
 	loginPage     loginpage.LoginPage
 	searchPage    searchpage.SearchPage
+	companyPage   companypage.CompanyPage
 	currentPage   int
 }
 
@@ -38,6 +40,7 @@ func NewModel() Model {
 		watchlistPage: watchlistpage.NewWatchlistPage(client),
 		loginPage:     loginpage.NewLoginPage(client),
 		searchPage:    searchpage.NewSearchPage(client),
+		companyPage:   companypage.NewCompanyPage(client),
 		currentPage:   messages.LandingPageNumber,
 	}
 }
@@ -55,6 +58,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorPage.PrevPage = m.currentPage
 		m.errorPage.Err = msg.Err
 		m.currentPage = msg.Page
+		m.companyPage.CompanyInfo = msg.Company
 		model := m.getModelFromPageNumber()
 		return m, model.Init()
 	case messages.TokenSwitchMsg:
@@ -96,6 +100,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.SearchPageNumber:
 		page, cmd = m.searchPage.Update(msg)
 		m.searchPage = page.(searchpage.SearchPage)
+	case messages.CompanyPageNumber:
+		page, cmd = m.companyPage.Update(msg)
+		m.companyPage = page.(companypage.CompanyPage)
 	default:
 		m.currentPage = messages.ErrorPageNumber
 		m.errorPage.Err = errors.New("Unkown error")
@@ -116,6 +123,8 @@ func (m Model) View() string {
 		return m.loginPage.View()
 	case messages.SearchPageNumber:
 		return m.searchPage.View()
+	case messages.CompanyPageNumber:
+		return m.companyPage.View()
 	default:
 		return m.errorPage.View()
 	}
@@ -136,6 +145,9 @@ func (m *Model) setSize(width, height int) {
 
 	m.searchPage.BaseModel.Width = width
 	m.searchPage.BaseModel.Height = height
+
+	m.companyPage.BaseModel.Width = width
+	m.companyPage.BaseModel.Height = height
 }
 
 func (m *Model) updateToken(token string) {
@@ -144,6 +156,7 @@ func (m *Model) updateToken(token string) {
 	m.landingPage.BaseModel.Token = token
 	m.loginPage.BaseModel.Token = token
 	m.searchPage.BaseModel.Token = token
+	m.companyPage.BaseModel.Token = token
 }
 
 func (m *Model) getModelFromPageNumber() tea.Model {
@@ -158,6 +171,8 @@ func (m *Model) getModelFromPageNumber() tea.Model {
 		return m.loginPage
 	case messages.SearchPageNumber:
 		return m.searchPage
+	case messages.CompanyPageNumber:
+		return m.companyPage
 	default:
 		return nil
 	}
@@ -175,6 +190,8 @@ func (m *Model) Reload(page int) {
 		m.loginPage.Reload()
 	case messages.SearchPageNumber:
 		m.searchPage.Reload()
+	case messages.CompanyPageNumber:
+		m.companyPage.Reload()
 	default:
 		return
 	}

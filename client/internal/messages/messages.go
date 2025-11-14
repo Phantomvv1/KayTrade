@@ -14,7 +14,7 @@ const (
 type PageSwitchMsg struct {
 	Page    int
 	Err     error
-	Company CompanyInfo
+	Company *CompanyInfo
 }
 
 type TokenSwitchMsg struct {
