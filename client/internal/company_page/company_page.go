@@ -82,10 +82,6 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (c CompanyPage) View() string {
-	if c.CompanyInfo == nil {
-		return "Loading company information..."
-	}
-
 	// Define colors
 	cyan := lipgloss.Color("#00FFFF")
 	purple := lipgloss.Color("#A020F0")
@@ -234,10 +230,6 @@ func (c CompanyPage) renderPrice() string {
 
 		lines = append(lines, "")
 		lines = append(lines, labelStyle.Render("Change:          ")+changeStyle.Render(fmt.Sprintf("$%.2f (%.2f%%)", change, changePercent)))
-	}
-
-	if len(lines) == 0 {
-		return "Price information not available (Alpaca may be down)."
 	}
 
 	return strings.Join(lines, "\n")
