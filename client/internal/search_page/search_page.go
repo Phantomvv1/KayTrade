@@ -170,6 +170,12 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		default:
+			if !s.name {
+				if msg.String() != "backspace" {
+					msg = tea.KeyMsg{Runes: []rune(strings.ToUpper(msg.String()))}
+				}
+			}
+
 			old := s.searchField.Value()
 			newField, cmd := s.searchField.Update(msg)
 			s.searchField = newField
