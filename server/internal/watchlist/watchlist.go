@@ -13,10 +13,10 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
 	. "github.com/Phantomvv1/KayTrade/internal/requests"
+	"github.com/agnivade/levenshtein"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/redis/go-redis/v9"
@@ -613,37 +613,37 @@ func RemoveAllSymbolsFromWatchlist(c *gin.Context) { // to test
 	c.JSON(http.StatusOK, nil)
 }
 
-func module(num int) int {
-	if num >= 0 {
-		return num
-	} else {
-		return -num
-	}
-}
-
-func levenshtein(a, target string) int {
-	if a == "" {
-		return utf8.RuneCountInString(target)
-	}
-	if target == "" {
-		return utf8.RuneCountInString(a)
-	}
-
-	targetLen := utf8.RuneCountInString(target)
-	difference := module(targetLen - utf8.RuneCountInString(a))
-
-	for i, r := range a {
-		if i >= targetLen {
-			break
-		}
-
-		if r != []rune(target)[i] {
-			difference++
-		}
-	}
-
-	return difference
-}
+// func module(num int) int {
+// 	if num >= 0 {
+// 		return num
+// 	} else {
+// 		return -num
+// 	}
+// }
+//
+// func levenshtein(a, target string) int {
+// 	if a == "" {
+// 		return utf8.RuneCountInString(target)
+// 	}
+// 	if target == "" {
+// 		return utf8.RuneCountInString(a)
+// 	}
+//
+// 	targetLen := utf8.RuneCountInString(target)
+// 	difference := module(targetLen - utf8.RuneCountInString(a))
+//
+// 	for i, r := range a {
+// 		if i >= targetLen {
+// 			break
+// 		}
+//
+// 		if r != []rune(target)[i] {
+// 			difference++
+// 		}
+// 	}
+//
+// 	return difference
+// }
 
 func SearchCompanies(c *gin.Context) {
 	symbol := c.Query("symbol")
@@ -665,7 +665,7 @@ func SearchCompanies(c *gin.Context) {
 
 	if symbol != "" {
 		for i := range assets {
-			assets[i].distance = levenshtein(assets[i].Symbol, symbol)
+			assets[i].distance = levenshtein.ComputeDistance(assets[i].Symbol, symbol)
 		}
 
 		result := make([]Asset, 5)
