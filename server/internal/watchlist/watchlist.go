@@ -831,31 +831,32 @@ func cleanAssets(assets []Asset) []Asset {
 func GetCompanyInformation(c *gin.Context) {
 	symbol := c.Param("symbol")
 
+	now := time.Now().UTC()
+	start := ""
+	checkPassed := false
+	if now.Hour() < 13 || now.Hour() >= 20 { // market opens at 13:30 UTC and closes at 20:00 UTC
+		if now.Weekday() == time.Monday {
+			start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
+		} else {
+			start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
+		}
+
+		checkPassed = true
+	}
+	if now.Hour() == 13 && now.Minute() < 30 {
+		if now.Weekday() == time.Monday {
+			start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
+		} else {
+			start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
+		}
+		checkPassed = true
+	} else if !checkPassed {
+		start = time.Now().UTC().Truncate(24 * time.Hour).Format(time.RFC3339)
+	}
+
 	response, err := getInfoAndLogo(symbol)
 	if err != nil {
 		if errors.Is(err, missingInfo) {
-			now := time.Now().UTC()
-			start := ""
-			checkPassed := false
-			if now.Hour() < 13 || now.Hour() >= 20 { // market opens at 13:30 UTC and closes at 20:00 UTC
-				if now.Weekday() == time.Monday {
-					start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
-				} else {
-					start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
-				}
-
-				checkPassed = true
-			}
-			if now.Hour() == 13 && now.Minute() < 30 {
-				if now.Weekday() == time.Monday {
-					start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
-				} else {
-					start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
-				}
-				checkPassed = true
-			} else if !checkPassed {
-				start = time.Now().UTC().Truncate(24 * time.Hour).Format(time.RFC3339)
-			}
 
 			res := make(chan result)
 			go getLogo(symbol, res)
@@ -914,6 +915,21 @@ func GetCompanyInformation(c *gin.Context) {
 		ErrorExit(c, http.StatusInternalServerError, "couldn't check if the information about this company is cached", err)
 		return
 	}
+
+	result := make(chan result)
+	go getPriceInformation([]string{symbol}, start, result)
+	res := <-result
+	if res.err != nil {
+		ErrorExit(c, http.StatusFailedDependency, "couldn't get the opening and closing price", res.err)
+		return
+	}
+
+	log.Println(res)
+	info := res.information[symbol]
+	openingPrice := info[0]["o"].(float64)
+	closingPrice := info[0]["c"].(float64)
+	response.OpeningPrice = openingPrice
+	response.ClosingPrice = closingPrice
 
 	c.JSON(http.StatusOK, gin.H{"information": response})
 }
