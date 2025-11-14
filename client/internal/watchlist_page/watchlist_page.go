@@ -30,59 +30,6 @@ type WatchlistPage struct {
 	renderedLogo   string
 }
 
-type CompanyInfo struct {
-	Symbol       string  `json:"symbol"`
-	OpeningPrice float64 `json:"opening_price,omitempty"`
-	ClosingPrice float64 `json:"closing_price,omitempty"`
-	Logo         string  `json:"logo"`
-	Name         string  `json:"name"`
-	History      string  `json:"history"`
-	IsNSFW       bool    `json:"isNsfw"`
-	Description  string  `json:"description"`
-	FoundedYear  int     `json:"founded_year"`
-	Domain       string  `json:"domain"`
-}
-
-func (c CompanyInfo) SymbolInfo() string {
-	return c.Symbol
-}
-
-func (c CompanyInfo) OpeningPriceInfo() float64 {
-	return c.OpeningPrice
-}
-
-func (c CompanyInfo) ClosingPriceInfo() float64 {
-	return c.ClosingPrice
-}
-
-func (c CompanyInfo) LogoInfo() string {
-	return c.Logo
-}
-
-func (c CompanyInfo) NameInfo() string {
-	return c.Name
-}
-
-func (c CompanyInfo) HistoryInfo() string {
-	return c.History
-}
-
-func (c CompanyInfo) IsNSFWInfo() bool {
-	return c.IsNSFW
-}
-
-func (c CompanyInfo) DescriptionInfo() string {
-	return c.Description
-}
-
-func (c CompanyInfo) FoundedYearInfo() int {
-	return c.FoundedYear
-}
-
-func (c CompanyInfo) DomainInfo() string {
-	return c.Domain
-}
-
 type MarketMover struct {
 	Change        float64 `json:"change"`
 	PercentChange float64 `json:"percent_change"`
@@ -97,14 +44,14 @@ type MarketMovers struct {
 }
 
 type initResult struct {
-	Companies []CompanyInfo
+	Companies []messages.CompanyInfo
 	Gainers   []MarketMover
 	Losers    []MarketMover
 	Updated   time.Time
 }
 
 type companyItem struct {
-	company CompanyInfo
+	company messages.CompanyInfo
 }
 
 func (c companyItem) Title() string       { return c.company.Name }
@@ -134,7 +81,7 @@ func (w WatchlistPage) init() tea.Msg {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
-	var companies []CompanyInfo
+	var companies []messages.CompanyInfo
 	var movers MarketMovers
 	var err1, err2 error
 
@@ -146,7 +93,7 @@ func (w WatchlistPage) init() tea.Msg {
 			return
 		}
 
-		var info map[string][]CompanyInfo
+		var info map[string][]messages.CompanyInfo
 		err1 = json.Unmarshal(body, &info)
 		companies = info["information"]
 	}()

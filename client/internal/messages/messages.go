@@ -14,7 +14,7 @@ const (
 type PageSwitchMsg struct {
 	Page    int
 	Err     error
-	Company Company
+	Company CompanyInfo
 }
 
 type TokenSwitchMsg struct {
@@ -39,15 +39,15 @@ type ReloadMsg struct {
 	Page int
 }
 
-type Company interface {
-	SymbolInfo() string
-	OpeningPriceInfo() float64
-	ClosingPriceInfo() float64
-	LogoInfo() string
-	NameInfo() string
-	HistoryInfo() string
-	IsNSFWInfo() bool
-	DescriptionInfo() string
-	FoundedYearInfo() int
-	DomainInfo() string
+type CompanyInfo struct {
+	Symbol       string  `json:"symbol"`
+	OpeningPrice float64 `json:"opening_price,omitempty"`
+	ClosingPrice float64 `json:"closing_price,omitempty"`
+	Logo         string  `json:"logo"`
+	Name         string  `json:"name"`
+	History      string  `json:"history"`
+	IsNSFW       bool    `json:"isNsfw"`
+	Description  string  `json:"description"`
+	FoundedYear  int     `json:"founded_year"`
+	Domain       string  `json:"domain"`
 }

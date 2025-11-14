@@ -28,59 +28,6 @@ type Asset struct {
 	Name   string `json:"name"`
 }
 
-type CompanyInfo struct {
-	Symbol       string  `json:"symbol"`
-	OpeningPrice float64 `json:"opening_price,omitempty"`
-	ClosingPrice float64 `json:"closing_price,omitempty"`
-	Logo         string  `json:"logo"`
-	Name         string  `json:"name"`
-	History      string  `json:"history"`
-	IsNSFW       bool    `json:"isNsfw"`
-	Description  string  `json:"description"`
-	FoundedYear  int     `json:"founded_year"`
-	Domain       string  `json:"domain"`
-}
-
-func (c CompanyInfo) SymbolInfo() string {
-	return c.Symbol
-}
-
-func (c CompanyInfo) OpeningPriceInfo() float64 {
-	return c.OpeningPrice
-}
-
-func (c CompanyInfo) ClosingPriceInfo() float64 {
-	return c.ClosingPrice
-}
-
-func (c CompanyInfo) LogoInfo() string {
-	return c.Logo
-}
-
-func (c CompanyInfo) NameInfo() string {
-	return c.Name
-}
-
-func (c CompanyInfo) HistoryInfo() string {
-	return c.History
-}
-
-func (c CompanyInfo) IsNSFWInfo() bool {
-	return c.IsNSFW
-}
-
-func (c CompanyInfo) DescriptionInfo() string {
-	return c.Description
-}
-
-func (c CompanyInfo) FoundedYearInfo() int {
-	return c.FoundedYear
-}
-
-func (c CompanyInfo) DomainInfo() string {
-	return c.Domain
-}
-
 type asset struct {
 	asset Asset
 }
@@ -177,7 +124,7 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return s, func() tea.Msg {
 				return messages.PageSwitchMsg{
 					Page:    messages.CompanyPageNumber,
-					Company: company,
+					Company: *company,
 				}
 			}
 		default:
@@ -269,14 +216,14 @@ func (s SearchPage) SendSearchRequest() ([]Asset, error) {
 	return response["result"], nil
 }
 
-func (s SearchPage) GetCompanyInfo() (*CompanyInfo, error) {
+func (s SearchPage) GetCompanyInfo() (*messages.CompanyInfo, error) {
 	item := s.suggestions.Items()[s.suggestions.Cursor()].(asset)
 	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/company-information/"+item.asset.Symbol, nil, http.DefaultClient, s.BaseModel.Token)
 	if err != nil {
 		return nil, err
 	}
 
-	res := CompanyInfo{}
+	res := messages.CompanyInfo{}
 	err = json.Unmarshal(body, &res)
 	if err != nil {
 		return nil, err
