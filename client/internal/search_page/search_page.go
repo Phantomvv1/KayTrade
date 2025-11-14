@@ -165,8 +165,8 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			return s, func() tea.Msg {
 				return messages.PageSwitchMsg{
-					Page: messages.CompanyPageNumber,
-					Comp: company,
+					Page:    messages.CompanyPageNumber,
+					Company: company,
 				}
 			}
 		default:

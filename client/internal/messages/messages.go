@@ -12,9 +12,9 @@ const (
 )
 
 type PageSwitchMsg struct {
-	Page int
-	Err  error
-	Comp Company
+	Page    int
+	Err     error
+	Company Company
 }
 
 type TokenSwitchMsg struct {
