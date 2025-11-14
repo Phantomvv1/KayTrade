@@ -232,14 +232,13 @@ func (w WatchlistPage) View() string {
 	green := lipgloss.Color("#0B6623")
 
 	headerStyle := lipgloss.NewStyle().
-		Foreground(purple).
-		Background(cyan).
+		Foreground(cyan).
 		Bold(true).
 		Padding(0, 2).
 		MarginBottom(1).
 		Align(lipgloss.Center)
 
-	header := headerStyle.Render(w.titleBar) + "\n\n"
+	header := "\n" + headerStyle.Render(w.titleBar) + "\n\n"
 
 	if !w.loaded {
 		return lipgloss.Place(w.BaseModel.Width, w.BaseModel.Height, lipgloss.Center, lipgloss.Center, w.spinner.View())

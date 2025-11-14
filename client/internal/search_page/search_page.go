@@ -2,12 +2,14 @@ package searchpage
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
 	"github.com/Phantomvv1/KayTrade/internal/requests"
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -16,8 +18,7 @@ import (
 type SearchPage struct {
 	BaseModel   basemodel.BaseModel
 	searchField textinput.Model
-	suggestions []Asset
-	cursor      int
+	suggestions list.Model
 	name        bool
 }
 
@@ -79,6 +80,14 @@ func (c CompanyInfo) DomainInfo() string {
 	return c.Domain
 }
 
+type asset struct {
+	asset Asset
+}
+
+func (c asset) Title() string       { return c.asset.Symbol }
+func (c asset) Description() string { return c.asset.Name }
+func (c asset) FilterValue() string { return c.asset.Symbol }
+
 func NewSearchPage(client *http.Client) SearchPage {
 	search := textinput.New()
 	search.Placeholder = "Searching by symbol of the company"
@@ -86,10 +95,16 @@ func NewSearchPage(client *http.Client) SearchPage {
 	search.PlaceholderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#808080"))
 	search.Focus()
 
+	delegate := list.NewDefaultDelegate()
+	delegate.ShortHelpFunc = nil
+	delegate.FullHelpFunc = nil
+	list := list.New([]list.Item{}, delegate, 40, 30)
+
 	return SearchPage{
 		BaseModel:   basemodel.BaseModel{Client: client},
 		searchField: search,
 		name:        false,
+		suggestions: list,
 	}
 }
 
@@ -116,12 +131,12 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				s.searchField.Placeholder = "Searching by symbol of the company"
 			}
 		case "ctrl+j", "down":
-			if s.cursor < len(s.suggestions)-1 {
-				s.cursor++
+			if s.suggestions.Cursor() < len(s.suggestions.Items())-1 {
+				s.suggestions.Select(s.suggestions.Cursor() + 1)
 			}
 		case "ctrl+k", "up":
-			if s.cursor > 0 {
-				s.cursor--
+			if s.suggestions.Cursor() > 0 {
+				s.suggestions.Select(s.suggestions.Cursor() - 1)
 			}
 		case "enter":
 			company, err := s.GetCompanyInfo()
@@ -141,17 +156,28 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		default:
-			info, err := s.SendSearchRequest()
-			if err != nil {
-				return s, func() tea.Msg {
-					return messages.PageSwitchMsg{
-						Page: messages.ErrorPageNumber,
-						Err:  err,
+			old := s.searchField.Value()
+			newField, cmd := s.searchField.Update(msg)
+			s.searchField = newField
+
+			if newField.Value() != old && newField.Value() != "" {
+				info, err := s.SendSearchRequest()
+				if err != nil {
+					return s, func() tea.Msg {
+						return messages.PageSwitchMsg{
+							Page: messages.ErrorPageNumber,
+							Err:  err,
+						}
 					}
+				}
+
+				s.suggestions.SetItems(nil)
+				for i, item := range info {
+					s.suggestions.InsertItem(i, asset{asset: item})
 				}
 			}
 
-			s.suggestions = info
+			return s, cmd
 		}
 	}
 
@@ -159,12 +185,57 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (s SearchPage) View() string {
-	return ""
+	cyan := lipgloss.Color("#00FFFF")
+	purple := lipgloss.Color("#A020F0")
+
+	title := lipgloss.NewStyle().
+		Foreground(cyan).
+		Bold(true).
+		Padding(0, 2).
+		MarginBottom(1).
+		Align(lipgloss.Center).
+		Render("🔎 Search")
+
+	// Search bar block
+	searchBox := lipgloss.NewStyle().
+		Padding(1, 2).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(purple).
+		Width(s.BaseModel.Width / 2).
+		Align(lipgloss.Left).
+		Render(s.searchField.View())
+
+	// Suggestions block
+	suggestionsView := s.suggestions.View()
+	suggestionsBox := lipgloss.NewStyle().
+		Padding(1, 2).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(purple).
+		Width(s.BaseModel.Width / 2).
+		Height(s.BaseModel.Height - 10). // space for title + search
+		Render(suggestionsView)
+
+	// Put search bar above the suggestions:
+	combined := lipgloss.JoinVertical(
+		lipgloss.Center,
+		title,
+		searchBox,
+		suggestionsBox,
+	)
+
+	// Center horizontally, 3 lines of padding at top
+	return lipgloss.Place(
+		s.BaseModel.Width,
+		s.BaseModel.Height,
+		lipgloss.Center,
+		lipgloss.Top,
+		"\n\n\n"+combined,
+	)
 }
 
 func (s SearchPage) SendSearchRequest() ([]Asset, error) {
 	arr := strings.Split(s.searchField.Placeholder, " ")
-	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/search?"+arr[2], nil, http.DefaultClient, s.BaseModel.Token)
+	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/search?"+arr[2]+"="+s.searchField.Value(), nil, http.DefaultClient, s.BaseModel.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -175,11 +246,13 @@ func (s SearchPage) SendSearchRequest() ([]Asset, error) {
 		return nil, err
 	}
 
-	return response["information"], nil
+	log.Println(response)
+	return response["result"], nil
 }
 
 func (s SearchPage) GetCompanyInfo() (*CompanyInfo, error) {
-	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/company-information/"+s.suggestions[s.cursor].Symbol, nil, http.DefaultClient, s.BaseModel.Token)
+	item := s.suggestions.Items()[s.suggestions.Cursor()].(asset)
+	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/company-information/"+item.asset.Symbol, nil, http.DefaultClient, s.BaseModel.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +268,6 @@ func (s SearchPage) GetCompanyInfo() (*CompanyInfo, error) {
 
 func (s *SearchPage) Reload() {
 	s.searchField.SetValue("")
-	s.suggestions = nil
-	s.cursor = 0
+	s.suggestions.SetItems([]list.Item{})
 	s.name = false
 }
