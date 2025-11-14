@@ -9,6 +9,7 @@ import (
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
 	"github.com/Phantomvv1/KayTrade/internal/requests"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -96,15 +97,28 @@ func NewSearchPage(client *http.Client) SearchPage {
 	search.Focus()
 
 	delegate := list.NewDefaultDelegate()
-	delegate.ShortHelpFunc = nil
-	delegate.FullHelpFunc = nil
-	list := list.New([]list.Item{}, delegate, 40, 30)
+	delegate.ShortHelpFunc = func() []key.Binding {
+		return []key.Binding{
+			key.NewBinding(key.WithKeys("ctrl+k", "up"), key.WithHelp("ctrl+k/↑", "up")),
+			key.NewBinding(key.WithKeys("ctrl+j", "down"), key.WithHelp("ctrl+j/↓", "down")),
+			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
+			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+		}
+	}
+
+	delegate.FullHelpFunc = func() [][]key.Binding {
+		return [][]key.Binding{}
+	}
+
+	sugg := list.New([]list.Item{}, delegate, 40, 30)
+	sugg.Title = "Search results"
+	sugg.KeyMap = list.KeyMap{}
 
 	return SearchPage{
 		BaseModel:   basemodel.BaseModel{Client: client},
 		searchField: search,
 		name:        false,
-		suggestions: list,
+		suggestions: sugg,
 	}
 }
 
