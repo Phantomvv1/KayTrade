@@ -89,6 +89,10 @@ func (c asset) Title() string       { return c.asset.Symbol }
 func (c asset) Description() string { return c.asset.Name }
 func (c asset) FilterValue() string { return c.asset.Symbol }
 
+type itemMsg struct {
+	items []list.Item
+}
+
 func NewSearchPage(client *http.Client) SearchPage {
 	search := textinput.New()
 	search.Placeholder = "Searching by symbol of the company"
@@ -128,6 +132,13 @@ func (s SearchPage) Init() tea.Cmd {
 
 func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case messages.PageSwitchMsg:
+		return s, func() tea.Msg {
+			return msg
+		}
+	case itemMsg:
+		s.suggestions.SetItems(nil)
+		s.suggestions.SetItems(msg.items)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
@@ -181,20 +192,7 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.searchField = newField
 
 			if newField.Value() != old && newField.Value() != "" {
-				info, err := s.SendSearchRequest()
-				if err != nil {
-					return s, func() tea.Msg {
-						return messages.PageSwitchMsg{
-							Page: messages.ErrorPageNumber,
-							Err:  err,
-						}
-					}
-				}
-
-				s.suggestions.SetItems(nil)
-				for i, item := range info {
-					s.suggestions.InsertItem(i, asset{asset: item})
-				}
+				return s, tea.Batch(s.SearchCmd(), cmd)
 			}
 
 			return s, cmd
@@ -291,4 +289,27 @@ func (s *SearchPage) Reload() {
 	s.searchField.SetValue("")
 	s.suggestions.SetItems([]list.Item{})
 	s.name = false
+}
+
+func (s SearchPage) SearchCmd() tea.Cmd {
+	info, err := s.SendSearchRequest()
+	if err != nil {
+		return func() tea.Msg {
+			return messages.PageSwitchMsg{
+				Page: messages.ErrorPageNumber,
+				Err:  err,
+			}
+		}
+	}
+
+	var res []list.Item
+	for _, item := range info {
+		res = append(res, asset{asset: item})
+	}
+
+	return func() tea.Msg {
+		return itemMsg{
+			items: res,
+		}
+	}
 }
