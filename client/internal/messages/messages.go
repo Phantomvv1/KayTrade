@@ -31,7 +31,11 @@ type ReloadAndSwitchPageMsg struct {
 	Page int
 }
 
-type PageSwitchWithoutInit struct {
+type PageSwitchWithoutInitMsg struct {
+	Page int
+}
+
+type ReloadMsg struct {
 	Page int
 }
 

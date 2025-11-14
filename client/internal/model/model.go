@@ -66,11 +66,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		model := m.getModelFromPageNumber()
 		return m, model.Init()
 	case messages.ReloadAndSwitchPageMsg:
-		model := m.getModelFromPageNumber(msg.Page)
+		m.Reload(msg.Page)
 		m.currentPage = msg.Page
+		model := m.getModelFromPageNumber()
 		return m, model.Init()
-	case messages.PageSwitchWithoutInit:
+	case messages.PageSwitchWithoutInitMsg:
 		m.currentPage = msg.Page
+		return m, nil
+	case messages.ReloadMsg:
+		m.Reload(msg.Page)
 		return m, nil
 	}
 
@@ -142,43 +146,36 @@ func (m *Model) updateToken(token string) {
 	m.searchPage.BaseModel.Token = token
 }
 
-func (m *Model) getModelFromPageNumber(number ...int) tea.Model {
-	page := 0
-	reloadNeeded := false
-	if number != nil {
-		reloadNeeded = true
-		page = number[0]
-	} else {
-		page = m.currentPage
-	}
-
-	switch page {
+func (m *Model) getModelFromPageNumber() tea.Model {
+	switch m.currentPage {
 	case messages.LandingPageNumber:
-		if reloadNeeded {
-			m.landingPage.Reload()
-		}
 		return m.landingPage
 	case messages.WatchlistPageNumber:
-		if reloadNeeded {
-			m.watchlistPage.Reload()
-		}
 		return m.watchlistPage
 	case messages.ErrorPageNumber:
-		if reloadNeeded {
-			m.errorPage.Reload()
-		}
 		return m.errorPage
 	case messages.LoginPageNumber:
-		if reloadNeeded {
-			m.loginPage.Reload()
-		}
 		return m.loginPage
 	case messages.SearchPageNumber:
-		if reloadNeeded {
-			m.searchPage.Reload()
-		}
 		return m.searchPage
 	default:
 		return nil
+	}
+}
+
+func (m *Model) Reload(page int) {
+	switch page {
+	case messages.LandingPageNumber:
+		m.landingPage.Reload()
+	case messages.WatchlistPageNumber:
+		m.watchlistPage.Reload()
+	case messages.ErrorPageNumber:
+		m.errorPage.Reload()
+	case messages.LoginPageNumber:
+		m.loginPage.Reload()
+	case messages.SearchPageNumber:
+		m.searchPage.Reload()
+	default:
+		return
 	}
 }
