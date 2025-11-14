@@ -15,6 +15,8 @@ const (
 	tabOverview = iota
 	tabHistory
 	tabPrice
+	tabChart
+	tabLiveUpdate
 	tabWarning
 )
 
@@ -22,6 +24,8 @@ var tabTitles = []string{
 	"Overview",
 	"History",
 	"Price",
+	"Price Chart",
+	"Live Price",
 	"Warning",
 }
 
@@ -36,7 +40,7 @@ func NewCompanyPage(client *http.Client) CompanyPage {
 	return CompanyPage{
 		BaseModel: basemodel.BaseModel{Client: client},
 		activeTab: tabOverview,
-		tabs:      []int{tabOverview, tabHistory, tabPrice},
+		tabs:      []int{tabOverview, tabHistory, tabPrice, tabChart, tabLiveUpdate},
 	}
 }
 
@@ -233,6 +237,14 @@ func (c CompanyPage) renderPrice() string {
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+func (c CompanyPage) renderChart() string {
+	return ""
+}
+
+func (c CompanyPage) renderLivePrice() string {
+	return ""
 }
 
 func (c CompanyPage) renderWarning() string {
