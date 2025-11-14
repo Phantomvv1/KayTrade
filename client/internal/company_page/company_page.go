@@ -3,17 +3,16 @@ package companypage
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 const (
 	tabOverview = iota
-	tabDescription
 	tabHistory
 	tabPrice
 	tabWarning
@@ -21,7 +20,6 @@ const (
 
 var tabTitles = []string{
 	"Overview",
-	"Description",
 	"History",
 	"Price",
 	"Warning",
@@ -31,46 +29,18 @@ type CompanyPage struct {
 	BaseModel   basemodel.BaseModel
 	CompanyInfo *messages.CompanyInfo
 	activeTab   int
-	viewport    viewport.Model
 	tabs        []int
 }
 
 func NewCompanyPage(client *http.Client) CompanyPage {
-	vp := viewport.New(100, 70)
-	vp.Style = lipgloss.NewStyle().MarginTop(1)
-
 	return CompanyPage{
 		BaseModel: basemodel.BaseModel{Client: client},
 		activeTab: tabOverview,
-		viewport:  vp,
-		tabs:      []int{tabOverview, tabDescription, tabHistory, tabPrice},
-	}
-}
-
-func (c *CompanyPage) refreshViewport() {
-	switch c.activeTab {
-	case tabOverview:
-		c.viewport.SetContent(c.renderOverview())
-
-	case tabDescription:
-		c.viewport.SetContent(c.CompanyInfo.Description)
-
-	case tabHistory:
-		c.viewport.SetContent(c.CompanyInfo.History)
-
-	case tabPrice:
-		c.viewport.SetContent(c.renderPrice())
-
-	case tabWarning:
-		c.viewport.SetContent(c.renderWarning())
+		tabs:      []int{tabOverview, tabHistory, tabPrice},
 	}
 }
 
 func (c CompanyPage) Init() tea.Cmd {
-	if c.CompanyInfo != nil {
-		c.refreshViewport()
-	}
-
 	return nil
 }
 
@@ -87,99 +57,208 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "esc":
 			return c, func() tea.Msg {
-				return messages.PageSwitchWithoutInitMsg{
-					Page: messages.WatchlistPageNumber,
+				return messages.PageSwitchMsg{
+					Page: messages.SearchPageNumber,
 				}
 			}
 
 		case "right", "l":
-			c.nextTab()
-		case "left", "h":
-			c.previousTab()
+			if c.activeTab < len(c.tabs)-1 {
+				c.activeTab++
+			} else {
+				c.activeTab = 0
+			}
 
-		case "down", "j", "up", "k":
-			var cmd tea.Cmd
-			c.viewport, cmd = c.viewport.Update(msg)
-			return c, cmd
+		case "left", "h":
+			if c.activeTab > 0 {
+				c.activeTab--
+			} else {
+				c.activeTab = len(c.tabs) - 1
+			}
 		}
 	}
 
 	return c, nil
 }
 
-func (c *CompanyPage) nextTab() {
-	if c.activeTab < len(c.tabs)-1 {
-		c.activeTab++
-	} else {
-		c.activeTab = 0
-	}
-	c.refreshViewport()
-}
-
-func (c *CompanyPage) previousTab() {
-	if c.activeTab > 0 {
-		c.activeTab--
-	} else {
-		c.activeTab = len(c.tabs) - 1
-	}
-	c.refreshViewport()
-}
-
 func (c CompanyPage) View() string {
-	return lipgloss.JoinVertical(
-		lipgloss.Center,
-		c.renderTabs(),
-		c.viewport.View(),
-	)
-}
+	if c.CompanyInfo == nil {
+		return "Loading company information..."
+	}
 
-func (c CompanyPage) renderTabs() string {
-	var out string
+	// Define colors
+	cyan := lipgloss.Color("#00FFFF")
+	purple := lipgloss.Color("#A020F0")
+	gray := lipgloss.Color("#888888")
 
-	activeStyle := lipgloss.NewStyle().
-		MarginRight(2).
-		Foreground(lipgloss.Color("#00AAFF")).
-		Underline(true)
+	// Tab styles
+	activeTabStyle := lipgloss.NewStyle().
+		Foreground(cyan).
+		Bold(true).
+		Underline(true).
+		Padding(0, 2)
 
-	inactiveStyle := lipgloss.NewStyle().
-		MarginRight(2).
-		Foreground(lipgloss.Color("#888888"))
+	inactiveTabStyle := lipgloss.NewStyle().
+		Foreground(gray).
+		Padding(0, 2)
 
-	for _, t := range c.tabs {
+	// Render tabs
+	var tabsStr strings.Builder
+	for i, t := range c.tabs {
 		title := tabTitles[t]
-		if t == c.activeTab {
-			out += activeStyle.Render(title)
+		if i == c.activeTab {
+			tabsStr.WriteString(activeTabStyle.Render(title))
 		} else {
-			out += inactiveStyle.Render(title)
+			tabsStr.WriteString(inactiveTabStyle.Render(title))
+		}
+		if i < len(c.tabs)-1 {
+			tabsStr.WriteString("  ")
 		}
 	}
 
-	return out
+	// Content box style
+	contentStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(purple).
+		Padding(2, 4).
+		Width(c.BaseModel.Width - 10).
+		Height(c.BaseModel.Height - 10)
+
+	// Get content for active tab
+	var content string
+	switch c.tabs[c.activeTab] {
+	case tabOverview:
+		content = c.renderOverview()
+	case tabHistory:
+		content = c.renderHistory()
+	case tabPrice:
+		content = c.renderPrice()
+	case tabWarning:
+		content = c.renderWarning()
+	}
+
+	// Wrap content in styled box
+	contentBox := contentStyle.Render(content)
+
+	// Title
+	titleStyle := lipgloss.NewStyle().
+		Foreground(cyan).
+		Bold(true).
+		Padding(1, 0).
+		Width(c.BaseModel.Width).
+		Align(lipgloss.Center)
+
+	title := titleStyle.Render(fmt.Sprintf("📊 %s (%s)", c.CompanyInfo.Name, c.CompanyInfo.Symbol))
+
+	// Help text
+	helpStyle := lipgloss.NewStyle().
+		Foreground(gray).
+		Italic(true).
+		Width(c.BaseModel.Width).
+		Align(lipgloss.Center).
+		MarginTop(1)
+
+	help := helpStyle.Render("← → / h l: switch tabs  •  esc: back  •  q: quit")
+
+	// Combine everything
+	return lipgloss.JoinVertical(
+		lipgloss.Center,
+		title,
+		tabsStr.String(),
+		contentBox,
+		help,
+	)
 }
 
 func (c CompanyPage) renderOverview() string {
-	lines := ""
-	lines += fmt.Sprintf("Name: %s\n", c.CompanyInfo.Name)
-	lines += fmt.Sprintf("Symbol: %s\n", c.CompanyInfo.Symbol)
-	lines += fmt.Sprintf("Domain: %s\n", c.CompanyInfo.Domain)
-	lines += fmt.Sprintf("Founded: %d\n", c.CompanyInfo.FoundedYear)
-	lines += fmt.Sprintf("Logo: %s\n", c.CompanyInfo.Logo)
+	labelStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#00AAFF")).
+		Bold(true)
 
-	return lines
+	valueStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FFFFFF"))
+
+	var lines []string
+	lines = append(lines, labelStyle.Render("Company Name:    ")+valueStyle.Render(c.CompanyInfo.Name))
+	lines = append(lines, labelStyle.Render("Stock Symbol:    ")+valueStyle.Render(c.CompanyInfo.Symbol))
+	lines = append(lines, labelStyle.Render("Domain:          ")+valueStyle.Render(c.CompanyInfo.Domain))
+	lines = append(lines, labelStyle.Render("Founded:         ")+valueStyle.Render(fmt.Sprintf("%d", c.CompanyInfo.FoundedYear)))
+	lines = append(lines, "")
+	lines = append(lines, labelStyle.Render("Description:"))
+	lines = append(lines, valueStyle.Render(c.CompanyInfo.Description))
+
+	return strings.Join(lines, "\n")
+}
+
+func (c CompanyPage) renderHistory() string {
+	if c.CompanyInfo.History == "" {
+		return "No history information available."
+	}
+	return c.CompanyInfo.History
 }
 
 func (c CompanyPage) renderPrice() string {
-	out := ""
-	out += fmt.Sprintf("Opening Price: %.2f\n", c.CompanyInfo.OpeningPrice)
-	out += fmt.Sprintf("Closing Price: %.2f\n", c.CompanyInfo.ClosingPrice)
-	return out
+	labelStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#00AAFF")).
+		Bold(true)
+
+	valueStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FFFFFF"))
+
+	var lines []string
+
+	if c.CompanyInfo.OpeningPrice > 0 {
+		lines = append(lines, labelStyle.Render("Opening Price:   ")+valueStyle.Render(fmt.Sprintf("$%.2f", c.CompanyInfo.OpeningPrice)))
+	} else {
+		lines = append(lines, labelStyle.Render("Opening Price:   ")+valueStyle.Render("N/A"))
+	}
+
+	if c.CompanyInfo.ClosingPrice > 0 {
+		lines = append(lines, labelStyle.Render("Closing Price:   ")+valueStyle.Render(fmt.Sprintf("$%.2f", c.CompanyInfo.ClosingPrice)))
+	} else {
+		lines = append(lines, labelStyle.Render("Closing Price:   ")+valueStyle.Render("N/A"))
+	}
+
+	if c.CompanyInfo.OpeningPrice > 0 && c.CompanyInfo.ClosingPrice > 0 {
+		change := c.CompanyInfo.ClosingPrice - c.CompanyInfo.OpeningPrice
+		changePercent := (change / c.CompanyInfo.OpeningPrice) * 100
+
+		changeStyle := lipgloss.NewStyle()
+		if change > 0 {
+			changeStyle = changeStyle.Foreground(lipgloss.Color("#00FF00"))
+		} else if change < 0 {
+			changeStyle = changeStyle.Foreground(lipgloss.Color("#FF0000"))
+		} else {
+			changeStyle = changeStyle.Foreground(lipgloss.Color("#FFFFFF"))
+		}
+
+		lines = append(lines, "")
+		lines = append(lines, labelStyle.Render("Change:          ")+changeStyle.Render(fmt.Sprintf("$%.2f (%.2f%%)", change, changePercent)))
+	}
+
+	if len(lines) == 0 {
+		return "Price information not available (Alpaca may be down)."
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 func (c CompanyPage) renderWarning() string {
-	if !c.CompanyInfo.IsNSFW {
-		return ""
-	}
-	return "⚠ WARNING: This company contains NSFW content."
+	warningStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FF0000")).
+		Bold(true).
+		Align(lipgloss.Center)
+
+	textStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FFAA00"))
+
+	return lipgloss.JoinVertical(
+		lipgloss.Center,
+		warningStyle.Render("⚠️  WARNING  ⚠️"),
+		"",
+		textStyle.Render("This company contains NSFW content."),
+		textStyle.Render("Viewer discretion is advised."),
+	)
 }
 
 func (c *CompanyPage) Reload() {

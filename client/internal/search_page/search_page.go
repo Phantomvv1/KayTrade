@@ -2,7 +2,6 @@ package searchpage
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 
@@ -221,7 +220,6 @@ func (s SearchPage) GetCompanyInfo() (*messages.CompanyInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Println(string(body))
 
 	var info map[string]messages.CompanyInfo
 	err = json.Unmarshal(body, &info)
@@ -230,7 +228,6 @@ func (s SearchPage) GetCompanyInfo() (*messages.CompanyInfo, error) {
 	}
 
 	res := info["information"]
-	log.Println(res)
 	return &res, nil
 }
 
