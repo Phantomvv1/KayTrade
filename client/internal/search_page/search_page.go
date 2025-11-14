@@ -212,7 +212,6 @@ func (s SearchPage) SendSearchRequest() ([]Asset, error) {
 		return nil, err
 	}
 
-	log.Println(response)
 	return response["result"], nil
 }
 
@@ -222,13 +221,16 @@ func (s SearchPage) GetCompanyInfo() (*messages.CompanyInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Println(string(body))
 
-	res := messages.CompanyInfo{}
-	err = json.Unmarshal(body, &res)
+	var info map[string]messages.CompanyInfo
+	err = json.Unmarshal(body, &info)
 	if err != nil {
 		return nil, err
 	}
 
+	res := info["information"]
+	log.Println(res)
 	return &res, nil
 }
 
