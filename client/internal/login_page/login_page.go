@@ -258,8 +258,17 @@ func (l LoginPage) submit() tea.Msg {
 		}
 	}
 
+	l.password.SetValue("")
+
 	return messages.LoginSuccessMsg{
 		Token: info["token"],
 		Page:  messages.WatchlistPageNumber,
 	}
+}
+
+func (l *LoginPage) Reload() {
+	l.email.SetValue("")
+	l.password.SetValue("")
+	l.cursor = 0
+	l.typing = true
 }

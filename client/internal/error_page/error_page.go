@@ -44,3 +44,5 @@ func (e ErrorPage) View() string {
 
 	return lipgloss.Place(e.BaseModel.Width, e.BaseModel.Height, lipgloss.Center, lipgloss.Center, ui)
 }
+
+func (e *ErrorPage) Reload() {}

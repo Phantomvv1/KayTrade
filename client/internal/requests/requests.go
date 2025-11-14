@@ -10,7 +10,7 @@ import (
 
 var ErrorTokenExpired = errors.New("Error token has expired")
 
-var BaseURL = "http://localhost:42069"
+const BaseURL = "http://localhost:42069"
 
 func MakeRequest(method string, url string, reader io.Reader, client *http.Client, token string) ([]byte, error) {
 	req, err := http.NewRequest(method, url, reader)
