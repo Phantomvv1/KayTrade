@@ -924,7 +924,6 @@ func GetCompanyInformation(c *gin.Context) {
 		return
 	}
 
-	log.Println(res)
 	info := res.information[symbol]
 	openingPrice := info[0]["o"].(float64)
 	closingPrice := info[0]["c"].(float64)
