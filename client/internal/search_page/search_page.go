@@ -255,7 +255,8 @@ func (s SearchPage) View() string {
 
 func (s SearchPage) SendSearchRequest() ([]Asset, error) {
 	arr := strings.Split(s.searchField.Placeholder, " ")
-	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/search?"+arr[2]+"="+s.searchField.Value(), nil, http.DefaultClient, s.BaseModel.Token)
+	value := strings.ReplaceAll(s.searchField.Value(), " ", "+")
+	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/search?"+arr[2]+"="+value, nil, http.DefaultClient, s.BaseModel.Token)
 	if err != nil {
 		return nil, err
 	}
