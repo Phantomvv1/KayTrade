@@ -211,7 +211,7 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "s" {
 			return w, func() tea.Msg {
 				return messages.PageSwitchMsg{
-					Page: messages.SearchPage,
+					Page: messages.SearchPageNumber,
 				}
 			}
 		}
@@ -232,14 +232,13 @@ func (w WatchlistPage) View() string {
 	green := lipgloss.Color("#0B6623")
 
 	headerStyle := lipgloss.NewStyle().
-		Foreground(purple).
-		Background(cyan).
+		Foreground(cyan).
 		Bold(true).
 		Padding(0, 2).
 		MarginBottom(1).
 		Align(lipgloss.Center)
 
-	header := headerStyle.Render(w.titleBar) + "\n\n"
+	header := "\n" + headerStyle.Render(w.titleBar) + "\n\n"
 
 	if !w.loaded {
 		return lipgloss.Place(w.BaseModel.Width, w.BaseModel.Height, lipgloss.Center, lipgloss.Center, w.spinner.View())
@@ -271,7 +270,6 @@ func (w WatchlistPage) View() string {
 	content := ""
 	if !w.emptyWatchlist {
 		content = lipgloss.JoinHorizontal(lipgloss.Top,
-			// lipgloss.NewStyle().MarginLeft(1).Render(w.renderedLogo),
 			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).MarginLeft(1).Render(w.companies.View()),
 			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).MarginLeft(20).Render(right),
 		)
@@ -291,4 +289,8 @@ func (w WatchlistPage) View() string {
 	header = lipgloss.PlaceHorizontal(w.BaseModel.Width, lipgloss.Center, header)
 
 	return header + content
+}
+
+func (w *WatchlistPage) Reload() {
+	w.companies.SetItems([]list.Item{})
 }
