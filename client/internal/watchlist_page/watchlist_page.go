@@ -155,10 +155,20 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		var cmd tea.Cmd
 		w.companies, cmd = w.companies.Update(msg)
-		if msg.String() == "s" {
+		switch msg.String() {
+		case "s":
 			return w, func() tea.Msg {
 				return messages.PageSwitchMsg{
 					Page: messages.SearchPageNumber,
+				}
+			}
+		case "enter":
+			item := w.companies.Items()[w.companies.Index()]
+			i := item.(companyItem)
+			return w, func() tea.Msg {
+				return messages.PageSwitchMsg{
+					Page:    messages.CompanyPageNumber,
+					Company: &i.company,
 				}
 			}
 		}
