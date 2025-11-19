@@ -316,6 +316,74 @@ func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 	case "ctrl+j", "ctrl+down", "-":
 		c.zoomOut()
 		c.updateChart()
+	case "right", "l":
+		oldTab := c.activeTab
+		if c.activeTab < len(c.tabs)-1 {
+			c.activeTab++
+		} else {
+			c.activeTab = 0
+		}
+
+		// Initialize chart data when entering chart tab
+		if c.tabs[c.activeTab] == tabChart && c.tabs[oldTab] != tabChart {
+			c.chartLoading = true
+			return c, c.fetchDataCmd()
+		}
+
+		// Initialize WebSocket when entering live tab
+		if c.tabs[c.activeTab] == tabLiveUpdate && c.tabs[oldTab] != tabLiveUpdate {
+			return c, tea.Batch(
+				c.connectWebSocket(),
+				c.listenWebSocket(),
+			)
+		}
+
+		// Clean up WebSocket when leaving live tab
+		if c.tabs[oldTab] == tabLiveUpdate && c.tabs[c.activeTab] != tabLiveUpdate {
+			if c.ws != nil {
+				c.ws.WriteMessage(websocket.TextMessage, []byte("exit"))
+				c.ws.Close()
+				c.ws = nil
+				c.liveConnected = false
+			}
+		}
+
+	case "left", "h":
+		oldTab := c.activeTab
+		if c.activeTab > 0 {
+			c.activeTab--
+		} else {
+			c.activeTab = len(c.tabs) - 1
+		}
+
+		// Initialize chart data when entering chart tab
+		if c.tabs[c.activeTab] == tabChart && c.tabs[oldTab] != tabChart {
+			c.chartLoading = true
+			return c, c.fetchDataCmd()
+		}
+
+		// Initialize WebSocket when entering live tab
+		if c.tabs[c.activeTab] == tabLiveUpdate && c.tabs[oldTab] != tabLiveUpdate {
+			return c, tea.Batch(
+				c.connectWebSocket(),
+				c.listenWebSocket(),
+			)
+		}
+
+		// Clean up WebSocket when leaving live tab
+		if c.tabs[oldTab] == tabLiveUpdate && c.tabs[c.activeTab] != tabLiveUpdate {
+			if c.ws != nil {
+				c.ws.WriteMessage(websocket.TextMessage, []byte("exit"))
+				c.ws.Close()
+				c.ws = nil
+				c.liveConnected = false
+			}
+		}
+	case "q", "ctrl+c":
+		if c.ws != nil {
+			c.ws.Close()
+		}
+		return c, tea.Quit
 	case "r":
 		c.chartLoading = true
 		return *c, c.fetchDataCmd()
@@ -336,7 +404,76 @@ func (c *CompanyPage) handleLiveChartKeys(key string) (tea.Model, tea.Cmd) {
 			c.connectWebSocket(),
 			c.listenWebSocket(),
 		)
+	case "right", "l":
+		oldTab := c.activeTab
+		if c.activeTab < len(c.tabs)-1 {
+			c.activeTab++
+		} else {
+			c.activeTab = 0
+		}
+
+		// Initialize chart data when entering chart tab
+		if c.tabs[c.activeTab] == tabChart && c.tabs[oldTab] != tabChart {
+			c.chartLoading = true
+			return c, c.fetchDataCmd()
+		}
+
+		// Initialize WebSocket when entering live tab
+		if c.tabs[c.activeTab] == tabLiveUpdate && c.tabs[oldTab] != tabLiveUpdate {
+			return c, tea.Batch(
+				c.connectWebSocket(),
+				c.listenWebSocket(),
+			)
+		}
+
+		// Clean up WebSocket when leaving live tab
+		if c.tabs[oldTab] == tabLiveUpdate && c.tabs[c.activeTab] != tabLiveUpdate {
+			if c.ws != nil {
+				c.ws.WriteMessage(websocket.TextMessage, []byte("exit"))
+				c.ws.Close()
+				c.ws = nil
+				c.liveConnected = false
+			}
+		}
+
+	case "left", "h":
+		oldTab := c.activeTab
+		if c.activeTab > 0 {
+			c.activeTab--
+		} else {
+			c.activeTab = len(c.tabs) - 1
+		}
+
+		// Initialize chart data when entering chart tab
+		if c.tabs[c.activeTab] == tabChart && c.tabs[oldTab] != tabChart {
+			c.chartLoading = true
+			return c, c.fetchDataCmd()
+		}
+
+		// Initialize WebSocket when entering live tab
+		if c.tabs[c.activeTab] == tabLiveUpdate && c.tabs[oldTab] != tabLiveUpdate {
+			return c, tea.Batch(
+				c.connectWebSocket(),
+				c.listenWebSocket(),
+			)
+		}
+
+		// Clean up WebSocket when leaving live tab
+		if c.tabs[oldTab] == tabLiveUpdate && c.tabs[c.activeTab] != tabLiveUpdate {
+			if c.ws != nil {
+				c.ws.WriteMessage(websocket.TextMessage, []byte("exit"))
+				c.ws.Close()
+				c.ws = nil
+				c.liveConnected = false
+			}
+		}
+	case "q", "ctrl+c":
+		if c.ws != nil {
+			c.ws.Close()
+		}
+		return c, tea.Quit
 	}
+
 	return *c, nil
 }
 

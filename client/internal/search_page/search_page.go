@@ -102,13 +102,9 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				s.searchField.Placeholder = "Searching by symbol of the company"
 			}
 		case "ctrl+j", "down":
-			if s.suggestions.Cursor() < len(s.suggestions.Items())-1 {
-				s.suggestions.Select(s.suggestions.Cursor() + 1)
-			}
+			s.suggestions.CursorDown()
 		case "ctrl+k", "up":
-			if s.suggestions.Cursor() > 0 {
-				s.suggestions.Select(s.suggestions.Cursor() - 1)
-			}
+			s.suggestions.CursorUp()
 		case "enter":
 			company, err := s.GetCompanyInfo()
 			if err != nil {
@@ -140,6 +136,8 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if newField.Value() != old && newField.Value() != "" {
 				return s, tea.Batch(s.SearchCmd(), cmd)
 			}
+
+			s.suggestions.Select(0)
 
 			return s, cmd
 		}
