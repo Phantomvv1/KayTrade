@@ -3,6 +3,7 @@ package companypage
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -78,10 +79,7 @@ type CompanyPage struct {
 	// Chart state
 	chart        timeserieslinechart.Model
 	timeFrame    TimeFrame
-	chartData    []BarData
-	viewStart    int
-	viewEnd      int
-	zoomLevel    int
+	hasChartData bool
 	chartLoading bool
 	chartError   string
 
@@ -139,14 +137,14 @@ func NewCompanyPage(client *http.Client) CompanyPage {
 	}
 
 	return CompanyPage{
-		BaseModel: basemodel.BaseModel{Client: client},
-		activeTab: tabOverview,
-		tabs:      tabs,
-		chart:     chart,
-		liveChart: liveChart,
-		timeFrame: TimeFrameDay,
-		zoomLevel: 100,
-		liveData:  make([]timeserieslinechart.TimePoint, 0),
+		BaseModel:    basemodel.BaseModel{Client: client},
+		activeTab:    tabOverview,
+		tabs:         tabs,
+		chart:        chart,
+		hasChartData: false,
+		liveChart:    liveChart,
+		timeFrame:    TimeFrameDay,
+		liveData:     make([]timeserieslinechart.TimePoint, 0),
 	}
 }
 
@@ -170,15 +168,25 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case fetchDataMsg:
 		c.chartLoading = false
 		if msg.err != nil {
-			c.chartError = msg.err.Error()
-			return c, nil
+			return c, func() tea.Msg {
+				return messages.PageSwitchMsg{
+					Page: messages.ErrorPageNumber,
+					Err:  msg.err,
+				}
+			}
 		}
-		c.chartData = msg.data
-		if len(c.chartData) > 0 {
-			c.viewEnd = len(c.chartData)
-			c.viewStart = max(0, c.viewEnd-c.zoomLevel)
-			c.updateChart()
+
+		if len(msg.data) > 0 {
+			c.hasChartData = true
 		}
+
+		log.Println(msg.data)
+		for _, bar := range msg.data {
+			openPrice, highPirce, lowPirice, closePrice := c.getDataFromBar(bar)
+			c.chart.DrawCandle(openPrice, highPirce, lowPirice, closePrice,
+				lipgloss.NewStyle().Foreground(lipgloss.Color("#7C0A02")), lipgloss.NewStyle().Foreground(lipgloss.Color("#0B6623")))
+		}
+
 		return c, nil
 
 	case wsConnectedMsg:
@@ -187,7 +195,6 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case wsDataMsg:
 		c.processWebSocketData(msg.data)
-		c.updateLiveChart()
 		return c, c.listenWebSocket()
 
 	case wsErrorMsg:
@@ -294,6 +301,11 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return c, nil
 }
 
+func (c CompanyPage) getDataFromBar(bar BarData) (string, string, string, string) {
+	return fmt.Sprintf("%.2f", bar.Open), fmt.Sprintf("%.2f", bar.High), fmt.Sprintf("%.2f", bar.Low), fmt.Sprintf("%.2f", bar.Close)
+
+}
+
 func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 	switch key {
 	case "1":
@@ -317,17 +329,13 @@ func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 		c.chartLoading = true
 		return *c, c.fetchDataCmd()
 	case "ctrl+h", "ctrl+left":
-		c.panLeft()
-		c.updateChart()
+		c.chart.MoveLeft(2)
 	case "ctrl+l", "ctrl+right":
-		c.panRight()
-		c.updateChart()
+		c.chart.MoveRight(2)
 	case "ctrl+k", "ctrl+up", "+":
-		c.zoomIn()
-		c.updateChart()
+		c.chart.MoveUp(1)
 	case "ctrl+j", "ctrl+down", "-":
-		c.zoomOut()
-		c.updateChart()
+		c.chart.MoveUp(1)
 	case "right", "l":
 		oldTab := c.activeTab
 		if c.activeTab < len(c.tabs)-1 {
@@ -670,7 +678,7 @@ func (c CompanyPage) renderChart() string {
 			Render("Error: " + c.chartError + "\n\nPress 'r' to retry")
 	}
 
-	if len(c.chartData) == 0 {
+	if !c.hasChartData {
 		return "No chart data available"
 	}
 
@@ -690,36 +698,12 @@ func (c CompanyPage) renderChart() string {
 	}
 	timeFrameSelector := strings.Join(tfParts, "  ")
 
-	// Render stats
-	visible := c.getVisibleData()
-	stats := ""
-	if len(visible) > 0 {
-		latest := visible[len(visible)-1]
-		first := visible[0]
-		change := latest.Close - first.Open
-		changePercent := (change / first.Open) * 100
-
-		changeColor := lipgloss.Color("#00FF00")
-		changeSymbol := "▲"
-		if change < 0 {
-			changeColor = lipgloss.Color("#FF0000")
-			changeSymbol = "▼"
-		}
-
-		stats = lipgloss.NewStyle().Foreground(changeColor).Render(
-			fmt.Sprintf("Price: $%.2f  |  %s %.2f (%.2f%%)  |  High: $%.2f  |  Low: $%.2f  |  Range: %d-%d of %d",
-				latest.Close, changeSymbol, change, changePercent,
-				c.findHigh(visible), c.findLow(visible),
-				c.viewStart+1, c.viewEnd, len(c.chartData)))
-	}
-
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		timeFrameSelector,
 		"",
 		c.chart.View(),
 		"",
-		stats,
 	)
 }
 
@@ -794,103 +778,6 @@ func (c CompanyPage) renderWarning() string {
 	)
 }
 
-// Chart helper methods
-func (c *CompanyPage) updateChart() {
-	if len(c.chartData) == 0 {
-		return
-	}
-
-	visible := c.getVisibleData()
-	if len(visible) == 0 {
-		return
-	}
-
-	c.chart.Clear()
-
-	for _, bar := range visible {
-		c.chart.Push(timeserieslinechart.TimePoint{Time: bar.Timestamp, Value: bar.Close})
-	}
-
-}
-
-func (c *CompanyPage) updateLiveChart() {
-	if len(c.liveData) == 0 {
-		return
-	}
-
-	c.liveChart.Clear()
-
-	var points []timeserieslinechart.TimePoint
-	for _, point := range c.liveData {
-		points = append(points, point)
-	}
-}
-
-func (c *CompanyPage) getVisibleData() []BarData {
-	if c.viewStart >= len(c.chartData) {
-		return nil
-	}
-	return c.chartData[c.viewStart:c.viewEnd]
-}
-
-func (c *CompanyPage) panLeft() {
-	step := c.zoomLevel / 4
-	if step < 1 {
-		step = 1
-	}
-	c.viewStart = max(0, c.viewStart-step)
-	c.viewEnd = min(len(c.chartData), c.viewStart+c.zoomLevel)
-}
-
-func (c *CompanyPage) panRight() {
-	step := c.zoomLevel / 4
-	if step < 1 {
-		step = 1
-	}
-	c.viewEnd = min(len(c.chartData), c.viewEnd+step)
-	c.viewStart = max(0, c.viewEnd-c.zoomLevel)
-}
-
-func (c *CompanyPage) zoomIn() {
-	c.zoomLevel = max(10, c.zoomLevel-10)
-	center := (c.viewStart + c.viewEnd) / 2
-	c.viewStart = max(0, center-c.zoomLevel/2)
-	c.viewEnd = min(len(c.chartData), c.viewStart+c.zoomLevel)
-}
-
-func (c *CompanyPage) zoomOut() {
-	c.zoomLevel = min(len(c.chartData), c.zoomLevel+10)
-	center := (c.viewStart + c.viewEnd) / 2
-	c.viewStart = max(0, center-c.zoomLevel/2)
-	c.viewEnd = min(len(c.chartData), c.viewStart+c.zoomLevel)
-}
-
-func (c *CompanyPage) findHigh(data []BarData) float64 {
-	if len(data) == 0 {
-		return 0
-	}
-	high := data[0].High
-	for _, bar := range data {
-		if bar.High > high {
-			high = bar.High
-		}
-	}
-	return high
-}
-
-func (c *CompanyPage) findLow(data []BarData) float64 {
-	if len(data) == 0 {
-		return 0
-	}
-	low := data[0].Low
-	for _, bar := range data {
-		if bar.Low < low {
-			low = bar.Low
-		}
-	}
-	return low
-}
-
 func (c *CompanyPage) processWebSocketData(msg WebSocketMsg) {
 	now := time.Now()
 
@@ -921,11 +808,32 @@ func (c *CompanyPage) processWebSocketData(msg WebSocketMsg) {
 }
 
 func (c *CompanyPage) fetchDataCmd() tea.Cmd {
+	c.hasChartData = false
 	return func() tea.Msg {
+		start := ""
+		switch c.timeFrame {
+		case TimeFrameMinute:
+			start = time.Now().UTC().Truncate(time.Hour * 24).Add(-time.Hour * 24 * 1).Format(time.RFC3339) // 1 day
+			log.Println("Minute")
+		case TimeFrameHour:
+			log.Println("Hour")
+			start = time.Now().UTC().Truncate(time.Hour * 24).Add(-time.Hour * 24 * 14).Format(time.RFC3339) // 14 days
+		case TimeFrameDay:
+			log.Println("Day")
+			start = time.Now().UTC().Truncate(time.Hour * 24).Add(-time.Hour * 24 * 365).Format(time.RFC3339) // 1 year
+		case TimeFrameWeek:
+			log.Println("Week")
+			start = time.Now().UTC().Truncate(time.Hour * 24).Add(-time.Hour * 24 * 365 * 6).Format(time.RFC3339) // 6 years
+		case TimeFrameMonth:
+			log.Println("Month")
+			start = time.Now().UTC().Truncate(time.Hour * 24).Add(-time.Hour * 24 * 365 * 20).Format(time.RFC3339) // 20 years
+		}
+
 		url := fmt.Sprintf(
-			"%s/data/bars?symbols=%s&start=&timeframe=%s",
+			"%s/data/bars?symbols=%s&start=%s&timeframe=%s",
 			requests.BaseURL,
 			c.CompanyInfo.Symbol,
+			start,
 			timeFrameStrings[c.timeFrame],
 		)
 
@@ -1004,7 +912,6 @@ func (c *CompanyPage) Reload() {
 	}
 	c.activeTab = 0
 	c.CompanyInfo = nil
-	c.chartData = nil
 	c.liveData = make([]timeserieslinechart.TimePoint, 0)
 	c.chartLoading = false
 	c.liveConnected = false
