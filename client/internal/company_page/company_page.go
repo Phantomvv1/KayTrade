@@ -76,7 +76,7 @@ type CompanyPage struct {
 	tabs        []int
 	PrevPage    int
 
-	// Chart state
+	// chart state
 	chart        timeserieslinechart.Model
 	timeFrame    TimeFrame
 	hasChartData bool
@@ -113,13 +113,13 @@ type wsConnectedMsg struct{}
 
 func NewCompanyPage(client *http.Client) CompanyPage {
 	// Create historical chart
-	chart := timeserieslinechart.New(80, 20,
+	chart := timeserieslinechart.New(120, 30,
 		timeserieslinechart.WithStyle(
 			lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")),
 		))
 
 	// Create live chart
-	liveChart := timeserieslinechart.New(80, 20,
+	liveChart := timeserieslinechart.New(120, 30,
 		timeserieslinechart.WithStyle(
 			lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")),
 		))
@@ -158,13 +158,6 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		c.BaseModel.Width = msg.Width
-		c.BaseModel.Height = msg.Height
-		c.chart.Resize(msg.Width-10, msg.Height-20)
-		c.liveChart.Resize(msg.Width-10, msg.Height-20)
-		return c, nil
-
 	case fetchDataMsg:
 		c.chartLoading = false
 		if msg.err != nil {
@@ -180,12 +173,20 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			c.hasChartData = true
 		}
 
+		c.chart.Clear()
+		c.chart.ClearAllData()
+		// c.chart.SetXYRange()
+
 		log.Println(msg.data)
 		for _, bar := range msg.data {
-			openPrice, highPirce, lowPirice, closePrice := c.getDataFromBar(bar)
-			c.chart.DrawCandle(openPrice, highPirce, lowPirice, closePrice,
+			openPrice, highPrice, lowPrice, closePrice := c.getDataFromBar(bar)
+			c.chart.Push(timeserieslinechart.TimePoint{Time: bar.Timestamp, Value: bar.Close})
+			c.chart.DrawCandle(openPrice, highPrice, lowPrice, closePrice,
 				lipgloss.NewStyle().Foreground(lipgloss.Color("#7C0A02")), lipgloss.NewStyle().Foreground(lipgloss.Color("#0B6623")))
 		}
+
+		c.chart.Draw()
+		// c.chart.DrawBraille()
 
 		return c, nil
 
@@ -347,12 +348,12 @@ func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 		// Initialize chart data when entering chart tab
 		if c.tabs[c.activeTab] == tabChart && c.tabs[oldTab] != tabChart {
 			c.chartLoading = true
-			return c, c.fetchDataCmd()
+			return *c, c.fetchDataCmd()
 		}
 
 		// Initialize WebSocket when entering live tab
 		if c.tabs[c.activeTab] == tabLiveUpdate && c.tabs[oldTab] != tabLiveUpdate {
-			return c, tea.Batch(
+			return *c, tea.Batch(
 				c.connectWebSocket(),
 				c.listenWebSocket(),
 			)
@@ -379,12 +380,12 @@ func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 		// Initialize chart data when entering chart tab
 		if c.tabs[c.activeTab] == tabChart && c.tabs[oldTab] != tabChart {
 			c.chartLoading = true
-			return c, c.fetchDataCmd()
+			return *c, c.fetchDataCmd()
 		}
 
 		// Initialize WebSocket when entering live tab
 		if c.tabs[c.activeTab] == tabLiveUpdate && c.tabs[oldTab] != tabLiveUpdate {
-			return c, tea.Batch(
+			return *c, tea.Batch(
 				c.connectWebSocket(),
 				c.listenWebSocket(),
 			)
@@ -403,7 +404,7 @@ func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 		if c.ws != nil {
 			c.ws.Close()
 		}
-		return c, tea.Quit
+		return *c, tea.Quit
 	case "r":
 		c.chartLoading = true
 		return *c, c.fetchDataCmd()
@@ -779,7 +780,7 @@ func (c CompanyPage) renderWarning() string {
 }
 
 func (c *CompanyPage) processWebSocketData(msg WebSocketMsg) {
-	now := time.Now()
+	now := time.Now().UTC()
 
 	point := timeserieslinechart.TimePoint{
 		Time:  now,
