@@ -126,10 +126,22 @@ func NewCompanyPage(client *http.Client) CompanyPage {
 			lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")),
 		))
 
+	tabs := []int{tabOverview, tabHistory, tabPrice, tabChart}
+	now := time.Now().UTC()
+	check := false
+	if now.Hour() < 13 || now.Hour() >= 20 { // market opens at 13:30 UTC and closes at 20:00 UTC
+		check = true
+	}
+	if now.Hour() == 13 && now.Minute() < 30 {
+		check = false
+	} else if !check {
+		tabs = append(tabs, tabLiveUpdate)
+	}
+
 	return CompanyPage{
 		BaseModel: basemodel.BaseModel{Client: client},
 		activeTab: tabOverview,
-		tabs:      []int{tabOverview, tabHistory, tabPrice, tabChart, tabLiveUpdate},
+		tabs:      tabs,
 		chart:     chart,
 		liveChart: liveChart,
 		timeFrame: TimeFrameDay,
@@ -415,12 +427,12 @@ func (c *CompanyPage) handleLiveChartKeys(key string) (tea.Model, tea.Cmd) {
 		// Initialize chart data when entering chart tab
 		if c.tabs[c.activeTab] == tabChart && c.tabs[oldTab] != tabChart {
 			c.chartLoading = true
-			return c, c.fetchDataCmd()
+			return *c, c.fetchDataCmd()
 		}
 
 		// Initialize WebSocket when entering live tab
 		if c.tabs[c.activeTab] == tabLiveUpdate && c.tabs[oldTab] != tabLiveUpdate {
-			return c, tea.Batch(
+			return *c, tea.Batch(
 				c.connectWebSocket(),
 				c.listenWebSocket(),
 			)
@@ -447,12 +459,12 @@ func (c *CompanyPage) handleLiveChartKeys(key string) (tea.Model, tea.Cmd) {
 		// Initialize chart data when entering chart tab
 		if c.tabs[c.activeTab] == tabChart && c.tabs[oldTab] != tabChart {
 			c.chartLoading = true
-			return c, c.fetchDataCmd()
+			return *c, c.fetchDataCmd()
 		}
 
 		// Initialize WebSocket when entering live tab
 		if c.tabs[c.activeTab] == tabLiveUpdate && c.tabs[oldTab] != tabLiveUpdate {
-			return c, tea.Batch(
+			return *c, tea.Batch(
 				c.connectWebSocket(),
 				c.listenWebSocket(),
 			)
@@ -471,7 +483,7 @@ func (c *CompanyPage) handleLiveChartKeys(key string) (tea.Model, tea.Cmd) {
 		if c.ws != nil {
 			c.ws.Close()
 		}
-		return c, tea.Quit
+		return *c, tea.Quit
 	}
 
 	return *c, nil
