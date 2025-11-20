@@ -173,11 +173,11 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			c.hasChartData = true
 		}
 
-		c.chart.Clear()
-		c.chart.ClearAllData()
-		// c.chart.SetXYRange()
+		c.chart = timeserieslinechart.New(120, 30,
+			timeserieslinechart.WithStyle(
+				lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")),
+			))
 
-		log.Println(msg.data)
 		for _, bar := range msg.data {
 			openPrice, highPrice, lowPrice, closePrice := c.getDataFromBar(bar)
 			c.chart.Push(timeserieslinechart.TimePoint{Time: bar.Timestamp, Value: bar.Close})
@@ -405,6 +405,17 @@ func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 			c.ws.Close()
 		}
 		return *c, tea.Quit
+
+	case "esc":
+		if c.ws != nil {
+			c.ws.WriteMessage(websocket.TextMessage, []byte("exit"))
+			c.ws.Close()
+		}
+		return *c, func() tea.Msg {
+			return messages.PageSwitchWithoutInitMsg{
+				Page: c.PrevPage,
+			}
+		}
 	case "r":
 		c.chartLoading = true
 		return *c, c.fetchDataCmd()
@@ -493,6 +504,16 @@ func (c *CompanyPage) handleLiveChartKeys(key string) (tea.Model, tea.Cmd) {
 			c.ws.Close()
 		}
 		return *c, tea.Quit
+	case "esc":
+		if c.ws != nil {
+			c.ws.WriteMessage(websocket.TextMessage, []byte("exit"))
+			c.ws.Close()
+		}
+		return *c, func() tea.Msg {
+			return messages.PageSwitchWithoutInitMsg{
+				Page: c.PrevPage,
+			}
+		}
 	}
 
 	return *c, nil
@@ -814,7 +835,7 @@ func (c *CompanyPage) fetchDataCmd() tea.Cmd {
 		start := ""
 		switch c.timeFrame {
 		case TimeFrameMinute:
-			start = time.Now().UTC().Truncate(time.Hour * 24).Add(-time.Hour * 24 * 1).Format(time.RFC3339) // 1 day
+			start = time.Now().UTC().Add(-time.Hour * 24).Format(time.RFC3339) // 1 day
 			log.Println("Minute")
 		case TimeFrameHour:
 			log.Println("Hour")
@@ -865,7 +886,7 @@ func (c *CompanyPage) fetchDataCmd() tea.Cmd {
 
 func (c *CompanyPage) connectWebSocket() tea.Cmd {
 	return func() tea.Msg {
-		url := fmt.Sprintf("ws://localhost:42069/data/real-time/%s", c.CompanyInfo.Symbol)
+		url := fmt.Sprintf("ws://localhost:42069/data/stocks/live/%s", c.CompanyInfo.Symbol)
 
 		ws, _, err := websocket.DefaultDialer.Dial(url, nil)
 		if err != nil {
@@ -911,7 +932,6 @@ func (c *CompanyPage) Reload() {
 	if c.ws != nil {
 		c.ws.Close()
 	}
-	c.activeTab = 0
 	c.CompanyInfo = nil
 	c.liveData = make([]timeserieslinechart.TimePoint, 0)
 	c.chartLoading = false
