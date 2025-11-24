@@ -57,9 +57,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.PageSwitchMsg:
 		m.errorPage.PrevPage = m.currentPage
 		m.errorPage.Err = msg.Err
+
 		m.companyPage.PrevPage = m.currentPage
 		m.currentPage = msg.Page
-		m.companyPage.CompanyInfo = msg.Company
+		if msg.Company != nil {
+			m.companyPage.CompanyInfo = msg.Company
+		}
+
 		model := m.getModelFromPageNumber()
 		return m, model.Init()
 	case messages.TokenSwitchMsg:

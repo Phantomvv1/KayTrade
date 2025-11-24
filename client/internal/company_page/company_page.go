@@ -77,9 +77,12 @@ type CompanyPage struct {
 	PrevPage    int
 
 	// chart state
-	chart        timeserieslinechart.Model
-	timeFrame    TimeFrame
-	hasChartData bool
+	chart     timeserieslinechart.Model
+	timeFrame TimeFrame
+	chartData []BarData
+	// viewStart    int
+	// viewEnd      int
+	// zoomLevel    int
 	chartLoading bool
 	chartError   string
 
@@ -111,6 +114,10 @@ type wsErrorMsg struct {
 
 type wsConnectedMsg struct{}
 
+type addCompanyMsg struct {
+	err error
+}
+
 func NewCompanyPage(client *http.Client) CompanyPage {
 	// Create historical chart
 	chart := timeserieslinechart.New(120, 30,
@@ -137,15 +144,53 @@ func NewCompanyPage(client *http.Client) CompanyPage {
 	}
 
 	return CompanyPage{
-		BaseModel:    basemodel.BaseModel{Client: client},
-		activeTab:    tabOverview,
-		tabs:         tabs,
-		chart:        chart,
-		hasChartData: false,
-		liveChart:    liveChart,
-		timeFrame:    TimeFrameDay,
-		liveData:     make([]timeserieslinechart.TimePoint, 0),
+		BaseModel: basemodel.BaseModel{Client: client},
+		activeTab: tabOverview,
+		tabs:      tabs,
+		chart:     chart,
+		chartData: make([]BarData, 0),
+		// zoomLevel: 100,
+		liveChart: liveChart,
+		timeFrame: TimeFrameDay,
+		liveData:  make([]timeserieslinechart.TimePoint, 0),
 	}
+}
+
+func (c *CompanyPage) redrawChart() {
+	if len(c.chartData) == 0 {
+		return
+	}
+
+	// start := c.viewStart
+	// end := c.viewEnd
+	// if end > len(c.chartData) {
+	// 	end = len(c.chartData)
+	// }
+	// if start < 0 {
+	// 	start = 0
+	// }
+	//
+	// visibleData := c.chartData[start:end]
+	// if len(visibleData) == 0 {
+	// 	return
+	// }
+
+	c.chart = timeserieslinechart.New(120, 30,
+		timeserieslinechart.WithStyle(
+			lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")),
+		),
+		timeserieslinechart.WithXYSteps(8, 6),
+	)
+
+	for _, bar := range c.chartData {
+		openPrice, highPrice, lowPrice, closePrice := c.getDataFromBar(bar)
+		c.chart.Push(timeserieslinechart.TimePoint{Time: bar.Timestamp, Value: bar.Close})
+		c.chart.DrawCandle(openPrice, highPrice, lowPrice, closePrice,
+			lipgloss.NewStyle().Foreground(lipgloss.Color("#7C0A02")), lipgloss.NewStyle().Foreground(lipgloss.Color("#0B6623")))
+	}
+
+	c.chart.Draw()
+	// c.chart.DrawBraille()
 }
 
 func (c CompanyPage) Init() tea.Cmd {
@@ -169,24 +214,8 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		if len(msg.data) > 0 {
-			c.hasChartData = true
-		}
-
-		c.chart = timeserieslinechart.New(120, 30,
-			timeserieslinechart.WithStyle(
-				lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")),
-			))
-
-		for _, bar := range msg.data {
-			openPrice, highPrice, lowPrice, closePrice := c.getDataFromBar(bar)
-			c.chart.Push(timeserieslinechart.TimePoint{Time: bar.Timestamp, Value: bar.Close})
-			c.chart.DrawCandle(openPrice, highPrice, lowPrice, closePrice,
-				lipgloss.NewStyle().Foreground(lipgloss.Color("#7C0A02")), lipgloss.NewStyle().Foreground(lipgloss.Color("#0B6623")))
-		}
-
-		c.chart.Draw()
-		// c.chart.DrawBraille()
+		c.chartData = msg.data
+		c.redrawChart()
 
 		return c, nil
 
@@ -203,18 +232,26 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		c.liveConnected = false
 		return c, nil
 
+	case addCompanyMsg:
+		log.Println(c.CompanyInfo)
+		if msg.err != nil {
+			return c, func() tea.Msg {
+				return messages.PageSwitchMsg{
+					Err:  msg.err,
+					Page: messages.ErrorPageNumber,
+				}
+			}
+		}
+
 	case tea.KeyMsg:
-		// Handle chart-specific controls when on chart tab
 		if c.tabs[c.activeTab] == tabChart {
 			return c.handleChartKeys(msg.String())
 		}
 
-		// Handle live chart controls when on live tab
 		if c.tabs[c.activeTab] == tabLiveUpdate {
 			return c.handleLiveChartKeys(msg.String())
 		}
 
-		// Handle general navigation
 		switch msg.String() {
 		case "q", "ctrl+c":
 			if c.ws != nil {
@@ -296,6 +333,11 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					c.liveConnected = false
 				}
 			}
+
+		case "a", "A":
+			log.Println(c.CompanyInfo)
+			return c, c.addCompanyToWatchlist()
+
 		}
 	}
 
@@ -329,14 +371,49 @@ func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 		c.timeFrame = TimeFrameMonth
 		c.chartLoading = true
 		return *c, c.fetchDataCmd()
-	case "ctrl+h", "ctrl+left":
-		c.chart.MoveLeft(2)
-	case "ctrl+l", "ctrl+right":
-		c.chart.MoveRight(2)
-	case "ctrl+k", "ctrl+up", "+":
-		c.chart.MoveUp(1)
-	case "ctrl+j", "ctrl+down", "-":
-		c.chart.MoveUp(1)
+	// case "ctrl+h", "ctrl+left":
+	// 	step := max(1, c.zoomLevel/5)
+	// 	if c.viewStart > 0 {
+	// 		c.viewStart = max(0, c.viewStart-step)
+	// 		c.viewEnd = c.viewStart + c.zoomLevel
+	// 		if c.viewEnd > len(c.chartData) {
+	// 			c.viewEnd = len(c.chartData)
+	// 		}
+	// 		c.redrawChart()
+	// 	}
+	// case "ctrl+l", "ctrl+right":
+	// 	step := max(1, c.zoomLevel/5)
+	// 	if c.viewEnd < len(c.chartData) {
+	// 		c.viewEnd = min(len(c.chartData), c.viewEnd+step)
+	// 		c.viewStart = c.viewEnd - c.zoomLevel
+	// 		if c.viewStart < 0 {
+	// 			c.viewStart = 0
+	// 		}
+	// 		c.redrawChart()
+	// 	}
+	// case "ctrl+k", "ctrl+up", "+":
+	// 	if c.zoomLevel > 10 {
+	// 		c.zoomLevel = max(10, c.zoomLevel-10)
+	// 		c.viewStart += 10
+	// 		c.viewEnd = min(len(c.chartData)-1, c.viewStart+c.zoomLevel)
+	// 		c.redrawChart()
+	// 	}
+	// case "ctrl+j", "ctrl+down", "-":
+	// 	maxZoom := len(c.chartData)
+	// 	if c.zoomLevel < maxZoom {
+	// 		c.zoomLevel = min(maxZoom, c.zoomLevel+10)
+	// 		c.viewStart -= 10
+	// 		c.viewEnd = min(len(c.chartData), c.viewStart+c.zoomLevel)
+	// 		c.redrawChart()
+	// 	}
+	// case "home", "g":
+	// 	c.viewStart = 0
+	// 	c.viewEnd = min(len(c.chartData), c.zoomLevel)
+	// 	c.redrawChart()
+	// case "end", "G":
+	// 	c.viewEnd = len(c.chartData)
+	// 	c.viewStart = max(0, c.viewEnd-c.zoomLevel)
+	// 	c.redrawChart()
 	case "right", "l":
 		oldTab := c.activeTab
 		if c.activeTab < len(c.tabs)-1 {
@@ -400,6 +477,9 @@ func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 				c.liveConnected = false
 			}
 		}
+	case "a", "A":
+		return c, c.addCompanyToWatchlist()
+
 	case "q", "ctrl+c":
 		if c.ws != nil {
 			c.ws.Close()
@@ -499,11 +579,15 @@ func (c *CompanyPage) handleLiveChartKeys(key string) (tea.Model, tea.Cmd) {
 				c.liveConnected = false
 			}
 		}
+	case "a", "A":
+		return c, c.addCompanyToWatchlist()
+
 	case "q", "ctrl+c":
 		if c.ws != nil {
 			c.ws.Close()
 		}
 		return *c, tea.Quit
+
 	case "esc":
 		if c.ws != nil {
 			c.ws.WriteMessage(websocket.TextMessage, []byte("exit"))
@@ -589,13 +673,13 @@ func (c CompanyPage) View() string {
 	title := titleStyle.Render(fmt.Sprintf("📊 %s (%s)", c.CompanyInfo.Name, c.CompanyInfo.Symbol))
 
 	// Help text
-	var help string
+	help := ""
 	if c.tabs[c.activeTab] == tabChart {
-		help = "[1-5] timeframe  [Ctrl+←/→] pan  [Ctrl+↑/↓] zoom  [r] refresh  [←/→] tabs  [esc] back  [q] quit"
+		help = "[1-5] timeframe  [Ctrl+←/→] pan left/right  [Ctrl+↑/↓] pan up/down  [+/-] zoom  [r] refresh  [←/→] tabs  [a] add company to watchlist  [esc] back  [q] quit"
 	} else if c.tabs[c.activeTab] == tabLiveUpdate {
-		help = "[r] reconnect  [←/→] tabs  [esc] back  [q] quit"
+		help = "[r] reconnect  [←/→] tabs  [a] add company to watchlist  [esc] back  [q] quit"
 	} else {
-		help = "← → / h l: switch tabs  •  esc: back  •  q: quit"
+		help = "← → / h l: switch tabs • a: add company to watchlist •  esc: back  •  q: quit"
 	}
 
 	helpStyle := lipgloss.NewStyle().
@@ -700,7 +784,7 @@ func (c CompanyPage) renderChart() string {
 			Render("Error: " + c.chartError + "\n\nPress 'r' to retry")
 	}
 
-	if !c.hasChartData {
+	if len(c.chartData) == 0 {
 		return "No chart data available"
 	}
 
@@ -830,7 +914,6 @@ func (c *CompanyPage) processWebSocketData(msg WebSocketMsg) {
 }
 
 func (c *CompanyPage) fetchDataCmd() tea.Cmd {
-	c.hasChartData = false
 	return func() tea.Msg {
 		start := ""
 		switch c.timeFrame {
@@ -928,11 +1011,25 @@ func (c *CompanyPage) listenWebSocket() tea.Cmd {
 	}
 }
 
+func (c CompanyPage) addCompanyToWatchlist() tea.Cmd {
+	return func() tea.Msg {
+		_, err := requests.MakeRequest(http.MethodPost, requests.BaseURL+"/watchlist/"+c.CompanyInfo.Symbol, nil, http.DefaultClient, c.BaseModel.Token)
+		if err != nil {
+			return addCompanyMsg{err: err}
+		}
+
+		return addCompanyMsg{err: nil}
+	}
+}
+
 func (c *CompanyPage) Reload() {
 	if c.ws != nil {
 		c.ws.Close()
 	}
+
 	c.CompanyInfo = nil
+	c.chartData = nil
+	// c.zoomLevel = 100
 	c.liveData = make([]timeserieslinechart.TimePoint, 0)
 	c.chartLoading = false
 	c.liveConnected = false
