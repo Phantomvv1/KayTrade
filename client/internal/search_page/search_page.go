@@ -85,6 +85,7 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case itemMsg:
 		s.suggestions.SetItems(nil)
 		s.suggestions.SetItems(msg.items)
+		s.suggestions.Select(0)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
@@ -136,8 +137,6 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if newField.Value() != old && newField.Value() != "" {
 				return s, tea.Batch(s.SearchCmd(), cmd)
 			}
-
-			s.suggestions.Select(0)
 
 			return s, cmd
 		}
