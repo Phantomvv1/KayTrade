@@ -61,6 +61,14 @@ func (c companyItem) FilterValue() string { return c.company.Name }
 func NewWatchlistPage(client *http.Client) WatchlistPage {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	l.KeyMap.Quit = key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit"))
+	l.AdditionalFullHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s", "search")),
+			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
+			key.NewBinding(key.WithKeys("r", "R"), key.WithHelp("r", "remove company")),
+			key.NewBinding(key.WithKeys("d", "D"), key.WithHelp("d", "remove all companies")),
+		}
+	}
 
 	s := spinner.New()
 	s.Spinner = spinner.Line
@@ -156,7 +164,7 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		w.companies, cmd = w.companies.Update(msg)
 		switch msg.String() {
-		case "s":
+		case "s", "S":
 			return w, func() tea.Msg {
 				return messages.PageSwitchMsg{
 					Page: messages.SearchPageNumber,
@@ -171,6 +179,45 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Company: &i.company,
 				}
 			}
+
+		case "r", "R":
+			if len(w.companies.Items()) == 0 {
+				return w, nil
+			}
+
+			item := w.companies.Items()[w.companies.Index()]
+			i := item.(companyItem)
+			err := w.removeCompanyFromWatchlist(i.company)
+			if err != nil {
+				return w, func() tea.Msg {
+					return messages.PageSwitchMsg{
+						Page: messages.ErrorPageNumber,
+						Err:  err,
+					}
+				}
+			}
+
+			w.companies.RemoveItem(w.companies.Cursor())
+			if w.companies.Cursor() == len(w.companies.Items()) {
+				w.companies.CursorUp()
+			}
+
+		case "d", "D":
+			if len(w.companies.Items()) == 0 {
+				return w, nil
+			}
+
+			err := w.removeAllCompaniesFromWatchlist()
+			if err != nil {
+				return w, func() tea.Msg {
+					return messages.PageSwitchMsg{
+						Page: messages.ErrorPageNumber,
+						Err:  err,
+					}
+				}
+			}
+
+			w.companies.SetItems([]list.Item{})
 		}
 
 		return w, cmd
@@ -246,6 +293,24 @@ func (w WatchlistPage) View() string {
 	header = lipgloss.PlaceHorizontal(w.BaseModel.Width, lipgloss.Center, header)
 
 	return header + content
+}
+
+func (w WatchlistPage) removeCompanyFromWatchlist(company messages.CompanyInfo) error {
+	_, err := requests.MakeRequest(http.MethodDelete, requests.BaseURL+"/watchlist/"+company.Symbol, nil, &http.Client{}, w.BaseModel.Token)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w WatchlistPage) removeAllCompaniesFromWatchlist() error {
+	_, err := requests.MakeRequest(http.MethodDelete, requests.BaseURL+"/watchlist", nil, &http.Client{}, w.BaseModel.Token)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (w *WatchlistPage) Reload() {
