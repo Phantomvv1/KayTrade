@@ -28,6 +28,7 @@ type WatchlistPage struct {
 	emptyWatchlist bool
 	focusedList    bool
 	renderedLogo   string
+	filtering      bool
 	Reloaded       bool
 }
 
@@ -83,6 +84,7 @@ func NewWatchlistPage(client *http.Client) WatchlistPage {
 		spinner:        s,
 		emptyWatchlist: false,
 		focusedList:    true,
+		filtering:      false,
 		Reloaded:       false,
 	}
 }
@@ -165,61 +167,74 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		var cmd tea.Cmd
 		w.companies, cmd = w.companies.Update(msg)
-		switch msg.String() {
-		case "s", "S":
-			return w, func() tea.Msg {
-				return messages.PageSwitchMsg{
-					Page: messages.SearchPageNumber,
-				}
-			}
-		case "enter":
-			item := w.companies.Items()[w.companies.Index()]
-			i := item.(companyItem)
-			return w, func() tea.Msg {
-				return messages.PageSwitchMsg{
-					Page:    messages.CompanyPageNumber,
-					Company: &i.company,
-				}
+		if w.filtering {
+			switch msg.String() {
+			case "esc":
+				w.filtering = false
+			case "enter":
+				w.filtering = false
 			}
 
-		case "r", "R":
-			if len(w.companies.Items()) == 0 {
-				return w, nil
-			}
-
-			item := w.companies.Items()[w.companies.Index()]
-			i := item.(companyItem)
-			err := w.removeCompanyFromWatchlist(i.company)
-			if err != nil {
+			return w, nil
+		} else {
+			switch msg.String() {
+			case "/":
+				w.filtering = true
+			case "s", "S":
 				return w, func() tea.Msg {
 					return messages.PageSwitchMsg{
-						Page: messages.ErrorPageNumber,
-						Err:  err,
+						Page: messages.SearchPageNumber,
 					}
 				}
-			}
-
-			w.companies.RemoveItem(w.companies.Cursor())
-			if w.companies.Cursor() == len(w.companies.Items()) {
-				w.companies.CursorUp()
-			}
-
-		case "d", "D":
-			if len(w.companies.Items()) == 0 {
-				return w, nil
-			}
-
-			err := w.removeAllCompaniesFromWatchlist()
-			if err != nil {
+			case "enter":
+				item := w.companies.Items()[w.companies.Index()]
+				i := item.(companyItem)
 				return w, func() tea.Msg {
 					return messages.PageSwitchMsg{
-						Page: messages.ErrorPageNumber,
-						Err:  err,
+						Page:    messages.CompanyPageNumber,
+						Company: &i.company,
 					}
 				}
-			}
 
-			w.companies.SetItems([]list.Item{})
+			case "r", "R":
+				if len(w.companies.Items()) == 0 {
+					return w, nil
+				}
+
+				item := w.companies.Items()[w.companies.Index()]
+				i := item.(companyItem)
+				err := w.removeCompanyFromWatchlist(i.company)
+				if err != nil {
+					return w, func() tea.Msg {
+						return messages.PageSwitchMsg{
+							Page: messages.ErrorPageNumber,
+							Err:  err,
+						}
+					}
+				}
+
+				w.companies.RemoveItem(w.companies.Cursor())
+				if w.companies.Cursor() == len(w.companies.Items()) {
+					w.companies.CursorUp()
+				}
+
+			case "d", "D":
+				if len(w.companies.Items()) == 0 {
+					return w, nil
+				}
+
+				err := w.removeAllCompaniesFromWatchlist()
+				if err != nil {
+					return w, func() tea.Msg {
+						return messages.PageSwitchMsg{
+							Page: messages.ErrorPageNumber,
+							Err:  err,
+						}
+					}
+				}
+
+				w.companies.SetItems([]list.Item{})
+			}
 		}
 
 		return w, cmd
