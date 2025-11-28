@@ -233,7 +233,6 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return c, nil
 
 	case addCompanyMsg:
-		log.Println(c.CompanyInfo)
 		if msg.err != nil {
 			return c, func() tea.Msg {
 				return messages.PageSwitchMsg{
@@ -335,7 +334,6 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "a", "A":
-			log.Println(c.CompanyInfo)
 			return c, c.addCompanyToWatchlist()
 
 		}
