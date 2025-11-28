@@ -90,7 +90,7 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "esc":
 			return s, func() tea.Msg {
-				return messages.PageSwitchWithoutInitMsg{
+				return messages.SmartPageSwitchMsg{
 					Page: messages.WatchlistPageNumber,
 				}
 			}

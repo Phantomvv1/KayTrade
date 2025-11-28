@@ -85,6 +85,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.ReloadMsg:
 		m.Reload(msg.Page)
 		return m, nil
+	case messages.SmartPageSwitchMsg:
+		m.currentPage = msg.Page
+		if m.Reloaded(msg.Page) {
+			return m, m.getModelFromPageNumber().Init()
+		}
+
+		return m, nil
 	}
 
 	var cmd tea.Cmd
@@ -199,5 +206,19 @@ func (m *Model) Reload(page int) {
 		m.companyPage.Reload()
 	default:
 		return
+	}
+}
+
+func (m *Model) Reloaded(page int) bool {
+	switch page {
+	case messages.WatchlistPageNumber:
+		reloaded := m.watchlistPage.Reloaded
+		if reloaded {
+			m.watchlistPage.Reloaded = false
+		}
+
+		return reloaded
+	default:
+		return false
 	}
 }

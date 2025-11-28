@@ -39,6 +39,10 @@ type ReloadMsg struct {
 	Page int
 }
 
+type SmartPageSwitchMsg struct {
+	Page int
+}
+
 type CompanyInfo struct {
 	Symbol       string  `json:"symbol"`
 	OpeningPrice float64 `json:"opening_price,omitempty"`

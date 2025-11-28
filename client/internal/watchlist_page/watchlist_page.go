@@ -28,6 +28,7 @@ type WatchlistPage struct {
 	emptyWatchlist bool
 	focusedList    bool
 	renderedLogo   string
+	Reloaded       bool
 }
 
 type MarketMover struct {
@@ -82,6 +83,7 @@ func NewWatchlistPage(client *http.Client) WatchlistPage {
 		spinner:        s,
 		emptyWatchlist: false,
 		focusedList:    true,
+		Reloaded:       false,
 	}
 }
 
@@ -315,4 +317,5 @@ func (w WatchlistPage) removeAllCompaniesFromWatchlist() error {
 
 func (w *WatchlistPage) Reload() {
 	w.companies.SetItems([]list.Item{})
+	w.Reloaded = true
 }

@@ -334,7 +334,11 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "a", "A":
-			return c, c.addCompanyToWatchlist()
+			return c, tea.Batch(c.addCompanyToWatchlist(), func() tea.Msg {
+				return messages.ReloadMsg{
+					Page: messages.WatchlistPageNumber,
+				}
+			})
 
 		}
 	}
