@@ -285,8 +285,9 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Initialize WebSocket when entering live tab
 			if c.tabs[c.activeTab] == tabLiveUpdate && c.tabs[oldTab] != tabLiveUpdate {
+				cmd := c.connectWebSocket()
 				return c, tea.Batch(
-					c.connectWebSocket(),
+					cmd,
 					c.listenWebSocket(),
 				)
 			}
@@ -317,8 +318,9 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Initialize WebSocket when entering live tab
 			if c.tabs[c.activeTab] == tabLiveUpdate && c.tabs[oldTab] != tabLiveUpdate {
+				cmd := c.connectWebSocket()
 				return c, tea.Batch(
-					c.connectWebSocket(),
+					cmd,
 					c.listenWebSocket(),
 				)
 			}
@@ -432,8 +434,9 @@ func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 
 		// Initialize WebSocket when entering live tab
 		if c.tabs[c.activeTab] == tabLiveUpdate && c.tabs[oldTab] != tabLiveUpdate {
+			cmd := c.connectWebSocket()
 			return *c, tea.Batch(
-				c.connectWebSocket(),
+				cmd,
 				c.listenWebSocket(),
 			)
 		}
@@ -464,8 +467,9 @@ func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 
 		// Initialize WebSocket when entering live tab
 		if c.tabs[c.activeTab] == tabLiveUpdate && c.tabs[oldTab] != tabLiveUpdate {
+			cmd := c.connectWebSocket()
 			return *c, tea.Batch(
-				c.connectWebSocket(),
+				cmd,
 				c.listenWebSocket(),
 			)
 		}
@@ -514,8 +518,9 @@ func (c *CompanyPage) handleLiveChartKeys(key string) (tea.Model, tea.Cmd) {
 		c.liveData = make([]timeserieslinechart.TimePoint, 0)
 		c.liveConnected = false
 		c.liveError = ""
+		cmd := c.connectWebSocket()
 		return *c, tea.Batch(
-			c.connectWebSocket(),
+			cmd,
 			c.listenWebSocket(),
 		)
 	case "right", "l":
@@ -534,8 +539,9 @@ func (c *CompanyPage) handleLiveChartKeys(key string) (tea.Model, tea.Cmd) {
 
 		// Initialize WebSocket when entering live tab
 		if c.tabs[c.activeTab] == tabLiveUpdate && c.tabs[oldTab] != tabLiveUpdate {
+			cmd := c.connectWebSocket()
 			return *c, tea.Batch(
-				c.connectWebSocket(),
+				cmd,
 				c.listenWebSocket(),
 			)
 		}
@@ -566,8 +572,9 @@ func (c *CompanyPage) handleLiveChartKeys(key string) (tea.Model, tea.Cmd) {
 
 		// Initialize WebSocket when entering live tab
 		if c.tabs[c.activeTab] == tabLiveUpdate && c.tabs[oldTab] != tabLiveUpdate {
+			cmd := c.connectWebSocket()
 			return *c, tea.Batch(
-				c.connectWebSocket(),
+				cmd,
 				c.listenWebSocket(),
 			)
 		}
@@ -970,15 +977,17 @@ func (c *CompanyPage) fetchDataCmd() tea.Cmd {
 }
 
 func (c *CompanyPage) connectWebSocket() tea.Cmd {
-	return func() tea.Msg {
-		url := fmt.Sprintf("ws://localhost:42069/data/stocks/live/%s", c.CompanyInfo.Symbol)
+	url := fmt.Sprintf("ws://localhost:42069/data/stocks/live/%s", c.CompanyInfo.Symbol)
 
-		ws, _, err := websocket.DefaultDialer.Dial(url, nil)
-		if err != nil {
+	ws, _, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		return func() tea.Msg {
 			return wsErrorMsg{err: fmt.Errorf("failed to connect: %w", err)}
 		}
+	}
 
-		c.ws = ws
+	c.ws = ws
+	return func() tea.Msg {
 		return wsConnectedMsg{}
 	}
 }
