@@ -556,3 +556,17 @@ func GetUserAlpaca(c *gin.Context) {
 
 	c.JSON(http.StatusOK, body)
 }
+
+func GetAccountTradingDetails(c *gin.Context) {
+	id := c.GetString("id")
+
+	headers := BasicAuth()
+
+	body, err := SendRequest[any](http.MethodGet, BaseURL+Trading+id+"/account", nil, nil, headers)
+	if err != nil {
+		RequestExit(c, body, err, "unable to get the trading detailsof the account")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}
