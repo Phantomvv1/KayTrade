@@ -69,6 +69,21 @@ type AlpacaAccount struct {
 	Assets         []string            `json:"enabled_assets"`
 }
 
+type TradingDetails struct {
+	AccountBlocked      bool   `json:"account_blocked"`
+	AccountNumber       string `json:"account_number"`
+	Fees                string `json:"accrued_fees"`
+	BuyingPower         string `json:"buying_power"`
+	Cash                string `json:"cash"`
+	CashTransferable    string `json:"cash_transferable"`
+	CashWithdrawable    string `json:"cash_withdrawable"`
+	Currency            string `json:"currency"`
+	Equity              string `json:"equity"`
+	IntradayAdjustments string `json:"intraday_adjustments"`
+	InitialMargin       string `json:"initial_margin"`
+	Status              string `json:"status"`
+}
+
 func GenerateJWT(id string, accountType byte, email string) (string, error) {
 	claims := jwt.MapClaims{
 		"id":         id,
@@ -562,7 +577,7 @@ func GetAccountTradingDetails(c *gin.Context) {
 
 	headers := BasicAuth()
 
-	body, err := SendRequest[any](http.MethodGet, BaseURL+Trading+id+"/account", nil, nil, headers)
+	body, err := SendRequest[TradingDetails](http.MethodGet, BaseURL+Trading+id+"/account", nil, nil, headers)
 	if err != nil {
 		RequestExit(c, body, err, "unable to get the trading detailsof the account")
 		return
