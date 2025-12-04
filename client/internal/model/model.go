@@ -58,7 +58,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorPage.PrevPage = m.currentPage
 		m.errorPage.Err = msg.Err
 
-		m.companyPage.PrevPage = m.currentPage
+		if m.currentPage != messages.ErrorPageNumber && m.currentPage != messages.CompanyPageNumber {
+			m.companyPage.PrevPage = m.currentPage
+		}
 		m.currentPage = msg.Page
 		if msg.Company != nil {
 			m.companyPage.CompanyInfo = msg.Company
