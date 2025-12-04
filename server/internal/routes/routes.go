@@ -35,9 +35,12 @@ func NewRouter() *gin.Engine {
 	f := r.Group("/funding")
 	f.Use(AuthMiddleware)
 	f.POST("", CreateBankRelationship)
+	f.POST("/ach", CreateAchRelationship)
+	f.GET("/ach", GetAchRelationship)
 	f.GET("", GetBankRelationships)
 	f.GET("/alpaca", GetBankRelationshipsAlpaca)
 	f.DELETE("", JSONParserMiddleware, DeleteBankRelationship)
+	f.DELETE("ach", DeleteAchRelationship)
 
 	t := r.Group("/transfers")
 	t.Use(AuthMiddleware)
