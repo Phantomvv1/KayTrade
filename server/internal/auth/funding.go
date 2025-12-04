@@ -227,7 +227,7 @@ func CreateAchRelationship(c *gin.Context) {
 	c.JSON(http.StatusOK, body)
 }
 
-func GetAchRelationship(c *gin.Context) {
+func GetAchRelationships(c *gin.Context) {
 	id := c.GetString("id")
 
 	headers := BasicAuth()
