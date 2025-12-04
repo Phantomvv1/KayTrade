@@ -17,13 +17,14 @@ import (
 type Bank struct {
 	ID        string     `json:"id"`
 	UserID    string     `json:"user_id"`
+	Type      string     `json:"type"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Timer `json:"updated_at"`
 }
 
 func CreateBankTable(conn *pgx.Conn) error {
 	_, err := conn.Exec(context.Background(), "create table if not exists bank(id uuid primary key, user_id uuid references authentication(id) on delete cascade, "+
-		"created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp)")
+		"type text, created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp)")
 	return err
 }
 
@@ -58,7 +59,7 @@ func CreateBankRelationship(c *gin.Context) {
 		return
 	}
 
-	_, err = conn.Exec(context.Background(), "insert into bank (id, user_id) values ($1, $2)", bankID, id)
+	_, err = conn.Exec(context.Background(), "insert into bank (id, user_id, type) values ($1, $2, 'bank')", bankID, id)
 	if err != nil {
 		ErrorExit(c, http.StatusInternalServerError, "couldn't put your information into the database", err)
 		return
@@ -77,7 +78,7 @@ func GetBankRelationships(c *gin.Context) {
 	}
 	defer conn.Close(context.Background())
 
-	rows, err := conn.Query(context.Background(), "select id, user_id, created_at, updated_at from bank b where b.user_id = $1", id)
+	rows, err := conn.Query(context.Background(), "select id, user_id, type, created_at, updated_at from bank b where b.user_id = $1", id)
 	if err != nil {
 		ErrorExit(c, http.StatusInternalServerError, "couldn't get the information from the database", err)
 		return
@@ -86,7 +87,7 @@ func GetBankRelationships(c *gin.Context) {
 	var banks []Bank
 	for rows.Next() {
 		bank := Bank{}
-		err = rows.Scan(&bank.ID, &bank.UserID, &bank.CreatedAt, &bank.UpdatedAt)
+		err = rows.Scan(&bank.ID, &bank.UserID, &bank.Type, &bank.CreatedAt, &bank.UpdatedAt)
 		if err != nil {
 			ErrorExit(c, http.StatusInternalServerError, "couldn't work with the items from the database", err)
 			return
@@ -192,6 +193,85 @@ func DeleteBankRelationship(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resBody)
+}
+
+func CreateAchRelationship(c *gin.Context) {
+	id := c.GetString("id")
+
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		400: "Malformed input",
+		401: "Client is not authorized for this operation",
+		409: "The account already has an active ach relationship",
+	}
+
+	body, err := SendRequest[map[string]any](http.MethodPost, BaseURL+Accounts+id+"/ach_relationships", c.Request.Body, errs, headers)
+	if err != nil {
+		RequestExit(c, body, err, "unable to create an ach relationship for this account")
+		return
+	}
+
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		return
+	}
+	defer conn.Close(context.Background())
+
+	_, err = conn.Exec(context.Background(), "insert into bank (id, user_id, type) values ($1, $2, 'ach')", body["id"].(string), id)
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "coludn't delete the information from the database", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}
+
+func GetAchRelationships(c *gin.Context) {
+	id := c.GetString("id")
+
+	headers := BasicAuth()
+
+	body, err := SendRequest[any](http.MethodGet, BaseURL+Accounts+id+"/ach_relationships", c.Request.Body, nil, headers)
+	if err != nil {
+		RequestExit(c, body, err, "unable to get the ach relationship for this account")
+		return
+	}
+
+	c.JSON(http.StatusOK, body)
+}
+
+func DeleteAchRelationship(c *gin.Context) {
+	id := c.GetString("id")
+	relationshipID := c.GetString("relationshipID")
+
+	headers := BasicAuth()
+
+	errs := map[int]string{
+		400: "Malformed input",
+		401: "Client is not authorized for this operation",
+		409: "The account already has an active ach relationship",
+	}
+
+	body, err := SendRequest[map[string]any](http.MethodDelete, BaseURL+Accounts+id+"/ach_relationships/"+relationshipID, c.Request.Body, errs, headers)
+	if err != nil {
+		RequestExit(c, body, err, "unable to create an ach relationship for this account")
+		return
+	}
+
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		return
+	}
+	defer conn.Close(context.Background())
+
+	_, err = conn.Exec(context.Background(), "delete from bank where user_id = $1 and id = $2", id, relationshipID)
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "coludn't delete the information from the database", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, nil)
 }
 
 func GetAllTransfers(c *gin.Context) {
