@@ -224,7 +224,11 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return c, nil
 
 	case wsDataMsg:
-		c.processWebSocketData(msg.data)
+		err := c.processWebSocketData(msg.data)
+		if err != nil {
+			c.liveError = err.Error()
+		}
+
 		return c, c.listenWebSocket()
 
 	case wsErrorMsg:
@@ -344,6 +348,12 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "a", "A":
 			return c, tea.Batch(c.addCompanyToWatchlist())
 
+		case "b", "B":
+			return c, func() tea.Msg {
+				return messages.PageSwitchMsg{
+					Page: messages.BuyPageNumber,
+				}
+			}
 		}
 	}
 
@@ -895,11 +905,14 @@ func (c CompanyPage) renderWarning() string {
 	)
 }
 
-func (c *CompanyPage) processWebSocketData(msg WebSocketMsg) {
-	now := time.Now().UTC()
+func (c *CompanyPage) processWebSocketData(msg WebSocketMsg) error {
+	t, err := time.Parse(time.RFC3339, msg.Time)
+	if err != nil {
+		return err
+	}
 
 	point := timeserieslinechart.TimePoint{
-		Time:  now,
+		Time:  t,
 		Value: msg.Price,
 	}
 	c.liveData = append(c.liveData, point)
@@ -922,6 +935,18 @@ func (c *CompanyPage) processWebSocketData(msg WebSocketMsg) {
 	}
 
 	c.volume += msg.Size
+
+	c.liveChart = timeserieslinechart.New(120, 30, timeserieslinechart.WithStyle(
+		lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")),
+	))
+
+	for _, point := range c.liveData {
+		c.liveChart.Push(point)
+	}
+
+	c.liveChart.Draw()
+
+	return nil
 }
 
 func (c *CompanyPage) fetchDataCmd() tea.Cmd {

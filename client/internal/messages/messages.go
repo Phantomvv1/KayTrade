@@ -8,6 +8,7 @@ const (
 	LoginPageNumber
 	SearchPageNumber
 	CompanyPageNumber
+	BuyPageNumber
 	ErrorPageNumber
 )
 
