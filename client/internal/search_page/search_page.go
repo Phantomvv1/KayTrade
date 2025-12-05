@@ -2,7 +2,6 @@ package searchpage
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 
@@ -26,59 +25,6 @@ type SearchPage struct {
 type Asset struct {
 	Symbol string `json:"symbol"`
 	Name   string `json:"name"`
-}
-
-type CompanyInfo struct {
-	Symbol       string  `json:"symbol"`
-	OpeningPrice float64 `json:"opening_price,omitempty"`
-	ClosingPrice float64 `json:"closing_price,omitempty"`
-	Logo         string  `json:"logo"`
-	Name         string  `json:"name"`
-	History      string  `json:"history"`
-	IsNSFW       bool    `json:"isNsfw"`
-	Description  string  `json:"description"`
-	FoundedYear  int     `json:"founded_year"`
-	Domain       string  `json:"domain"`
-}
-
-func (c CompanyInfo) SymbolInfo() string {
-	return c.Symbol
-}
-
-func (c CompanyInfo) OpeningPriceInfo() float64 {
-	return c.OpeningPrice
-}
-
-func (c CompanyInfo) ClosingPriceInfo() float64 {
-	return c.ClosingPrice
-}
-
-func (c CompanyInfo) LogoInfo() string {
-	return c.Logo
-}
-
-func (c CompanyInfo) NameInfo() string {
-	return c.Name
-}
-
-func (c CompanyInfo) HistoryInfo() string {
-	return c.History
-}
-
-func (c CompanyInfo) IsNSFWInfo() bool {
-	return c.IsNSFW
-}
-
-func (c CompanyInfo) DescriptionInfo() string {
-	return c.Description
-}
-
-func (c CompanyInfo) FoundedYearInfo() int {
-	return c.FoundedYear
-}
-
-func (c CompanyInfo) DomainInfo() string {
-	return c.Domain
 }
 
 type asset struct {
@@ -139,11 +85,12 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case itemMsg:
 		s.suggestions.SetItems(nil)
 		s.suggestions.SetItems(msg.items)
+		s.suggestions.Select(0)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
 			return s, func() tea.Msg {
-				return messages.PageSwitchWithoutInitMsg{
+				return messages.SmartPageSwitchMsg{
 					Page: messages.WatchlistPageNumber,
 				}
 			}
@@ -156,13 +103,9 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				s.searchField.Placeholder = "Searching by symbol of the company"
 			}
 		case "ctrl+j", "down":
-			if s.suggestions.Cursor() < len(s.suggestions.Items())-1 {
-				s.suggestions.Select(s.suggestions.Cursor() + 1)
-			}
+			s.suggestions.CursorDown()
 		case "ctrl+k", "up":
-			if s.suggestions.Cursor() > 0 {
-				s.suggestions.Select(s.suggestions.Cursor() - 1)
-			}
+			s.suggestions.CursorUp()
 		case "enter":
 			company, err := s.GetCompanyInfo()
 			if err != nil {
@@ -265,23 +208,23 @@ func (s SearchPage) SendSearchRequest() ([]Asset, error) {
 		return nil, err
 	}
 
-	log.Println(response)
 	return response["result"], nil
 }
 
-func (s SearchPage) GetCompanyInfo() (*CompanyInfo, error) {
+func (s SearchPage) GetCompanyInfo() (*messages.CompanyInfo, error) {
 	item := s.suggestions.Items()[s.suggestions.Cursor()].(asset)
 	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/company-information/"+item.asset.Symbol, nil, http.DefaultClient, s.BaseModel.Token)
 	if err != nil {
 		return nil, err
 	}
 
-	res := CompanyInfo{}
-	err = json.Unmarshal(body, &res)
+	var info map[string]messages.CompanyInfo
+	err = json.Unmarshal(body, &info)
 	if err != nil {
 		return nil, err
 	}
 
+	res := info["information"]
 	return &res, nil
 }
 

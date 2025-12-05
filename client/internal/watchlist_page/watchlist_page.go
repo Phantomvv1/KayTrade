@@ -28,59 +28,8 @@ type WatchlistPage struct {
 	emptyWatchlist bool
 	focusedList    bool
 	renderedLogo   string
-}
-
-type CompanyInfo struct {
-	Symbol       string  `json:"symbol"`
-	OpeningPrice float64 `json:"opening_price,omitempty"`
-	ClosingPrice float64 `json:"closing_price,omitempty"`
-	Logo         string  `json:"logo"`
-	Name         string  `json:"name"`
-	History      string  `json:"history"`
-	IsNSFW       bool    `json:"isNsfw"`
-	Description  string  `json:"description"`
-	FoundedYear  int     `json:"founded_year"`
-	Domain       string  `json:"domain"`
-}
-
-func (c CompanyInfo) SymbolInfo() string {
-	return c.Symbol
-}
-
-func (c CompanyInfo) OpeningPriceInfo() float64 {
-	return c.OpeningPrice
-}
-
-func (c CompanyInfo) ClosingPriceInfo() float64 {
-	return c.ClosingPrice
-}
-
-func (c CompanyInfo) LogoInfo() string {
-	return c.Logo
-}
-
-func (c CompanyInfo) NameInfo() string {
-	return c.Name
-}
-
-func (c CompanyInfo) HistoryInfo() string {
-	return c.History
-}
-
-func (c CompanyInfo) IsNSFWInfo() bool {
-	return c.IsNSFW
-}
-
-func (c CompanyInfo) DescriptionInfo() string {
-	return c.Description
-}
-
-func (c CompanyInfo) FoundedYearInfo() int {
-	return c.FoundedYear
-}
-
-func (c CompanyInfo) DomainInfo() string {
-	return c.Domain
+	filtering      bool
+	Reloaded       bool
 }
 
 type MarketMover struct {
@@ -97,14 +46,14 @@ type MarketMovers struct {
 }
 
 type initResult struct {
-	Companies []CompanyInfo
+	Companies []messages.CompanyInfo
 	Gainers   []MarketMover
 	Losers    []MarketMover
 	Updated   time.Time
 }
 
 type companyItem struct {
-	company CompanyInfo
+	company messages.CompanyInfo
 }
 
 func (c companyItem) Title() string       { return c.company.Name }
@@ -114,6 +63,14 @@ func (c companyItem) FilterValue() string { return c.company.Name }
 func NewWatchlistPage(client *http.Client) WatchlistPage {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	l.KeyMap.Quit = key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit"))
+	l.AdditionalFullHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s", "search")),
+			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
+			key.NewBinding(key.WithKeys("r", "R"), key.WithHelp("r", "remove company")),
+			key.NewBinding(key.WithKeys("d", "D"), key.WithHelp("d", "remove all companies")),
+		}
+	}
 
 	s := spinner.New()
 	s.Spinner = spinner.Line
@@ -127,6 +84,8 @@ func NewWatchlistPage(client *http.Client) WatchlistPage {
 		spinner:        s,
 		emptyWatchlist: false,
 		focusedList:    true,
+		filtering:      false,
+		Reloaded:       false,
 	}
 }
 
@@ -134,7 +93,7 @@ func (w WatchlistPage) init() tea.Msg {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
-	var companies []CompanyInfo
+	var companies []messages.CompanyInfo
 	var movers MarketMovers
 	var err1, err2 error
 
@@ -146,7 +105,7 @@ func (w WatchlistPage) init() tea.Msg {
 			return
 		}
 
-		var info map[string][]CompanyInfo
+		var info map[string][]messages.CompanyInfo
 		err1 = json.Unmarshal(body, &info)
 		companies = info["information"]
 	}()
@@ -208,11 +167,73 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		var cmd tea.Cmd
 		w.companies, cmd = w.companies.Update(msg)
-		if msg.String() == "s" {
-			return w, func() tea.Msg {
-				return messages.PageSwitchMsg{
-					Page: messages.SearchPageNumber,
+		if w.filtering {
+			switch msg.String() {
+			case "esc":
+				w.filtering = false
+			case "enter":
+				w.filtering = false
+			}
+
+			return w, nil
+		} else {
+			switch msg.String() {
+			case "/":
+				w.filtering = true
+			case "s", "S":
+				return w, func() tea.Msg {
+					return messages.PageSwitchMsg{
+						Page: messages.SearchPageNumber,
+					}
 				}
+			case "enter":
+				item := w.companies.Items()[w.companies.Index()]
+				i := item.(companyItem)
+				return w, func() tea.Msg {
+					return messages.PageSwitchMsg{
+						Page:    messages.CompanyPageNumber,
+						Company: &i.company,
+					}
+				}
+
+			case "r", "R":
+				if len(w.companies.Items()) == 0 {
+					return w, nil
+				}
+
+				item := w.companies.Items()[w.companies.Index()]
+				i := item.(companyItem)
+				err := w.removeCompanyFromWatchlist(i.company)
+				if err != nil {
+					return w, func() tea.Msg {
+						return messages.PageSwitchMsg{
+							Page: messages.ErrorPageNumber,
+							Err:  err,
+						}
+					}
+				}
+
+				w.companies.RemoveItem(w.companies.Cursor())
+				if w.companies.Cursor() == len(w.companies.Items()) {
+					w.companies.CursorUp()
+				}
+
+			case "d", "D":
+				if len(w.companies.Items()) == 0 {
+					return w, nil
+				}
+
+				err := w.removeAllCompaniesFromWatchlist()
+				if err != nil {
+					return w, func() tea.Msg {
+						return messages.PageSwitchMsg{
+							Page: messages.ErrorPageNumber,
+							Err:  err,
+						}
+					}
+				}
+
+				w.companies.SetItems([]list.Item{})
 			}
 		}
 
@@ -291,6 +312,25 @@ func (w WatchlistPage) View() string {
 	return header + content
 }
 
+func (w WatchlistPage) removeCompanyFromWatchlist(company messages.CompanyInfo) error {
+	_, err := requests.MakeRequest(http.MethodDelete, requests.BaseURL+"/watchlist/"+company.Symbol, nil, &http.Client{}, w.BaseModel.Token)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w WatchlistPage) removeAllCompaniesFromWatchlist() error {
+	_, err := requests.MakeRequest(http.MethodDelete, requests.BaseURL+"/watchlist", nil, &http.Client{}, w.BaseModel.Token)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (w *WatchlistPage) Reload() {
 	w.companies.SetItems([]list.Item{})
+	w.Reloaded = true
 }
