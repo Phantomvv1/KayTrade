@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
@@ -620,4 +619,21 @@ func (b *BuyPage) getFieldNames(purchaseType string) []string {
 	default:
 		return []string{}
 	}
+}
+
+func (b *BuyPage) Reload() {
+	b.cursor = 0
+	b.quantity.SetValue("1")
+	b.purchaseTypeIdx = 0
+	b.timeInForceIdx = 0
+	for _, fields := range b.additionalFields {
+		for _, field := range fields {
+			field.SetValue("")
+		}
+	}
+	b.takeProfit.limitPrice.SetValue("")
+	b.stopLoss.stopPrice.SetValue("")
+	b.stopLoss.limitPrice.SetValue("")
+	b.err = ""
+	b.success = ""
 }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 
+	buypage "github.com/Phantomvv1/KayTrade/internal/buy_page"
 	companypage "github.com/Phantomvv1/KayTrade/internal/company_page"
 	errorpage "github.com/Phantomvv1/KayTrade/internal/error_page"
 	landingpage "github.com/Phantomvv1/KayTrade/internal/landing_page"
@@ -23,6 +24,7 @@ type Model struct {
 	loginPage     loginpage.LoginPage
 	searchPage    searchpage.SearchPage
 	companyPage   companypage.CompanyPage
+	buyPage       buypage.BuyPage
 	currentPage   int
 }
 
@@ -41,6 +43,7 @@ func NewModel() Model {
 		loginPage:     loginpage.NewLoginPage(client),
 		searchPage:    searchpage.NewSearchPage(client),
 		companyPage:   companypage.NewCompanyPage(client),
+		buyPage:       buypage.NewBuyPage(client),
 		currentPage:   messages.LandingPageNumber,
 	}
 }
@@ -117,6 +120,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.CompanyPageNumber:
 		page, cmd = m.companyPage.Update(msg)
 		m.companyPage = page.(companypage.CompanyPage)
+	case messages.BuyPageNumber:
+		page, cmd = m.buyPage.Update(msg)
+		m.buyPage = page.(buypage.BuyPage)
 	default:
 		m.currentPage = messages.ErrorPageNumber
 		m.errorPage.Err = errors.New("Unkown error")
@@ -139,6 +145,8 @@ func (m Model) View() string {
 		return m.searchPage.View()
 	case messages.CompanyPageNumber:
 		return m.companyPage.View()
+	case messages.BuyPageNumber:
+		return m.buyPage.View()
 	default:
 		return m.errorPage.View()
 	}
@@ -162,6 +170,9 @@ func (m *Model) setSize(width, height int) {
 
 	m.companyPage.BaseModel.Width = width
 	m.companyPage.BaseModel.Height = height
+
+	m.buyPage.BaseModel.Width = width
+	m.buyPage.BaseModel.Height = height
 }
 
 func (m *Model) updateToken(token string) {
@@ -171,6 +182,7 @@ func (m *Model) updateToken(token string) {
 	m.loginPage.BaseModel.Token = token
 	m.searchPage.BaseModel.Token = token
 	m.companyPage.BaseModel.Token = token
+	m.buyPage.BaseModel.Token = token
 }
 
 func (m *Model) getModelFromPageNumber() tea.Model {
@@ -187,6 +199,8 @@ func (m *Model) getModelFromPageNumber() tea.Model {
 		return m.searchPage
 	case messages.CompanyPageNumber:
 		return m.companyPage
+	case messages.BuyPageNumber:
+		return m.buyPage
 	default:
 		return nil
 	}
@@ -206,6 +220,8 @@ func (m *Model) Reload(page int) {
 		m.searchPage.Reload()
 	case messages.CompanyPageNumber:
 		m.companyPage.Reload()
+	case messages.BuyPageNumber:
+		m.buyPage.Reload()
 	default:
 		return
 	}
