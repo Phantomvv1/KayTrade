@@ -249,8 +249,9 @@ func (b BuyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Update the focused input
 	fieldIdx := b.getFieldIndex()
 	if input := b.getInputAtIndex(fieldIdx); input != nil {
-		*input, cmd = input.Update(msg)
-		b.setInputAtIndex(fieldIdx, *input)
+		updatedInput, innerCmd := input.Update(msg)
+		cmd = innerCmd
+		b.setInputAtIndex(fieldIdx, updatedInput)
 	}
 
 	return b, cmd
@@ -466,25 +467,42 @@ func (b BuyPage) View() string {
 	return finalView
 }
 
-func (b BuyPage) renderField(label, value string, focused bool, slider bool) string {
+func (b BuyPage) renderField(label, value string, focused, slider bool) string {
 	styledLabel := labelStyle.Render(label + ":")
 
 	var fieldStyle lipgloss.Style
 	if focused {
-		fieldStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00FFFF")).
-			Background(lipgloss.Color("#2a2a4e")).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#00FFFF")).
-			Width(30).
-			Align(lipgloss.Center)
+		if slider {
+			fieldStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#00FFFF")).
+				Background(lipgloss.Color("#2a2a4e")).
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#00FFFF")).
+				Width(30).
+				Align(lipgloss.Center)
+		} else {
+			fieldStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#00FFFF")).
+				Background(lipgloss.Color("#2a2a4e")).
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#00FFFF")).
+				Width(30)
+		}
 	} else {
-		fieldStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFFFF")).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#666666")).
-			Width(30).
-			Align(lipgloss.Center)
+		if slider {
+			fieldStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFFFFF")).
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#666666")).
+				Width(30).
+				Align(lipgloss.Center)
+		} else {
+			fieldStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFFFFF")).
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#666666")).
+				Width(30)
+		}
 	}
 
 	styledValue := fieldStyle.Render(value)
