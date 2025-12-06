@@ -51,30 +51,11 @@ var (
 
 	labelStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#BB88FF")).
-			Width(20)
-
-	selectedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00FFFF")).
-			Bold(true)
-
-	sliderStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00FFFF")).
-			Background(lipgloss.Color("#1a1a2e")).
-			Padding(0, 2).
-			Margin(0, 1)
-
-	inputStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFFFF")).
-			Background(lipgloss.Color("#1a1a2e")).
-			Padding(0, 1)
-
-	cursorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00FFFF")).
-			Bold(true)
+			Width(25).
+			Align(lipgloss.Center)
 
 	helpStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#666666")).
-			Margin(1, 0)
+			Foreground(lipgloss.Color("#666666"))
 
 	errorStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FF0000")).
@@ -88,43 +69,43 @@ var (
 func NewBuyPage(client *http.Client) BuyPage {
 	quantity := textinput.New()
 	quantity.Placeholder = "Quantity"
-	quantity.Width = 8
+	quantity.Width = 28
 	quantity.SetValue("1")
 	quantity.CharLimit = 10
 
 	limitPrice := textinput.New()
 	limitPrice.Placeholder = "Limit price"
-	limitPrice.Width = 12
+	limitPrice.Width = 28
 	limitPrice.CharLimit = 20
 
 	stopPrice := textinput.New()
 	stopPrice.Placeholder = "Stop price"
-	stopPrice.Width = 12
+	stopPrice.Width = 28
 	stopPrice.CharLimit = 20
 
 	trailPrice := textinput.New()
 	trailPrice.Placeholder = "Trail price"
-	trailPrice.Width = 12
+	trailPrice.Width = 28
 	trailPrice.CharLimit = 20
 
 	trailPercent := textinput.New()
 	trailPercent.Placeholder = "Trail percent"
-	trailPercent.Width = 12
+	trailPercent.Width = 28
 	trailPercent.CharLimit = 20
 
 	takeProfit := textinput.New()
 	takeProfit.Placeholder = "Limit price"
-	takeProfit.Width = 12
+	takeProfit.Width = 28
 	takeProfit.CharLimit = 20
 
 	stopLossStopPrice := textinput.New()
 	stopLossStopPrice.Placeholder = "Stop price"
-	stopLossStopPrice.Width = 12
+	stopLossStopPrice.Width = 28
 	stopLossStopPrice.CharLimit = 20
 
 	stopLossLimitPrice := textinput.New()
 	stopLossLimitPrice.Placeholder = "Limit price"
-	stopLossLimitPrice.Width = 12
+	stopLossLimitPrice.Width = 28
 	stopLossLimitPrice.CharLimit = 20
 
 	stopLoss := StopLoss{
@@ -269,6 +250,7 @@ func (b BuyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	fieldIdx := b.getFieldIndex()
 	if input := b.getInputAtIndex(fieldIdx); input != nil {
 		*input, cmd = input.Update(msg)
+		b.setInputAtIndex(fieldIdx, *input)
 	}
 
 	return b, cmd
@@ -344,50 +326,66 @@ func (b *BuyPage) getInputAtIndex(idx int) *textinput.Model {
 	return nil
 }
 
+func (b *BuyPage) setInputAtIndex(idx int, input textinput.Model) {
+	if idx == 0 {
+		b.quantity = input
+		return
+	}
+	if idx >= 100 && idx < 200 {
+		fieldIdx := idx - 100
+		if fields, ok := b.additionalFields[b.purchaseType[b.purchaseTypeIdx]]; ok {
+			if fieldIdx < len(fields) {
+				fields[fieldIdx] = input
+				b.additionalFields[b.purchaseType[b.purchaseTypeIdx]] = fields
+			}
+		}
+		return
+	}
+	if idx == 200 {
+		b.takeProfit.limitPrice = input
+		return
+	}
+	if idx == 300 {
+		b.stopLoss.stopPrice = input
+		return
+	}
+	if idx == 301 {
+		b.stopLoss.limitPrice = input
+		return
+	}
+}
+
 func (b BuyPage) View() string {
-	var s strings.Builder
+	// Build header
+	header := titleStyle.Render(fmt.Sprintf("📈 %s - %s Order", strings.ToUpper(b.Symbol), strings.ToUpper(b.side)))
 
-	s.WriteString(titleStyle.Render(fmt.Sprintf("📈 %s - %s Order", strings.ToUpper(b.Symbol), strings.ToUpper(b.side))))
-	s.WriteString("\n\n")
-
+	// Build form fields as a slice
+	var fields []string
 	idx := 0
 
 	// Quantity
-	cursor := " "
 	if b.cursor == idx {
-		cursor = cursorStyle.Render(">")
 		b.quantity.Focus()
 	} else {
 		b.quantity.Blur()
 	}
-	s.WriteString(fmt.Sprintf("%s %s %s\n", cursor, labelStyle.Render("Quantity:"), inputStyle.Render(b.quantity.View())))
+	fields = append(fields, b.renderField("Quantity", b.quantity.View(), b.cursor == idx, false))
 	idx++
 
 	// Purchase Type (slider)
-	cursor = " "
-	if b.cursor == idx {
-		cursor = cursorStyle.Render(">")
-	}
-	s.WriteString(fmt.Sprintf("%s %s %s\n", cursor, labelStyle.Render("Purchase Type:"),
-		b.renderSlider(b.purchaseType, b.purchaseTypeIdx, b.cursor == idx)))
+	fields = append(fields, b.renderField("Purchase Type", b.renderSlider(b.purchaseType, b.purchaseTypeIdx, b.cursor == idx), b.cursor == idx, true))
 	idx++
 
 	// Time In Force (slider)
-	cursor = " "
-	if b.cursor == idx {
-		cursor = cursorStyle.Render(">")
-	}
-	s.WriteString(fmt.Sprintf("%s %s %s\n", cursor, labelStyle.Render("Time In Force:"),
-		b.renderSlider(b.timeInForce, b.timeInForceIdx, b.cursor == idx)))
+	fields = append(fields, b.renderField("Time In Force", b.renderSlider(b.timeInForce, b.timeInForceIdx, b.cursor == idx), b.cursor == idx, true))
 	idx++
 
 	// Additional fields for current purchase type
-	if fields, ok := b.additionalFields[b.purchaseType[b.purchaseTypeIdx]]; ok {
-		s.WriteString("\n")
-		for i, field := range fields {
-			cursor = " "
+	currentType := b.purchaseType[b.purchaseTypeIdx]
+	if additionalFields, ok := b.additionalFields[currentType]; ok {
+		for i := range additionalFields {
+			field := &additionalFields[i]
 			if b.cursor == idx {
-				cursor = cursorStyle.Render(">")
 				field.Focus()
 			} else {
 				field.Blur()
@@ -395,7 +393,7 @@ func (b BuyPage) View() string {
 
 			label := field.Placeholder
 			// Special handling for trailing_stop (only one required)
-			if b.purchaseType[b.purchaseTypeIdx] == "trailing_stop" {
+			if currentType == "trailing_stop" {
 				if i == 0 {
 					label += " (OR)"
 				} else {
@@ -403,89 +401,110 @@ func (b BuyPage) View() string {
 				}
 			}
 
-			s.WriteString(fmt.Sprintf("%s %s %s\n", cursor, labelStyle.Render(label+":"),
-				inputStyle.Render(field.View())))
+			fields = append(fields, b.renderField(label, field.View(), b.cursor == idx, false))
 			idx++
 		}
 	}
 
 	// Take Profit (optional)
-	s.WriteString("\n")
-	cursor = " "
 	if b.cursor == idx {
-		cursor = cursorStyle.Render(">")
 		b.takeProfit.limitPrice.Focus()
 	} else {
 		b.takeProfit.limitPrice.Blur()
 	}
-	s.WriteString(fmt.Sprintf("%s %s %s\n", cursor, labelStyle.Render("Take Profit (opt):"),
-		inputStyle.Render(b.takeProfit.limitPrice.View())))
+	fields = append(fields, b.renderField("Take Profit (opt)", b.takeProfit.limitPrice.View(), b.cursor == idx, false))
 	idx++
 
 	// Stop Loss (optional)
-	cursor = " "
 	if b.cursor == idx {
-		cursor = cursorStyle.Render(">")
 		b.stopLoss.stopPrice.Focus()
 	} else {
 		b.stopLoss.stopPrice.Blur()
 	}
-	s.WriteString(fmt.Sprintf("%s %s %s\n", cursor, labelStyle.Render("Stop Loss Stop (opt):"),
-		inputStyle.Render(b.stopLoss.stopPrice.View())))
+	fields = append(fields, b.renderField("Stop Loss Stop (opt)", b.stopLoss.stopPrice.View(), b.cursor == idx, false))
 	idx++
 
-	cursor = " "
 	if b.cursor == idx {
-		cursor = cursorStyle.Render(">")
 		b.stopLoss.limitPrice.Focus()
 	} else {
 		b.stopLoss.limitPrice.Blur()
 	}
-	s.WriteString(fmt.Sprintf("%s %s %s\n", cursor, labelStyle.Render("Stop Loss Limit (opt):"),
-		inputStyle.Render(b.stopLoss.limitPrice.View())))
+	fields = append(fields, b.renderField("Stop Loss Limit (opt)", b.stopLoss.limitPrice.View(), b.cursor == idx, false))
 
-	// Error/Success messages
+	content := lipgloss.JoinVertical(lipgloss.Center, fields...)
+
+	// Add error/success messages if present
 	if b.err != "" {
-		s.WriteString("\n\n")
-		s.WriteString(errorStyle.Render("❌ Error: " + b.err))
+		content = lipgloss.JoinVertical(lipgloss.Center, content, "", errorStyle.Render("❌ "+b.err))
 	}
 	if b.success != "" {
-		s.WriteString("\n\n")
-		s.WriteString(successStyle.Render("✓ " + b.success))
+		content = lipgloss.JoinVertical(lipgloss.Center, content, "", successStyle.Render("✓ "+b.success))
 	}
 
-	// Help text
-	s.WriteString("\n\n")
-	s.WriteString(helpStyle.Render("j/k/↑/↓: navigate | h/l/←/→: change slider | enter: submit | esc: quit"))
+	help := helpStyle.Render("j/k/↑/↓: navigate | h/l/←/→: change slider | enter: submit | q: quit")
 
-	return s.String()
+	// Calculate vertical spacing
+	headerHeight := lipgloss.Height(header)
+	contentHeight := lipgloss.Height(content)
+	helpHeight := lipgloss.Height(help)
+
+	// Center everything horizontally
+	centeredHeader := lipgloss.Place(b.BaseModel.Width, headerHeight, lipgloss.Center, lipgloss.Top, header)
+	centeredContent := lipgloss.Place(b.BaseModel.Width, contentHeight, lipgloss.Center, lipgloss.Top, content)
+	centeredHelp := lipgloss.Place(b.BaseModel.Width, helpHeight, lipgloss.Center, lipgloss.Top, help)
+
+	// Build final view with vertical spacing
+	finalView := lipgloss.JoinVertical(
+		lipgloss.Center,
+		centeredHeader,
+		strings.Repeat("\n", 16-b.calculateTotalFields()),
+		centeredContent,
+		"",
+		centeredHelp,
+	)
+
+	return finalView
+}
+
+func (b BuyPage) renderField(label, value string, focused bool, slider bool) string {
+	styledLabel := labelStyle.Render(label + ":")
+
+	var fieldStyle lipgloss.Style
+	if focused {
+		fieldStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#00FFFF")).
+			Background(lipgloss.Color("#2a2a4e")).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#00FFFF")).
+			Width(30).
+			Align(lipgloss.Center)
+	} else {
+		fieldStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#666666")).
+			Width(30).
+			Align(lipgloss.Center)
+	}
+
+	styledValue := fieldStyle.Render(value)
+
+	return lipgloss.JoinVertical(lipgloss.Center, styledLabel, styledValue)
 }
 
 func (b BuyPage) renderSlider(options []string, selectedIdx int, focused bool) string {
-	var parts []string
+	selected := strings.ToUpper(options[selectedIdx])
 
-	parts = append(parts, "◀")
-
-	for i, opt := range options {
-		if i == selectedIdx {
-			if focused {
-				parts = append(parts, selectedStyle.Render("["+strings.ToUpper(opt)+"]"))
-			} else {
-				parts = append(parts, "["+strings.ToUpper(opt)+"]")
-			}
-		} else {
-			parts = append(parts, strings.ToUpper(opt))
-		}
-	}
-
-	parts = append(parts, "▶")
-
-	style := sliderStyle
 	if focused {
-		style = style.Background(lipgloss.Color("#2a2a4e"))
+		return lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#00FFFF")).
+			Bold(true).
+			Render("◀ " + selected + " ▶")
 	}
 
-	return style.Render(strings.Join(parts, " "))
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FFFFFF")).
+		Render("◀ " + selected + " ▶")
 }
 
 func (b *BuyPage) submitOrder() error {

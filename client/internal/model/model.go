@@ -64,6 +64,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.currentPage != messages.ErrorPageNumber && m.currentPage != messages.CompanyPageNumber {
 			m.companyPage.PrevPage = m.currentPage
 		}
+
+		if msg.Symbol != "" {
+			m.buyPage.Symbol = msg.Symbol
+		}
+
 		m.currentPage = msg.Page
 		if msg.Company != nil {
 			m.companyPage.CompanyInfo = msg.Company
