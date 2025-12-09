@@ -351,7 +351,8 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "b", "B":
 			return c, func() tea.Msg {
 				return messages.PageSwitchMsg{
-					Page: messages.BuyPageNumber,
+					Page:   messages.BuyPageNumber,
+					Symbol: c.CompanyInfo.Symbol,
 				}
 			}
 		}
@@ -501,7 +502,8 @@ func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 	case "b", "B":
 		return c, func() tea.Msg {
 			return messages.PageSwitchMsg{
-				Page: messages.BuyPageNumber,
+				Page:   messages.BuyPageNumber,
+				Symbol: c.CompanyInfo.Symbol,
 			}
 		}
 
@@ -611,7 +613,6 @@ func (c *CompanyPage) handleLiveChartKeys(key string) (tea.Model, tea.Cmd) {
 		return c, c.addCompanyToWatchlist()
 
 	case "b", "B":
-		log.Println("Sending symbol: ", c.CompanyInfo.Symbol)
 		return c, func() tea.Msg {
 			return messages.PageSwitchMsg{
 				Page:   messages.BuyPageNumber,
