@@ -245,6 +245,13 @@ func (b BuyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return b, nil
 
 		default:
+			key := msg.String()
+			if len(key) == 1 {
+				if []byte(key)[0] < '0' || []byte(key)[0] > '9' {
+					return b, nil
+				}
+			}
+
 			fieldIdx := b.getFieldIndex()
 			if input := b.getInputAtIndex(fieldIdx); input != nil {
 				input.Focus()
@@ -612,30 +619,34 @@ func (b *BuyPage) submitOrder() error {
 	slStop := strings.TrimSpace(b.stopLoss.stopPrice.Value())
 	slLimit := strings.TrimSpace(b.stopLoss.limitPrice.Value())
 
-	if slStop != "" && slLimit != "" {
-		stopLoss := make(map[string]string)
+	if slStop != "" || slLimit != "" {
+		if slStop != "" && slLimit != "" {
+			stopLoss := make(map[string]string)
 
-		if strings.Count(slStop, ".") > 1 {
-			return errors.New("Error invalid stop loss stop price")
+			if strings.Count(slStop, ".") > 1 {
+				return errors.New("Error invalid stop loss stop price")
+			}
+
+			stopLoss["stop_price"] = slStop
+
+			if strings.Count(slLimit, ".") > 1 {
+				return errors.New("Error invalid stop loss limit price")
+			}
+
+			stopLoss["limit_price"] = slLimit
+
+			data["stop_loss"] = stopLoss
+		} else {
+			return errors.New("Error both stop price and stop limit are required if you want to have a stop loss")
 		}
-
-		stopLoss["stop_price"] = slStop
-
-		if strings.Count(slLimit, ".") > 1 {
-			return errors.New("Error invalid stop loss limit price")
-		}
-
-		stopLoss["limit_price"] = slLimit
-
-		data["stop_loss"] = stopLoss
-	} else {
-		return errors.New("Error both stop price and stop limit are required if you want to have a stop loss")
 	}
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to encode request: %v", err)
 	}
+
+	log.Println(string(jsonData))
 
 	body, err := requests.MakeRequest(http.MethodPost, requests.BaseURL+"/trading", bytes.NewReader(jsonData), http.DefaultClient, b.BaseModel.Token)
 	if err != nil {
