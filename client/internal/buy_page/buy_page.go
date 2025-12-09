@@ -243,15 +243,19 @@ func (b BuyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				b.success = "Order submitted successfully!"
 			}
 			return b, nil
-		}
-	}
 
-	// Update the focused input
-	fieldIdx := b.getFieldIndex()
-	if input := b.getInputAtIndex(fieldIdx); input != nil {
-		updatedInput, innerCmd := input.Update(msg)
-		cmd = innerCmd
-		b.setInputAtIndex(fieldIdx, updatedInput)
+		default:
+			fieldIdx := b.getFieldIndex()
+			if input := b.getInputAtIndex(fieldIdx); input != nil {
+				input.Focus()
+				updatedInput, cmd := input.Update(msg)
+				b.setInputAtIndex(fieldIdx, updatedInput)
+				input.Blur()
+				return b, cmd
+			}
+
+			return b, nil
+		}
 	}
 
 	return b, cmd
