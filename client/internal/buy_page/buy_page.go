@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -259,6 +258,13 @@ func (b BuyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+		case "i", "I":
+			return b, func() tea.Msg {
+				return messages.PageSwitchMsg{
+					Page: messages.TradingInfoPageNumber,
+				}
+			}
+
 		default:
 			key := msg.String()
 			if len(key) == 1 {
@@ -468,7 +474,7 @@ func (b BuyPage) View() string {
 		content = lipgloss.JoinVertical(lipgloss.Center, content, "", successStyle.Render("✓ "+b.success))
 	}
 
-	help := helpStyle.Render("j/k/↑/↓: navigate | h/l/←/→: change slider | enter: submit | esc: back | w: watchlist page | q: quit")
+	help := helpStyle.Render("j/k/↑/↓: navigate | h/l/←/→: change slider | enter: submit | esc: back | w: watchlist page | i: information page | q: quit")
 
 	// Calculate vertical spacing
 	headerHeight := lipgloss.Height(header)
