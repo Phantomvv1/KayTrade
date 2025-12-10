@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
+	"github.com/Phantomvv1/KayTrade/internal/messages"
 	"github.com/Phantomvv1/KayTrade/internal/requests"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -244,6 +245,20 @@ func (b BuyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return b, nil
 
+		case "esc":
+			return b, func() tea.Msg {
+				return messages.PageSwitchMsg{
+					Page: messages.CompanyPageNumber,
+				}
+			}
+
+		case "w", "W":
+			return b, func() tea.Msg {
+				return messages.SmartPageSwitchMsg{
+					Page: messages.WatchlistPageNumber,
+				}
+			}
+
 		default:
 			key := msg.String()
 			if len(key) == 1 {
@@ -453,7 +468,7 @@ func (b BuyPage) View() string {
 		content = lipgloss.JoinVertical(lipgloss.Center, content, "", successStyle.Render("✓ "+b.success))
 	}
 
-	help := helpStyle.Render("j/k/↑/↓: navigate | h/l/←/→: change slider | enter: submit | q: quit")
+	help := helpStyle.Render("j/k/↑/↓: navigate | h/l/←/→: change slider | enter: submit | esc: back | w: watchlist page | q: quit")
 
 	// Calculate vertical spacing
 	headerHeight := lipgloss.Height(header)
