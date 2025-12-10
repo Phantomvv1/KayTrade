@@ -16,6 +16,7 @@ type PageSwitchMsg struct {
 	Page    int
 	Err     error
 	Company *CompanyInfo
+	Symbol  string
 }
 
 type TokenSwitchMsg struct {

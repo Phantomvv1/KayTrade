@@ -351,7 +351,8 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "b", "B":
 			return c, func() tea.Msg {
 				return messages.PageSwitchMsg{
-					Page: messages.BuyPageNumber,
+					Page:   messages.BuyPageNumber,
+					Symbol: c.CompanyInfo.Symbol,
 				}
 			}
 		}
@@ -498,6 +499,14 @@ func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 	case "a", "A":
 		return c, c.addCompanyToWatchlist()
 
+	case "b", "B":
+		return c, func() tea.Msg {
+			return messages.PageSwitchMsg{
+				Page:   messages.BuyPageNumber,
+				Symbol: c.CompanyInfo.Symbol,
+			}
+		}
+
 	case "q", "ctrl+c":
 		if c.ws != nil {
 			c.ws.Close()
@@ -603,6 +612,14 @@ func (c *CompanyPage) handleLiveChartKeys(key string) (tea.Model, tea.Cmd) {
 	case "a", "A":
 		return c, c.addCompanyToWatchlist()
 
+	case "b", "B":
+		return c, func() tea.Msg {
+			return messages.PageSwitchMsg{
+				Page:   messages.BuyPageNumber,
+				Symbol: c.CompanyInfo.Symbol,
+			}
+		}
+
 	case "q", "ctrl+c":
 		if c.ws != nil {
 			c.ws.Close()
@@ -696,11 +713,11 @@ func (c CompanyPage) View() string {
 	// Help text
 	help := ""
 	if c.tabs[c.activeTab] == tabChart {
-		help = "[1-5] timeframe  [Ctrl+←/→] pan left/right  [Ctrl+↑/↓] pan up/down  [+/-] zoom  [r] refresh  [←/→] tabs  [a] add company to watchlist  [esc] back  [q] quit"
+		help = "[1-5] timeframe  [Ctrl+←/→] pan left/right  [Ctrl+↑/↓] pan up/down  [+/-] zoom  [r] refresh  [←/→] tabs  [a] add company to watchlist  [b] buy  [esc] back  [q] quit"
 	} else if c.tabs[c.activeTab] == tabLiveUpdate {
-		help = "[r] reconnect  [←/→] tabs  [a] add company to watchlist  [esc] back  [q] quit"
+		help = "[r] reconnect  [←/→] tabs  [a] add company to watchlist  [b] buy  [esc] back  [q] quit"
 	} else {
-		help = "← → / h l: switch tabs • a: add company to watchlist •  esc: back  •  q: quit"
+		help = "← → / h l: switch tabs • a: add company to watchlist • b: buy • esc: back • q: quit"
 	}
 
 	helpStyle := lipgloss.NewStyle().
