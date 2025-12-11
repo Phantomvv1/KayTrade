@@ -74,7 +74,6 @@ The price is expressed in percentage of par value (face value). Price is always 
 		takeProfitExplanation:           "Takes in a number value for limit_price",
 		stopLossExplanation:             "Takes in number values for stop_price and limit_price",
 		Viewport:                        viewport.New(130, 40),
-		ready:                           false,
 	}
 }
 
@@ -84,11 +83,10 @@ func (t TradingInfoPage) Init() tea.Cmd {
 
 func (t TradingInfoPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	if !t.ready {
 		t.ready = true
 		t.Viewport.SetContent(t.buildContent())
-		t.Viewport, cmd = t.Viewport.Update(msg)
-		return t, cmd
 	}
 
 	switch msg := msg.(type) {
@@ -114,6 +112,10 @@ func (t TradingInfoPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (t TradingInfoPage) View() string {
 	title := titleStyle.Render("📊 Trading Order Information Guide")
 	help := helpStyle.Render("↑/↓/k/j: scroll • esc: back • q/ctrl+c: quit")
+
+	if !t.ready {
+		t.Viewport.SetContent(t.buildContent())
+	}
 
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
@@ -142,13 +144,12 @@ func (t TradingInfoPage) buildContent() string {
 	tifItems := strings.Split(t.timeInForceExplanation, "\n\n")
 	for _, item := range tifItems {
 		if strings.TrimSpace(item) != "" {
-			sections = append(sections, subItemStyle.Render(strings.TrimSpace(item)))
+			sections = append(sections, subItemStyle.Render(strings.TrimSpace(item)), "")
 		}
 	}
 
 	// Limit Price Section
 	sections = append(sections,
-		"",
 		sectionTitleStyle.Render("💰 Limit Price"),
 		contentStyle.Render(strings.TrimSpace(t.limitPriceExplanation)),
 	)
