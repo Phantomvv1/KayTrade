@@ -9,6 +9,7 @@ const (
 	SearchPageNumber
 	CompanyPageNumber
 	BuyPageNumber
+	TradingInfoPageNumber
 	ErrorPageNumber
 )
 

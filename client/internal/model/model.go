@@ -13,19 +13,21 @@ import (
 	loginpage "github.com/Phantomvv1/KayTrade/internal/login_page"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
 	searchpage "github.com/Phantomvv1/KayTrade/internal/search_page"
+	tradinginfopage "github.com/Phantomvv1/KayTrade/internal/trading_info_page"
 	watchlistpage "github.com/Phantomvv1/KayTrade/internal/watchlist_page"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type Model struct {
-	landingPage   landingpage.LandingPage
-	errorPage     errorpage.ErrorPage
-	watchlistPage watchlistpage.WatchlistPage
-	loginPage     loginpage.LoginPage
-	searchPage    searchpage.SearchPage
-	companyPage   companypage.CompanyPage
-	buyPage       buypage.BuyPage
-	currentPage   int
+	landingPage     landingpage.LandingPage
+	errorPage       errorpage.ErrorPage
+	watchlistPage   watchlistpage.WatchlistPage
+	loginPage       loginpage.LoginPage
+	searchPage      searchpage.SearchPage
+	companyPage     companypage.CompanyPage
+	buyPage         buypage.BuyPage
+	tradingInfoPage tradinginfopage.TradingInfoPage
+	currentPage     int
 }
 
 func NewModel() Model {
@@ -37,14 +39,15 @@ func NewModel() Model {
 	client := &http.Client{Jar: jar}
 
 	return Model{
-		landingPage:   landingpage.LandingPage{},
-		errorPage:     errorpage.ErrorPage{},
-		watchlistPage: watchlistpage.NewWatchlistPage(client),
-		loginPage:     loginpage.NewLoginPage(client),
-		searchPage:    searchpage.NewSearchPage(client),
-		companyPage:   companypage.NewCompanyPage(client),
-		buyPage:       buypage.NewBuyPage(client),
-		currentPage:   messages.LandingPageNumber,
+		landingPage:     landingpage.LandingPage{},
+		errorPage:       errorpage.ErrorPage{},
+		watchlistPage:   watchlistpage.NewWatchlistPage(client),
+		loginPage:       loginpage.NewLoginPage(client),
+		searchPage:      searchpage.NewSearchPage(client),
+		companyPage:     companypage.NewCompanyPage(client),
+		buyPage:         buypage.NewBuyPage(client),
+		tradingInfoPage: tradinginfopage.NewTradingInfoPage(),
+		currentPage:     messages.LandingPageNumber,
 	}
 }
 
@@ -128,6 +131,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.BuyPageNumber:
 		page, cmd = m.buyPage.Update(msg)
 		m.buyPage = page.(buypage.BuyPage)
+	case messages.TradingInfoPageNumber:
+		page, cmd = m.tradingInfoPage.Update(msg)
+		m.tradingInfoPage = page.(tradinginfopage.TradingInfoPage)
 	default:
 		m.currentPage = messages.ErrorPageNumber
 		m.errorPage.Err = errors.New("Unkown error")
@@ -152,6 +158,8 @@ func (m Model) View() string {
 		return m.companyPage.View()
 	case messages.BuyPageNumber:
 		return m.buyPage.View()
+	case messages.TradingInfoPageNumber:
+		return m.tradingInfoPage.View()
 	default:
 		return m.errorPage.View()
 	}
@@ -178,6 +186,9 @@ func (m *Model) setSize(width, height int) {
 
 	m.buyPage.BaseModel.Width = width
 	m.buyPage.BaseModel.Height = height
+
+	m.tradingInfoPage.BaseModel.Width = width
+	m.tradingInfoPage.BaseModel.Height = height
 }
 
 func (m *Model) updateToken(token string) {
@@ -188,6 +199,7 @@ func (m *Model) updateToken(token string) {
 	m.searchPage.BaseModel.Token = token
 	m.companyPage.BaseModel.Token = token
 	m.buyPage.BaseModel.Token = token
+	m.tradingInfoPage.BaseModel.Token = token
 }
 
 func (m *Model) getModelFromPageNumber() tea.Model {
@@ -206,6 +218,8 @@ func (m *Model) getModelFromPageNumber() tea.Model {
 		return m.companyPage
 	case messages.BuyPageNumber:
 		return m.buyPage
+	case messages.TradingInfoPageNumber:
+		return m.tradingInfoPage
 	default:
 		return nil
 	}
