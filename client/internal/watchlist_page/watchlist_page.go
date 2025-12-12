@@ -69,6 +69,7 @@ func NewWatchlistPage(client *http.Client) WatchlistPage {
 			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
 			key.NewBinding(key.WithKeys("r", "R"), key.WithHelp("r", "remove company")),
 			key.NewBinding(key.WithKeys("d", "D"), key.WithHelp("d", "remove all companies")),
+			key.NewBinding(key.WithKeys("p", "P"), key.WithHelp("p", "profile page")),
 		}
 	}
 

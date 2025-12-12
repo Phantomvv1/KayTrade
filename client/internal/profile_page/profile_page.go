@@ -69,10 +69,40 @@ type AlpacaAccount struct {
 	TrustedContact TrustedContact `json:"trusted_contact"`
 }
 
+type Order struct {
+	AssetClass     string  `json:"asset_class"`
+	AssetID        string  `json:"asset_id"`
+	CanceledAt     string  `json:"canceled_at"`
+	CreatedAt      string  `json:"created_at"`
+	ExpiredAt      string  `json:"expired_at"`
+	ExpiresAt      string  `json:"expires_at"`
+	FailedAt       string  `json:"failed_at"`
+	FilledAt       string  `json:"filled_at"`
+	FilledAvgPrice string  `json:"filled_avg_price"`
+	FilledQty      string  `json:"filled_qty"`
+	ID             string  `json:"id"`
+	LimitPrice     *string `json:"limit_price"`
+	Notional       *string `json:"notional"`
+	OrderType      string  `json:"order_type"`
+	PositionIntent string  `json:"position_intent"`
+	Quantity       string  `json:"qty"`
+	Side           string  `json:"side"`
+	Status         string  `json:"status"`
+	StopPrice      *string `json:"stop_price"`
+	SubmittedAt    string  `json:"submitted_at"`
+	Symbol         string  `json:"symbol"`
+	TimeInForce    string  `json:"time_in_force"`
+	TrailPercent   *string `json:"trail_percent"`
+	TrailPrice     *string `json:"trail_price"`
+	Type           string  `json:"type"`
+	UpdatedAt      string  `json:"updated_at"`
+}
+
 type ProfilePage struct {
 	BaseModel      basemodel.BaseModel
 	tradingDetails TradingDetails
 	alpacaAccount  AlpacaAccount
+	orders         []Order
 	loading        bool
 	Reloaded       bool
 }
@@ -118,6 +148,7 @@ var (
 type profileDataMsg struct {
 	tradingDetails TradingDetails
 	alpacaAccount  AlpacaAccount
+	orders         []Order
 	err            error
 }
 
@@ -133,10 +164,11 @@ func (p ProfilePage) Init() tea.Cmd {
 }
 
 func (p ProfilePage) fetchProfileData() tea.Msg {
-	var tradingDetails TradingDetails
-	var alpacaAccount AlpacaAccount
+	tradingDetails := TradingDetails{}
+	alpacaAccount := AlpacaAccount{}
+	orders := []Order{}
 
-	var err1, err2 error
+	var err1, err2, err3 error
 	go func() {
 		body, err := requests.MakeRequest(
 			http.MethodGet,
@@ -184,12 +216,12 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 			p.BaseModel.Token,
 		)
 		if err != nil {
-			err2 = err
+			err3 = err
 			return
 		}
 
-		if err := json.Unmarshal(body, &alpacaAccount); err != nil {
-			err2 = fmt.Errorf("failed to parse account details: %v", err)
+		if err := json.Unmarshal(body, &orders); err != nil {
+			err3 = fmt.Errorf("failed to parse orders: %v", err)
 			return
 		}
 	}()
@@ -202,9 +234,13 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 		return profileDataMsg{err: err2}
 	}
 
+	if err3 != nil {
+		return profileDataMsg{err: err3}
+	}
 	return profileDataMsg{
 		tradingDetails: tradingDetails,
 		alpacaAccount:  alpacaAccount,
+		orders:         orders,
 	}
 }
 
@@ -232,6 +268,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			p.tradingDetails = msg.tradingDetails
 			p.alpacaAccount = msg.alpacaAccount
+			p.orders = msg.orders
 		}
 		return p, nil
 
