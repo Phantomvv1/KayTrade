@@ -234,6 +234,13 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 				w.companies.SetItems([]list.Item{})
+
+			case "p", "P":
+				return w, func() tea.Msg {
+					return messages.SmartPageSwitchMsg{
+						Page: messages.ProfilePageNumber,
+					}
+				}
 			}
 		}
 

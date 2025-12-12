@@ -12,6 +12,7 @@ import (
 	landingpage "github.com/Phantomvv1/KayTrade/internal/landing_page"
 	loginpage "github.com/Phantomvv1/KayTrade/internal/login_page"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
+	profilepage "github.com/Phantomvv1/KayTrade/internal/profile_page"
 	searchpage "github.com/Phantomvv1/KayTrade/internal/search_page"
 	tradinginfopage "github.com/Phantomvv1/KayTrade/internal/trading_info_page"
 	watchlistpage "github.com/Phantomvv1/KayTrade/internal/watchlist_page"
@@ -27,6 +28,7 @@ type Model struct {
 	companyPage     companypage.CompanyPage
 	buyPage         buypage.BuyPage
 	tradingInfoPage tradinginfopage.TradingInfoPage
+	profilePage     profilepage.ProfilePage
 	currentPage     int
 }
 
@@ -47,6 +49,7 @@ func NewModel() Model {
 		companyPage:     companypage.NewCompanyPage(client),
 		buyPage:         buypage.NewBuyPage(client),
 		tradingInfoPage: tradinginfopage.NewTradingInfoPage(),
+		profilePage:     profilepage.NewProfilePage(client),
 		currentPage:     messages.LandingPageNumber,
 	}
 }
@@ -134,6 +137,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.TradingInfoPageNumber:
 		page, cmd = m.tradingInfoPage.Update(msg)
 		m.tradingInfoPage = page.(tradinginfopage.TradingInfoPage)
+	case messages.ProfilePageNumber:
+		page, cmd = m.profilePage.Update(msg)
+		m.profilePage = page.(profilepage.ProfilePage)
 	default:
 		m.currentPage = messages.ErrorPageNumber
 		m.errorPage.Err = errors.New("Unkown error")
@@ -160,6 +166,8 @@ func (m Model) View() string {
 		return m.buyPage.View()
 	case messages.TradingInfoPageNumber:
 		return m.tradingInfoPage.View()
+	case messages.ProfilePageNumber:
+		return m.profilePage.View()
 	default:
 		return m.errorPage.View()
 	}
@@ -189,6 +197,9 @@ func (m *Model) setSize(width, height int) {
 
 	m.tradingInfoPage.BaseModel.Width = width
 	m.tradingInfoPage.BaseModel.Height = height
+
+	m.profilePage.BaseModel.Width = width
+	m.profilePage.BaseModel.Height = height
 }
 
 func (m *Model) updateToken(token string) {
@@ -200,6 +211,7 @@ func (m *Model) updateToken(token string) {
 	m.companyPage.BaseModel.Token = token
 	m.buyPage.BaseModel.Token = token
 	m.tradingInfoPage.BaseModel.Token = token
+	m.profilePage.BaseModel.Token = token
 }
 
 func (m *Model) getModelFromPageNumber() tea.Model {
@@ -220,6 +232,8 @@ func (m *Model) getModelFromPageNumber() tea.Model {
 		return m.buyPage
 	case messages.TradingInfoPageNumber:
 		return m.tradingInfoPage
+	case messages.ProfilePageNumber:
+		return m.profilePage
 	default:
 		return nil
 	}
@@ -241,6 +255,8 @@ func (m *Model) Reload(page int) {
 		m.companyPage.Reload()
 	case messages.BuyPageNumber:
 		m.buyPage.Reload()
+	case messages.ProfilePageNumber:
+		m.profilePage.Reload()
 	default:
 		return
 	}
@@ -255,6 +271,15 @@ func (m *Model) Reloaded(page int) bool {
 		}
 
 		return reloaded
+
+	case messages.ProfilePageNumber:
+		reloaded := m.profilePage.Reloaded
+		if reloaded {
+			m.profilePage.Reloaded = false
+		}
+
+		return reloaded
+
 	default:
 		return false
 	}
