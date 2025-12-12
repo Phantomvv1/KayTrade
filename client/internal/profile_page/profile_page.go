@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
 	"github.com/Phantomvv1/KayTrade/internal/requests"
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -102,7 +104,7 @@ type ProfilePage struct {
 	BaseModel      basemodel.BaseModel
 	tradingDetails TradingDetails
 	alpacaAccount  AlpacaAccount
-	orders         []Order
+	orders         list.Model
 	loading        bool
 	Reloaded       bool
 }
@@ -153,11 +155,24 @@ type profileDataMsg struct {
 }
 
 func NewProfilePage(client *http.Client) ProfilePage {
+	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	l.FilterInput.Focus()
+
 	return ProfilePage{
 		BaseModel: basemodel.BaseModel{Client: client},
+		orders:    l,
 		loading:   true,
+		Reloaded:  true,
 	}
 }
+
+type orderItem struct {
+	order Order
+}
+
+func (o orderItem) Title() string       { return o.order.Symbol }
+func (o orderItem) Description() string { return o.order.Side }
+func (o orderItem) FilterValue() string { return o.order.Symbol }
 
 func (p ProfilePage) Init() tea.Cmd {
 	return p.fetchProfileData
@@ -168,8 +183,11 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 	alpacaAccount := AlpacaAccount{}
 	orders := []Order{}
 
+	wg := sync.WaitGroup{}
+	wg.Add(3)
 	var err1, err2, err3 error
 	go func() {
+		defer wg.Done()
 		body, err := requests.MakeRequest(
 			http.MethodGet,
 			requests.BaseURL+"/users/trading-details",
@@ -189,6 +207,8 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 	}()
 
 	go func() {
+		defer wg.Done()
+
 		body, err := requests.MakeRequest(
 			http.MethodGet,
 			requests.BaseURL+"/users/alpaca?status=all",
@@ -208,6 +228,8 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 	}()
 
 	go func() {
+		defer wg.Done()
+
 		body, err := requests.MakeRequest(
 			http.MethodGet,
 			requests.BaseURL+"/trading/alpaca?status=all",
@@ -226,6 +248,8 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 		}
 	}()
 
+	wg.Wait()
+
 	if err1 != nil {
 		return profileDataMsg{err: err1}
 	}
@@ -237,6 +261,7 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 	if err3 != nil {
 		return profileDataMsg{err: err3}
 	}
+
 	return profileDataMsg{
 		tradingDetails: tradingDetails,
 		alpacaAccount:  alpacaAccount,
@@ -250,10 +275,16 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return p, tea.Quit
+
 		case "esc":
 			return p, func() tea.Msg {
-				return messages.PageSwitchMsg{Page: messages.WatchlistPageNumber}
+				return messages.SmartPageSwitchMsg{Page: messages.WatchlistPageNumber}
 			}
+
+		default:
+			var cmd tea.Cmd
+			p.orders, cmd = p.orders.Update(msg)
+			return p, cmd
 		}
 
 	case profileDataMsg:
@@ -268,8 +299,12 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			p.tradingDetails = msg.tradingDetails
 			p.alpacaAccount = msg.alpacaAccount
-			p.orders = msg.orders
+			for i, order := range msg.orders {
+				p.orders.InsertItem(i, orderItem{order: order})
+			}
 		}
+		p.orders.SetSize(p.BaseModel.Width/2-4, p.BaseModel.Height-8)
+
 		return p, nil
 
 	}
@@ -301,13 +336,17 @@ func (p ProfilePage) View() string {
 	leftColumn := lipgloss.JoinVertical(lipgloss.Left, personalInfo, contactInfo)
 	rightColumn := lipgloss.JoinVertical(lipgloss.Left, tradingAccount, accountSettings)
 
-	content := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, "  ", rightColumn)
+	content := lipgloss.JoinHorizontal(lipgloss.Top, p.orders.View(), "  ", leftColumn, "  ", rightColumn)
 
-	help := helpStyle.Render("r: refresh • esc: back • q: quit")
+	help := helpStyle.Render("esc: back • q: quit")
 
 	finalView := lipgloss.JoinVertical(
 		lipgloss.Center,
 		title,
+		"",
+		"",
+		"",
+		"",
 		"",
 		content,
 		"",
