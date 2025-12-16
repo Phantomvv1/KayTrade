@@ -11,6 +11,7 @@ import (
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
 	"github.com/Phantomvv1/KayTrade/internal/requests"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -136,10 +137,6 @@ var (
 				Foreground(lipgloss.Color("#00FF00")).
 				Bold(true)
 
-	helpStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#666666")).
-			Padding(1, 0)
-
 	boxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#BB88FF")).
@@ -157,6 +154,12 @@ type profileDataMsg struct {
 func NewProfilePage(client *http.Client) ProfilePage {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	l.FilterInput.Focus()
+	l.AdditionalFullHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+		}
+	}
 
 	return ProfilePage{
 		BaseModel: basemodel.BaseModel{Client: client},
@@ -303,7 +306,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				p.orders.InsertItem(i, orderItem{order: order})
 			}
 		}
-		p.orders.SetSize(p.BaseModel.Width/2-4, p.BaseModel.Height-8)
+		p.orders.SetSize(p.BaseModel.Width/2-10, p.BaseModel.Height-16)
 
 		return p, nil
 
@@ -324,6 +327,7 @@ func (p ProfilePage) View() string {
 	}
 
 	title := titleStyle.Render("👤 Profile")
+	centeredTitle := lipgloss.Place(p.BaseModel.Width, lipgloss.Height(title), lipgloss.Center, lipgloss.Top, title)
 
 	personalInfo := p.renderPersonalInfo()
 
@@ -336,30 +340,26 @@ func (p ProfilePage) View() string {
 	leftColumn := lipgloss.JoinVertical(lipgloss.Left, personalInfo, contactInfo)
 	rightColumn := lipgloss.JoinVertical(lipgloss.Left, tradingAccount, accountSettings)
 
-	content := lipgloss.JoinHorizontal(lipgloss.Top, p.orders.View(), "  ", leftColumn, "  ", rightColumn)
+	infoColumns := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, lipgloss.NewStyle().MarginLeft(1).Render(rightColumn))
 
-	help := helpStyle.Render("esc: back • q: quit")
+	content := lipgloss.JoinHorizontal(
+		lipgloss.Center,
+		p.orders.View(),
+		lipgloss.NewStyle().MarginLeft(5).Render(infoColumns),
+	)
+
+	contentHeight := lipgloss.Height(content)
+
+	centeredContent := lipgloss.Place(p.BaseModel.Width, contentHeight, lipgloss.Center, lipgloss.Top, content)
 
 	finalView := lipgloss.JoinVertical(
 		lipgloss.Center,
-		title,
+		centeredTitle,
 		"",
-		"",
-		"",
-		"",
-		"",
-		content,
-		"",
-		help,
+		centeredContent,
 	)
 
-	return lipgloss.Place(
-		p.BaseModel.Width,
-		p.BaseModel.Height,
-		lipgloss.Center,
-		lipgloss.Center,
-		finalView,
-	)
+	return finalView
 }
 
 func (p ProfilePage) renderPersonalInfo() string {
