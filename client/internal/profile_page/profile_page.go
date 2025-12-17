@@ -158,6 +158,7 @@ type orderItem struct {
 func (o orderItem) Title() string {
 	return o.order.Quantity + "x " + o.order.Symbol + " - " + o.order.CreatedAt
 }
+
 func (o orderItem) Description() string {
 	if o.order.CanceledAt != "" {
 		return o.order.Side + ", Canceled at: " + o.order.CanceledAt
@@ -169,6 +170,7 @@ func (o orderItem) Description() string {
 		return o.order.Side + ", Filled at:" + o.order.FilledAt
 	}
 }
+
 func (o orderItem) FilterValue() string { return o.order.Symbol }
 
 func NewProfilePage(client *http.Client) ProfilePage {
