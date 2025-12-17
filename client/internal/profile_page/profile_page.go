@@ -354,8 +354,9 @@ func (p ProfilePage) View() string {
 
 	finalView := lipgloss.JoinVertical(
 		lipgloss.Center,
-		centeredTitle,
 		"",
+		centeredTitle,
+		"\n\n\n\n",
 		centeredContent,
 	)
 
@@ -472,5 +473,6 @@ func (p ProfilePage) renderField(label, value string) string {
 func (p *ProfilePage) Reload() {
 	p.alpacaAccount = AlpacaAccount{}
 	p.tradingDetails = TradingDetails{}
+	p.loading = true
 	p.Reloaded = true
 }
