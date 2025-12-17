@@ -242,7 +242,12 @@ func (b BuyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				b.success = "Order submitted successfully!"
 			}
-			return b, nil
+
+			return b, func() tea.Msg {
+				return messages.ReloadMsg{
+					Page: messages.ProfilePageNumber,
+				}
+			}
 
 		case "esc":
 			return b, func() tea.Msg {
