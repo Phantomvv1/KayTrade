@@ -151,6 +151,26 @@ type profileDataMsg struct {
 	err            error
 }
 
+type orderItem struct {
+	order Order
+}
+
+func (o orderItem) Title() string {
+	return o.order.Quantity + "x " + o.order.Symbol + " - " + o.order.CreatedAt
+}
+func (o orderItem) Description() string {
+	if o.order.CanceledAt != "" {
+		return o.order.Side + ", Canceled at: " + o.order.CanceledAt
+	}
+
+	if o.order.FilledAt == "" {
+		return o.order.Side + ", Expires at: " + o.order.ExpiresAt
+	} else {
+		return o.order.Side + ", Filled at:" + o.order.FilledAt
+	}
+}
+func (o orderItem) FilterValue() string { return o.order.Symbol }
+
 func NewProfilePage(client *http.Client) ProfilePage {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	l.FilterInput.Focus()
@@ -168,14 +188,6 @@ func NewProfilePage(client *http.Client) ProfilePage {
 		Reloaded:  true,
 	}
 }
-
-type orderItem struct {
-	order Order
-}
-
-func (o orderItem) Title() string       { return o.order.Symbol }
-func (o orderItem) Description() string { return o.order.Side }
-func (o orderItem) FilterValue() string { return o.order.Symbol }
 
 func (p ProfilePage) Init() tea.Cmd {
 	return p.fetchProfileData
