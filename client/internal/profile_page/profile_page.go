@@ -236,6 +236,7 @@ func NewProfilePage(client *http.Client) ProfilePage {
 
 	positionsList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	positionsList.FilterInput.Focus()
+	positionsList.SetShowHelp(false)
 	positionsList.Title = "Positions"
 	positionsList.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
@@ -481,7 +482,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		p.orders.SetSize(p.BaseModel.Width/2-10, p.BaseModel.Height-16)
-		p.positions.SetSize(p.BaseModel.Width/2-10, p.BaseModel.Height-16)
+		p.positions.SetSize(p.BaseModel.Width/3-30, p.BaseModel.Height-16)
 
 		return p, nil
 	}
@@ -517,7 +518,7 @@ func (p ProfilePage) View() string {
 	infoColumns := lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		leftInfoColumn,
-		lipgloss.NewStyle().MarginLeft(2).Render(rightInfoColumn),
+		lipgloss.NewStyle().MarginLeft(1).Render(rightInfoColumn),
 	)
 
 	var ordersView, positionsView string
@@ -532,7 +533,7 @@ func (p ProfilePage) View() string {
 	content := lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		ordersView,
-		lipgloss.NewStyle().MarginLeft(3).MarginRight(3).Render(infoColumns),
+		lipgloss.NewStyle().MarginLeft(1).MarginRight(1).Render(infoColumns),
 		positionsView,
 	)
 
