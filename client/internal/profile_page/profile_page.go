@@ -490,15 +490,15 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (p ProfilePage) View() string {
-	// if p.loading {
-	// 	return lipgloss.Place(
-	// 		p.BaseModel.Width,
-	// 		p.BaseModel.Height,
-	// 		lipgloss.Center,
-	// 		lipgloss.Center,
-	// 		"Loading profile data...",
-	// 	)
-	// }
+	if p.loading {
+		return lipgloss.Place(
+			p.BaseModel.Width,
+			p.BaseModel.Height,
+			lipgloss.Center,
+			lipgloss.Center,
+			"Loading profile data...",
+		)
+	}
 
 	title := titleStyle.Render("👤 Profile")
 	centeredTitle := lipgloss.Place(p.BaseModel.Width, lipgloss.Height(title), lipgloss.Center, lipgloss.Top, title)
