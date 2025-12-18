@@ -3,7 +3,6 @@ package profilepage
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -317,7 +316,6 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return p, cmd
 				}
 
-				log.Println("Going back to watchlist")
 				return p, func() tea.Msg {
 					return messages.SmartPageSwitchMsg{Page: messages.WatchlistPageNumber}
 				}
