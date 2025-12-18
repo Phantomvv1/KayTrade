@@ -101,11 +101,33 @@ type Order struct {
 	UpdatedAt      string  `json:"updated_at"`
 }
 
+type Position struct {
+	AssetClass             string `json:"asset_class"`
+	AssetID                string `json:"asset_id"`
+	AssetMarginable        bool   `json:"asset_marginable"`
+	AvgEntryPrice          string `json:"avg_entry_price"`
+	ChangeToday            string `json:"change_today"`
+	CostBasis              string `json:"cost_basis"`
+	CurrentPrice           string `json:"current_price"`
+	Exchange               string `json:"exchange"`
+	LastdayPrice           string `json:"lastday_price"`
+	MarketValue            string `json:"market_value"`
+	Qty                    string `json:"qty"`
+	QtyAvailable           string `json:"qty_available"`
+	Side                   string `json:"side"`
+	Symbol                 string `json:"symbol"`
+	UnrealizedIntradayPL   string `json:"unrealized_intraday_pl"`
+	UnrealizedIntradayPLPC string `json:"unrealized_intraday_plpc"`
+	UnrealizedPL           string `json:"unrealized_pl"`
+	UnrealizedPLPC         string `json:"unrealized_plpc"`
+}
+
 type ProfilePage struct {
 	BaseModel      basemodel.BaseModel
 	tradingDetails TradingDetails
 	alpacaAccount  AlpacaAccount
 	orders         list.Model
+	positions      list.Model
 	filtering      bool
 	loading        bool
 	Reloaded       bool
@@ -149,6 +171,7 @@ type profileDataMsg struct {
 	tradingDetails TradingDetails
 	alpacaAccount  AlpacaAccount
 	orders         []Order
+	positions      []Position
 	err            error
 }
 
@@ -174,6 +197,20 @@ func (o orderItem) Description() string {
 
 func (o orderItem) FilterValue() string { return o.order.Symbol }
 
+type positionItem struct {
+	position Position
+}
+
+func (p positionItem) Title() string {
+	return p.position.Qty + "x " + p.position.Symbol
+}
+
+func (p positionItem) Description() string {
+	return "Bought for: " + p.position.CostBasis + ", Price: " + p.position.CurrentPrice
+}
+
+func (p positionItem) FilterValue() string { return p.position.Symbol }
+
 func NewProfilePage(client *http.Client) ProfilePage {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	l.FilterInput.Focus()
@@ -184,9 +221,19 @@ func NewProfilePage(client *http.Client) ProfilePage {
 		}
 	}
 
+	positions := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	positions.FilterInput.Blur()
+	positions.AdditionalFullHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+		}
+	}
+
 	return ProfilePage{
 		BaseModel: basemodel.BaseModel{Client: client},
 		orders:    l,
+		positions: positions,
 		filtering: false,
 		loading:   true,
 		Reloaded:  true,
@@ -201,10 +248,11 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 	tradingDetails := TradingDetails{}
 	alpacaAccount := AlpacaAccount{}
 	orders := []Order{}
+	positions := []Position{}
 
 	wg := sync.WaitGroup{}
 	wg.Add(3)
-	var err1, err2, err3 error
+	var err1, err2, err3, err4 error
 	go func() {
 		defer wg.Done()
 		body, err := requests.MakeRequest(
@@ -267,6 +315,26 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 		}
 	}()
 
+	go func() {
+		defer wg.Done()
+		body, err := requests.MakeRequest(
+			http.MethodGet,
+			requests.BaseURL+"/trading/positions",
+			nil,
+			p.BaseModel.Client,
+			p.BaseModel.Token,
+		)
+		if err != nil {
+			err4 = err
+			return
+		}
+
+		if err := json.Unmarshal(body, &positions); err != nil {
+			err4 = fmt.Errorf("failed to parse trading details: %v", err)
+			return
+		}
+	}()
+
 	wg.Wait()
 
 	if err1 != nil {
@@ -281,10 +349,15 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 		return profileDataMsg{err: err3}
 	}
 
+	if err4 != nil {
+		return profileDataMsg{err: err4}
+	}
+
 	return profileDataMsg{
 		tradingDetails: tradingDetails,
 		alpacaAccount:  alpacaAccount,
 		orders:         orders,
+		positions:      positions,
 	}
 }
 
@@ -348,8 +421,13 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			for i, order := range msg.orders {
 				p.orders.InsertItem(i, orderItem{order: order})
 			}
+
+			for i, position := range msg.positions {
+				p.positions.InsertItem(i, positionItem{position: position})
+			}
 		}
 		p.orders.SetSize(p.BaseModel.Width/2-10, p.BaseModel.Height-16)
+		p.positions.SetSize(p.BaseModel.Width/2-10, p.BaseModel.Height-16)
 
 		return p, nil
 
