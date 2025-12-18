@@ -10,6 +10,7 @@ const (
 	CompanyPageNumber
 	BuyPageNumber
 	TradingInfoPageNumber
+	ProfilePageNumber
 	ErrorPageNumber
 )
 
