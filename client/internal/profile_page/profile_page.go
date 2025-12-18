@@ -165,6 +165,16 @@ var (
 			BorderForeground(lipgloss.Color("#BB88FF")).
 			Padding(1, 2).
 			MarginBottom(1)
+
+	activeListStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#00FFFF")).
+			Padding(0, 1)
+
+	inactiveListStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#666666")).
+				Padding(0, 1)
 )
 
 type profileDataMsg struct {
@@ -212,28 +222,34 @@ func (p positionItem) Description() string {
 func (p positionItem) FilterValue() string { return p.position.Symbol }
 
 func NewProfilePage(client *http.Client) ProfilePage {
-	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
-	l.FilterInput.Focus()
-	l.AdditionalFullHelpKeys = func() []key.Binding {
+	ordersList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	ordersList.FilterInput.Focus()
+	ordersList.Title = "Orders"
+	ordersList.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
 			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+			key.NewBinding(key.WithKeys("ctrl+h", "ctrl+left"), key.WithHelp("ctrl+h/←", "switch list")),
+			key.NewBinding(key.WithKeys("ctrl+l", "ctrl+right"), key.WithHelp("ctrl+l/→", "switch list")),
 		}
 	}
 
-	positions := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
-	positions.FilterInput.Blur()
-	positions.AdditionalFullHelpKeys = func() []key.Binding {
+	positionsList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	positionsList.FilterInput.Focus()
+	positionsList.Title = "Positions"
+	positionsList.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
 			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+			key.NewBinding(key.WithKeys("ctrl+h", "ctrl+left"), key.WithHelp("ctrl+h/←", "switch list")),
+			key.NewBinding(key.WithKeys("ctrl+l", "ctrl+right"), key.WithHelp("ctrl+l/→", "switch list")),
 		}
 	}
 
 	return ProfilePage{
 		BaseModel: basemodel.BaseModel{Client: client},
-		orders:    l,
-		positions: positions,
+		orders:    ordersList,
+		positions: positionsList,
 		filtering: false,
 		loading:   true,
 		Reloaded:  true,
@@ -251,7 +267,7 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 	positions := []Position{}
 
 	wg := sync.WaitGroup{}
-	wg.Add(3)
+	wg.Add(4)
 	var err1, err2, err3, err4 error
 	go func() {
 		defer wg.Done()
@@ -330,7 +346,7 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 		}
 
 		if err := json.Unmarshal(body, &positions); err != nil {
-			err4 = fmt.Errorf("failed to parse trading details: %v", err)
+			err4 = fmt.Errorf("failed to parse positions: %v", err)
 			return
 		}
 	}()
@@ -369,12 +385,20 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter", "esc":
 				p.filtering = false
 				var cmd tea.Cmd
-				p.orders, cmd = p.orders.Update(msg)
+				if p.orders.FilterInput.Focused() {
+					p.orders, cmd = p.orders.Update(msg)
+				} else {
+					p.positions, cmd = p.positions.Update(msg)
+				}
 				return p, cmd
 
 			default:
 				var cmd tea.Cmd
-				p.orders, cmd = p.orders.Update(msg)
+				if p.orders.FilterInput.Focused() {
+					p.orders, cmd = p.orders.Update(msg)
+				} else {
+					p.positions, cmd = p.positions.Update(msg)
+				}
 				return p, cmd
 			}
 		} else {
@@ -383,9 +407,20 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return p, tea.Quit
 
 			case "esc":
-				if p.orders.FilterValue() != "" {
+				activeFilterValue := ""
+				if p.orders.FilterInput.Focused() {
+					activeFilterValue = p.orders.FilterValue()
+				} else {
+					activeFilterValue = p.positions.FilterValue()
+				}
+
+				if activeFilterValue != "" {
 					var cmd tea.Cmd
-					p.orders, cmd = p.orders.Update(msg)
+					if p.orders.FilterInput.Focused() {
+						p.orders, cmd = p.orders.Update(msg)
+					} else {
+						p.positions, cmd = p.positions.Update(msg)
+					}
 					return p, cmd
 				}
 
@@ -393,15 +428,33 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return messages.SmartPageSwitchMsg{Page: messages.WatchlistPageNumber}
 				}
 
+			case "ctrl+h", "ctrl+left":
+				p.orders.FilterInput.Focus()
+				p.positions.FilterInput.Blur()
+				return p, nil
+
+			case "ctrl+l", "ctrl+right":
+				p.positions.FilterInput.Focus()
+				p.orders.FilterInput.Blur()
+				return p, nil
+
 			case "/":
 				p.filtering = true
 				var cmd tea.Cmd
-				p.orders, cmd = p.orders.Update(msg)
+				if p.orders.FilterInput.Focused() {
+					p.orders, cmd = p.orders.Update(msg)
+				} else {
+					p.positions, cmd = p.positions.Update(msg)
+				}
 				return p, cmd
 
 			default:
 				var cmd tea.Cmd
-				p.orders, cmd = p.orders.Update(msg)
+				if p.orders.FilterInput.Focused() {
+					p.orders, cmd = p.orders.Update(msg)
+				} else {
+					p.positions, cmd = p.positions.Update(msg)
+				}
 				return p, cmd
 			}
 		}
@@ -426,26 +479,26 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				p.positions.InsertItem(i, positionItem{position: position})
 			}
 		}
+
 		p.orders.SetSize(p.BaseModel.Width/2-10, p.BaseModel.Height-16)
 		p.positions.SetSize(p.BaseModel.Width/2-10, p.BaseModel.Height-16)
 
 		return p, nil
-
 	}
 
 	return p, nil
 }
 
 func (p ProfilePage) View() string {
-	if p.loading {
-		return lipgloss.Place(
-			p.BaseModel.Width,
-			p.BaseModel.Height,
-			lipgloss.Center,
-			lipgloss.Center,
-			"Loading profile data...",
-		)
-	}
+	// if p.loading {
+	// 	return lipgloss.Place(
+	// 		p.BaseModel.Width,
+	// 		p.BaseModel.Height,
+	// 		lipgloss.Center,
+	// 		lipgloss.Center,
+	// 		"Loading profile data...",
+	// 	)
+	// }
 
 	title := titleStyle.Render("👤 Profile")
 	centeredTitle := lipgloss.Place(p.BaseModel.Width, lipgloss.Height(title), lipgloss.Center, lipgloss.Top, title)
@@ -458,27 +511,37 @@ func (p ProfilePage) View() string {
 
 	accountSettings := p.renderAccountSettings()
 
-	leftColumn := lipgloss.JoinVertical(lipgloss.Left, personalInfo, contactInfo)
-	rightColumn := lipgloss.JoinVertical(lipgloss.Left, tradingAccount, accountSettings)
+	leftInfoColumn := lipgloss.JoinVertical(lipgloss.Left, personalInfo, contactInfo)
+	rightInfoColumn := lipgloss.JoinVertical(lipgloss.Left, tradingAccount, accountSettings)
 
-	infoColumns := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, lipgloss.NewStyle().MarginLeft(1).Render(rightColumn))
-
-	content := lipgloss.JoinHorizontal(
-		lipgloss.Center,
-		p.orders.View(),
-		lipgloss.NewStyle().MarginLeft(5).Render(infoColumns),
+	infoColumns := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		leftInfoColumn,
+		lipgloss.NewStyle().MarginLeft(2).Render(rightInfoColumn),
 	)
 
-	contentHeight := lipgloss.Height(content)
+	var ordersView, positionsView string
+	if p.orders.FilterInput.Focused() {
+		ordersView = activeListStyle.Render(p.orders.View())
+		positionsView = inactiveListStyle.Render(p.positions.View())
+	} else {
+		ordersView = inactiveListStyle.Render(p.orders.View())
+		positionsView = activeListStyle.Render(p.positions.View())
+	}
 
-	centeredContent := lipgloss.Place(p.BaseModel.Width, contentHeight, lipgloss.Center, lipgloss.Top, content)
+	content := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		ordersView,
+		lipgloss.NewStyle().MarginLeft(3).MarginRight(3).Render(infoColumns),
+		positionsView,
+	)
 
 	finalView := lipgloss.JoinVertical(
 		lipgloss.Center,
 		"",
 		centeredTitle,
-		"\n\n\n\n",
-		centeredContent,
+		"",
+		content,
 	)
 
 	return finalView
