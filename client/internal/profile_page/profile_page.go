@@ -3,6 +3,7 @@ package profilepage
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -106,6 +107,7 @@ type ProfilePage struct {
 	tradingDetails TradingDetails
 	alpacaAccount  AlpacaAccount
 	orders         list.Model
+	filtering      bool
 	loading        bool
 	Reloaded       bool
 }
@@ -186,6 +188,7 @@ func NewProfilePage(client *http.Client) ProfilePage {
 	return ProfilePage{
 		BaseModel: basemodel.BaseModel{Client: client},
 		orders:    l,
+		filtering: false,
 		loading:   true,
 		Reloaded:  true,
 	}
@@ -289,19 +292,47 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "ctrl+c":
-			return p, tea.Quit
+		if p.filtering {
+			switch msg.String() {
+			case "enter", "esc":
+				p.filtering = false
+				var cmd tea.Cmd
+				p.orders, cmd = p.orders.Update(msg)
+				return p, cmd
 
-		case "esc":
-			return p, func() tea.Msg {
-				return messages.SmartPageSwitchMsg{Page: messages.WatchlistPageNumber}
+			default:
+				var cmd tea.Cmd
+				p.orders, cmd = p.orders.Update(msg)
+				return p, cmd
 			}
+		} else {
+			switch msg.String() {
+			case "q", "ctrl+c":
+				return p, tea.Quit
 
-		default:
-			var cmd tea.Cmd
-			p.orders, cmd = p.orders.Update(msg)
-			return p, cmd
+			case "esc":
+				if p.orders.FilterValue() != "" {
+					var cmd tea.Cmd
+					p.orders, cmd = p.orders.Update(msg)
+					return p, cmd
+				}
+
+				log.Println("Going back to watchlist")
+				return p, func() tea.Msg {
+					return messages.SmartPageSwitchMsg{Page: messages.WatchlistPageNumber}
+				}
+
+			case "/":
+				p.filtering = true
+				var cmd tea.Cmd
+				p.orders, cmd = p.orders.Update(msg)
+				return p, cmd
+
+			default:
+				var cmd tea.Cmd
+				p.orders, cmd = p.orders.Update(msg)
+				return p, cmd
+			}
 		}
 
 	case profileDataMsg:
