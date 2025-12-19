@@ -236,7 +236,7 @@ func NewProfilePage(client *http.Client) ProfilePage {
 	}
 
 	positionsList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
-	positionsList.FilterInput.Focus()
+	positionsList.FilterInput.Blur()
 	positionsList.SetShowHelp(false)
 	positionsList.Title = "Positions"
 	positionsList.AdditionalFullHelpKeys = func() []key.Binding {

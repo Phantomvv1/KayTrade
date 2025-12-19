@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -165,6 +164,7 @@ func (s SellPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "esc":
+			// fmt.Println("\033c") Maybe fix. I need to find something better!!!
 			return s, func() tea.Msg {
 				return messages.SmartPageSwitchMsg{
 					Page: messages.ProfilePageNumber,
