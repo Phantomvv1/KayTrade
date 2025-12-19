@@ -70,8 +70,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorPage.PrevPage = m.currentPage
 		m.errorPage.Err = msg.Err
 
-		if m.currentPage != messages.ErrorPageNumber && m.currentPage != messages.CompanyPageNumber && m.currentPage != messages.BuyPageNumber {
+		if m.currentPage != messages.ErrorPageNumber &&
+			m.currentPage != messages.CompanyPageNumber &&
+			m.currentPage != messages.BuyPageNumber &&
+			m.currentPage != messages.TradingInfoPageNumber {
+
 			m.companyPage.PrevPage = m.currentPage
+		}
+
+		if m.currentPage == messages.SellPageNumber || m.currentPage == messages.BuyPageNumber {
+			m.tradingInfoPage.PrevPage = m.currentPage
 		}
 
 		if msg.Symbol != "" {
