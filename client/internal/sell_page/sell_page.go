@@ -164,7 +164,9 @@ func (s SellPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "esc":
-			// fmt.Println("\033c") Maybe fix. I need to find something better!!!
+			// fmt.Println("\033c") // Maybe fix. I need to find something better!!!
+			// fmt.Printf("\033[H")
+			fmt.Println("\033[2J") // THis is the one that works!!!
 			return s, func() tea.Msg {
 				return messages.SmartPageSwitchMsg{
 					Page: messages.ProfilePageNumber,
