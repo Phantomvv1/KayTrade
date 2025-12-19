@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -448,6 +449,28 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					p.positions, cmd = p.positions.Update(msg)
 				}
 				return p, cmd
+
+			case "s", "S":
+				if p.positions.FilterInput.Focused() {
+					position := p.positions.Items()[p.positions.Cursor()].(positionItem)
+					maxQuantity, err := strconv.ParseFloat(position.position.Qty, 64)
+					if err != nil {
+						return p, func() tea.Msg {
+							return messages.PageSwitchMsg{
+								Page: messages.ErrorPageNumber,
+								Err:  err,
+							}
+						}
+					}
+
+					return p, func() tea.Msg {
+						return messages.PageSwitchMsg{
+							Page:        messages.SellPageNumber,
+							Symbol:      position.position.Symbol,
+							MaxQuantity: maxQuantity,
+						}
+					}
+				}
 
 			default:
 				var cmd tea.Cmd

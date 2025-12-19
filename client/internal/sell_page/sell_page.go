@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
@@ -20,6 +22,7 @@ type SellPage struct {
 	BaseModel       basemodel.BaseModel
 	Symbol          string
 	quantity        textinput.Model
+	MaxQuantity     float64
 	side            string
 	purchaseType    []string
 	purchaseTypeIdx int
@@ -54,12 +57,13 @@ var (
 			Bold(true)
 )
 
-func NewBuyPage(client *http.Client) SellPage {
+func NewSellPage(client *http.Client) SellPage {
 	quantity := textinput.New()
 	quantity.Placeholder = "Quantity"
 	quantity.Width = 28
 	quantity.SetValue("1")
 	quantity.CharLimit = 10
+	quantity.Focus()
 
 	return SellPage{
 		BaseModel:       basemodel.BaseModel{Client: client},
@@ -334,10 +338,28 @@ func (s *SellPage) submitOrder() error {
 
 	if s.purchaseType[s.purchaseTypeIdx] == "market" && s.timeInForce[s.timeInForceIdx] == "day" {
 		// can be a float
-		data["qty"] = qty
+		quantity, err := strconv.ParseFloat(qty, 64)
+		if err != nil {
+			return err
+		}
+
+		if quantity > s.MaxQuantity {
+			return errors.New("Error the ammount of stock you are trying to sell is bigger than what you have")
+		}
+
+		data["qty"] = quantity
 	} else {
 		if dotCount > 0 {
 			return errors.New("Error quantity must be an integer")
+		}
+
+		quantity, err := strconv.Atoi(qty)
+		if err != nil {
+			return err
+		}
+
+		if quantity > int(s.MaxQuantity) {
+			return errors.New("Error the ammount of stock you are trying to sell is bigger than what you have")
 		}
 
 		data["qty"] = qty
@@ -354,21 +376,6 @@ func (s *SellPage) submitOrder() error {
 	}
 
 	return nil
-}
-
-func (s SellPage) getFieldNames(purchaseType string) []string {
-	switch purchaseType {
-	case "limit":
-		return []string{"limit_price"}
-	case "stop":
-		return []string{"stop_price"}
-	case "stop_limit":
-		return []string{"limit_price", "stop_price"}
-	case "trailing_stop":
-		return []string{"trail_price", "trail_percent"}
-	default:
-		return []string{}
-	}
 }
 
 func (s *SellPage) Reload() {

@@ -14,6 +14,7 @@ import (
 	"github.com/Phantomvv1/KayTrade/internal/messages"
 	profilepage "github.com/Phantomvv1/KayTrade/internal/profile_page"
 	searchpage "github.com/Phantomvv1/KayTrade/internal/search_page"
+	sellpage "github.com/Phantomvv1/KayTrade/internal/sell_page"
 	tradinginfopage "github.com/Phantomvv1/KayTrade/internal/trading_info_page"
 	watchlistpage "github.com/Phantomvv1/KayTrade/internal/watchlist_page"
 	tea "github.com/charmbracelet/bubbletea"
@@ -29,6 +30,7 @@ type Model struct {
 	buyPage         buypage.BuyPage
 	tradingInfoPage tradinginfopage.TradingInfoPage
 	profilePage     profilepage.ProfilePage
+	sellPage        sellpage.SellPage
 	currentPage     int
 }
 
@@ -50,6 +52,7 @@ func NewModel() Model {
 		buyPage:         buypage.NewBuyPage(client),
 		tradingInfoPage: tradinginfopage.NewTradingInfoPage(),
 		profilePage:     profilepage.NewProfilePage(client),
+		sellPage:        sellpage.NewSellPage(client),
 		currentPage:     messages.LandingPageNumber,
 	}
 }
@@ -73,6 +76,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if msg.Symbol != "" {
 			m.buyPage.Symbol = msg.Symbol
+			m.sellPage.Symbol = msg.Symbol
+		}
+
+		if msg.MaxQuantity != 0 {
+			m.sellPage.MaxQuantity = msg.MaxQuantity
 		}
 
 		m.currentPage = msg.Page
@@ -140,6 +148,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.ProfilePageNumber:
 		page, cmd = m.profilePage.Update(msg)
 		m.profilePage = page.(profilepage.ProfilePage)
+	case messages.SellPageNumber:
+		page, cmd = m.sellPage.Update(msg)
+		m.sellPage = page.(sellpage.SellPage)
+
 	default:
 		m.currentPage = messages.ErrorPageNumber
 		m.errorPage.Err = errors.New("Unkown error")
@@ -168,6 +180,8 @@ func (m Model) View() string {
 		return m.tradingInfoPage.View()
 	case messages.ProfilePageNumber:
 		return m.profilePage.View()
+	case messages.SellPageNumber:
+		return m.sellPage.View()
 	default:
 		return m.errorPage.View()
 	}
@@ -200,6 +214,9 @@ func (m *Model) setSize(width, height int) {
 
 	m.profilePage.BaseModel.Width = width
 	m.profilePage.BaseModel.Height = height
+
+	m.sellPage.BaseModel.Width = width
+	m.sellPage.BaseModel.Height = height
 }
 
 func (m *Model) updateToken(token string) {
@@ -212,6 +229,7 @@ func (m *Model) updateToken(token string) {
 	m.buyPage.BaseModel.Token = token
 	m.tradingInfoPage.BaseModel.Token = token
 	m.profilePage.BaseModel.Token = token
+	m.sellPage.BaseModel.Token = token
 }
 
 func (m *Model) getModelFromPageNumber() tea.Model {
@@ -234,6 +252,8 @@ func (m *Model) getModelFromPageNumber() tea.Model {
 		return m.tradingInfoPage
 	case messages.ProfilePageNumber:
 		return m.profilePage
+	case messages.SellPageNumber:
+		return m.sellPage
 	default:
 		return nil
 	}
@@ -257,6 +277,8 @@ func (m *Model) Reload(page int) {
 		m.buyPage.Reload()
 	case messages.ProfilePageNumber:
 		m.profilePage.Reload()
+	case messages.SellPageNumber:
+		m.sellPage.Reload()
 	default:
 		return
 	}
