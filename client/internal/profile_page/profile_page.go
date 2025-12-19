@@ -101,11 +101,33 @@ type Order struct {
 	UpdatedAt      string  `json:"updated_at"`
 }
 
+type Position struct {
+	AssetClass             string `json:"asset_class"`
+	AssetID                string `json:"asset_id"`
+	AssetMarginable        bool   `json:"asset_marginable"`
+	AvgEntryPrice          string `json:"avg_entry_price"`
+	ChangeToday            string `json:"change_today"`
+	CostBasis              string `json:"cost_basis"`
+	CurrentPrice           string `json:"current_price"`
+	Exchange               string `json:"exchange"`
+	LastdayPrice           string `json:"lastday_price"`
+	MarketValue            string `json:"market_value"`
+	Qty                    string `json:"qty"`
+	QtyAvailable           string `json:"qty_available"`
+	Side                   string `json:"side"`
+	Symbol                 string `json:"symbol"`
+	UnrealizedIntradayPL   string `json:"unrealized_intraday_pl"`
+	UnrealizedIntradayPLPC string `json:"unrealized_intraday_plpc"`
+	UnrealizedPL           string `json:"unrealized_pl"`
+	UnrealizedPLPC         string `json:"unrealized_plpc"`
+}
+
 type ProfilePage struct {
 	BaseModel      basemodel.BaseModel
 	tradingDetails TradingDetails
 	alpacaAccount  AlpacaAccount
 	orders         list.Model
+	positions      list.Model
 	filtering      bool
 	loading        bool
 	Reloaded       bool
@@ -143,12 +165,23 @@ var (
 			BorderForeground(lipgloss.Color("#BB88FF")).
 			Padding(1, 2).
 			MarginBottom(1)
+
+	activeListStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#00FFFF")).
+			Padding(0, 1)
+
+	inactiveListStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#666666")).
+				Padding(0, 1)
 )
 
 type profileDataMsg struct {
 	tradingDetails TradingDetails
 	alpacaAccount  AlpacaAccount
 	orders         []Order
+	positions      []Position
 	err            error
 }
 
@@ -174,19 +207,50 @@ func (o orderItem) Description() string {
 
 func (o orderItem) FilterValue() string { return o.order.Symbol }
 
+type positionItem struct {
+	position Position
+}
+
+func (p positionItem) Title() string {
+	return p.position.Qty + "x " + p.position.Symbol
+}
+
+func (p positionItem) Description() string {
+	return "Bought for: " + p.position.CostBasis + ", Price: " + p.position.CurrentPrice
+}
+
+func (p positionItem) FilterValue() string { return p.position.Symbol }
+
 func NewProfilePage(client *http.Client) ProfilePage {
-	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
-	l.FilterInput.Focus()
-	l.AdditionalFullHelpKeys = func() []key.Binding {
+	ordersList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	ordersList.FilterInput.Focus()
+	ordersList.Title = "Orders"
+	ordersList.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
 			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+			key.NewBinding(key.WithKeys("ctrl+h", "ctrl+left"), key.WithHelp("ctrl+h/←", "switch list")),
+			key.NewBinding(key.WithKeys("ctrl+l", "ctrl+right"), key.WithHelp("ctrl+l/→", "switch list")),
+		}
+	}
+
+	positionsList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	positionsList.FilterInput.Focus()
+	positionsList.SetShowHelp(false)
+	positionsList.Title = "Positions"
+	positionsList.AdditionalFullHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+			key.NewBinding(key.WithKeys("ctrl+h", "ctrl+left"), key.WithHelp("ctrl+h/←", "switch list")),
+			key.NewBinding(key.WithKeys("ctrl+l", "ctrl+right"), key.WithHelp("ctrl+l/→", "switch list")),
 		}
 	}
 
 	return ProfilePage{
 		BaseModel: basemodel.BaseModel{Client: client},
-		orders:    l,
+		orders:    ordersList,
+		positions: positionsList,
 		filtering: false,
 		loading:   true,
 		Reloaded:  true,
@@ -201,10 +265,11 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 	tradingDetails := TradingDetails{}
 	alpacaAccount := AlpacaAccount{}
 	orders := []Order{}
+	positions := []Position{}
 
 	wg := sync.WaitGroup{}
-	wg.Add(3)
-	var err1, err2, err3 error
+	wg.Add(4)
+	var err1, err2, err3, err4 error
 	go func() {
 		defer wg.Done()
 		body, err := requests.MakeRequest(
@@ -267,6 +332,26 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 		}
 	}()
 
+	go func() {
+		defer wg.Done()
+		body, err := requests.MakeRequest(
+			http.MethodGet,
+			requests.BaseURL+"/trading/positions",
+			nil,
+			p.BaseModel.Client,
+			p.BaseModel.Token,
+		)
+		if err != nil {
+			err4 = err
+			return
+		}
+
+		if err := json.Unmarshal(body, &positions); err != nil {
+			err4 = fmt.Errorf("failed to parse positions: %v", err)
+			return
+		}
+	}()
+
 	wg.Wait()
 
 	if err1 != nil {
@@ -281,10 +366,15 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 		return profileDataMsg{err: err3}
 	}
 
+	if err4 != nil {
+		return profileDataMsg{err: err4}
+	}
+
 	return profileDataMsg{
 		tradingDetails: tradingDetails,
 		alpacaAccount:  alpacaAccount,
 		orders:         orders,
+		positions:      positions,
 	}
 }
 
@@ -296,12 +386,20 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter", "esc":
 				p.filtering = false
 				var cmd tea.Cmd
-				p.orders, cmd = p.orders.Update(msg)
+				if p.orders.FilterInput.Focused() {
+					p.orders, cmd = p.orders.Update(msg)
+				} else {
+					p.positions, cmd = p.positions.Update(msg)
+				}
 				return p, cmd
 
 			default:
 				var cmd tea.Cmd
-				p.orders, cmd = p.orders.Update(msg)
+				if p.orders.FilterInput.Focused() {
+					p.orders, cmd = p.orders.Update(msg)
+				} else {
+					p.positions, cmd = p.positions.Update(msg)
+				}
 				return p, cmd
 			}
 		} else {
@@ -310,9 +408,20 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return p, tea.Quit
 
 			case "esc":
-				if p.orders.FilterValue() != "" {
+				activeFilterValue := ""
+				if p.orders.FilterInput.Focused() {
+					activeFilterValue = p.orders.FilterValue()
+				} else {
+					activeFilterValue = p.positions.FilterValue()
+				}
+
+				if activeFilterValue != "" {
 					var cmd tea.Cmd
-					p.orders, cmd = p.orders.Update(msg)
+					if p.orders.FilterInput.Focused() {
+						p.orders, cmd = p.orders.Update(msg)
+					} else {
+						p.positions, cmd = p.positions.Update(msg)
+					}
 					return p, cmd
 				}
 
@@ -320,15 +429,33 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return messages.SmartPageSwitchMsg{Page: messages.WatchlistPageNumber}
 				}
 
+			case "ctrl+h", "ctrl+left":
+				p.orders.FilterInput.Focus()
+				p.positions.FilterInput.Blur()
+				return p, nil
+
+			case "ctrl+l", "ctrl+right":
+				p.positions.FilterInput.Focus()
+				p.orders.FilterInput.Blur()
+				return p, nil
+
 			case "/":
 				p.filtering = true
 				var cmd tea.Cmd
-				p.orders, cmd = p.orders.Update(msg)
+				if p.orders.FilterInput.Focused() {
+					p.orders, cmd = p.orders.Update(msg)
+				} else {
+					p.positions, cmd = p.positions.Update(msg)
+				}
 				return p, cmd
 
 			default:
 				var cmd tea.Cmd
-				p.orders, cmd = p.orders.Update(msg)
+				if p.orders.FilterInput.Focused() {
+					p.orders, cmd = p.orders.Update(msg)
+				} else {
+					p.positions, cmd = p.positions.Update(msg)
+				}
 				return p, cmd
 			}
 		}
@@ -348,11 +475,16 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			for i, order := range msg.orders {
 				p.orders.InsertItem(i, orderItem{order: order})
 			}
+
+			for i, position := range msg.positions {
+				p.positions.InsertItem(i, positionItem{position: position})
+			}
 		}
+
 		p.orders.SetSize(p.BaseModel.Width/2-10, p.BaseModel.Height-16)
+		p.positions.SetSize(p.BaseModel.Width/3-30, p.BaseModel.Height-16)
 
 		return p, nil
-
 	}
 
 	return p, nil
@@ -380,27 +512,37 @@ func (p ProfilePage) View() string {
 
 	accountSettings := p.renderAccountSettings()
 
-	leftColumn := lipgloss.JoinVertical(lipgloss.Left, personalInfo, contactInfo)
-	rightColumn := lipgloss.JoinVertical(lipgloss.Left, tradingAccount, accountSettings)
+	leftInfoColumn := lipgloss.JoinVertical(lipgloss.Left, personalInfo, contactInfo)
+	rightInfoColumn := lipgloss.JoinVertical(lipgloss.Left, tradingAccount, accountSettings)
 
-	infoColumns := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, lipgloss.NewStyle().MarginLeft(1).Render(rightColumn))
-
-	content := lipgloss.JoinHorizontal(
-		lipgloss.Center,
-		p.orders.View(),
-		lipgloss.NewStyle().MarginLeft(5).Render(infoColumns),
+	infoColumns := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		leftInfoColumn,
+		lipgloss.NewStyle().MarginLeft(1).Render(rightInfoColumn),
 	)
 
-	contentHeight := lipgloss.Height(content)
+	var ordersView, positionsView string
+	if p.orders.FilterInput.Focused() {
+		ordersView = activeListStyle.Render(p.orders.View())
+		positionsView = inactiveListStyle.Render(p.positions.View())
+	} else {
+		ordersView = inactiveListStyle.Render(p.orders.View())
+		positionsView = activeListStyle.Render(p.positions.View())
+	}
 
-	centeredContent := lipgloss.Place(p.BaseModel.Width, contentHeight, lipgloss.Center, lipgloss.Top, content)
+	content := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		ordersView,
+		lipgloss.NewStyle().MarginLeft(1).MarginRight(1).Render(infoColumns),
+		positionsView,
+	)
 
 	finalView := lipgloss.JoinVertical(
 		lipgloss.Center,
 		"",
 		centeredTitle,
-		"\n\n\n\n",
-		centeredContent,
+		"",
+		content,
 	)
 
 	return finalView
