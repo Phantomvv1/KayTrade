@@ -235,18 +235,24 @@ func NewProfilePage(client *http.Client) ProfilePage {
 		}
 	}
 
-	positionsList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
-	positionsList.FilterInput.Blur()
-	positionsList.SetShowHelp(false)
-	positionsList.Title = "Positions"
-	positionsList.AdditionalFullHelpKeys = func() []key.Binding {
+	delegate := list.NewDefaultDelegate()
+	delegate.ShortHelpFunc = func() []key.Binding {
 		return []key.Binding{
-			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
-			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
-			key.NewBinding(key.WithKeys("ctrl+h", "ctrl+left"), key.WithHelp("ctrl+h/←", "switch list")),
-			key.NewBinding(key.WithKeys("ctrl+l", "ctrl+right"), key.WithHelp("ctrl+l/→", "switch list")),
+			key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s", "sell")),
 		}
 	}
+
+	delegate.FullHelpFunc = func() [][]key.Binding {
+		return [][]key.Binding{
+			{
+				key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s", "sell")),
+			},
+		}
+	}
+
+	positionsList := list.New([]list.Item{}, delegate, 0, 0)
+	positionsList.FilterInput.Blur()
+	positionsList.Title = "Positions"
 
 	return ProfilePage{
 		BaseModel: basemodel.BaseModel{Client: client},
