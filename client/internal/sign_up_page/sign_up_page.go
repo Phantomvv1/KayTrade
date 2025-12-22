@@ -24,6 +24,11 @@ const (
 	enabledAssetsPage
 )
 
+const (
+	formWidth  = 60
+	inputWidth = 27
+)
+
 type Contact struct {
 	EmailAddress  string   `json:"email_address"`
 	PhoneNumber   string   `json:"phone_number"`
@@ -146,11 +151,6 @@ var (
 			Bold(true).
 			Padding(0, 1)
 
-	labelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#BB88FF")).
-			Width(25).
-			Align(lipgloss.Center)
-
 	helpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#666666"))
 
@@ -161,12 +161,35 @@ var (
 	successStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#00FF00")).
 			Bold(true)
+
+	formRowStyle = lipgloss.NewStyle().
+			Width(formWidth).
+			Align(lipgloss.Center)
+
+	labelStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#BB88FF")).
+			Bold(true).
+			Align(lipgloss.Center).
+			MarginBottom(1)
+
+	inputStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#666666")).
+			Width(32)
+
+	focusedStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#00FFFF")).
+			Background(lipgloss.Color("#2a2a4e")).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#00FFFF")).
+			Width(32)
 )
 
 func NewSignUpPage(client *http.Client) SignUpPage {
 	enabledAssets := textinput.New()
 	enabledAssets.Placeholder = "Enabled assets (comma-separated)"
-	enabledAssets.Width = 28
+	enabledAssets.Width = inputWidth
 	enabledAssets.CharLimit = 100
 
 	return SignUpPage{
@@ -193,37 +216,37 @@ func NewSignUpPage(client *http.Client) SignUpPage {
 func newContactInputs() ContactInputs {
 	emailAddress := textinput.New()
 	emailAddress.Placeholder = "Email address"
-	emailAddress.Width = 28
+	emailAddress.Width = inputWidth
 	emailAddress.CharLimit = 50
 
 	phoneNumber := textinput.New()
 	phoneNumber.Placeholder = "Phone number"
-	phoneNumber.Width = 28
+	phoneNumber.Width = inputWidth
 	phoneNumber.CharLimit = 20
 
 	streetAddress := textinput.New()
 	streetAddress.Placeholder = "Street address"
-	streetAddress.Width = 28
+	streetAddress.Width = inputWidth
 	streetAddress.CharLimit = 60
 
 	unit := textinput.New()
 	unit.Placeholder = "Unit (optional)"
-	unit.Width = 28
+	unit.Width = inputWidth
 	unit.CharLimit = 10
 
 	city := textinput.New()
 	city.Placeholder = "City"
-	city.Width = 28
+	city.Width = inputWidth
 	city.CharLimit = 30
 
 	state := textinput.New()
 	state.Placeholder = "State (optional)"
-	state.Width = 28
+	state.Width = inputWidth
 	state.CharLimit = 20
 
 	postalCode := textinput.New()
 	postalCode.Placeholder = "Postal code (optional)"
-	postalCode.Width = 28
+	postalCode.Width = inputWidth
 	postalCode.CharLimit = 15
 
 	return ContactInputs{
@@ -240,47 +263,47 @@ func newContactInputs() ContactInputs {
 func newIdentityInputs() IdentityInputs {
 	givenName := textinput.New()
 	givenName.Placeholder = "First name"
-	givenName.Width = 28
+	givenName.Width = inputWidth
 	givenName.CharLimit = 30
 
 	familyName := textinput.New()
 	familyName.Placeholder = "Last name"
-	familyName.Width = 28
+	familyName.Width = inputWidth
 	familyName.CharLimit = 30
 
 	dateOfBirth := textinput.New()
 	dateOfBirth.Placeholder = "Date of birth (YYYY-MM-DD)"
-	dateOfBirth.Width = 28
+	dateOfBirth.Width = inputWidth
 	dateOfBirth.CharLimit = 10
 
 	taxID := textinput.New()
 	taxID.Placeholder = "Tax ID"
-	taxID.Width = 28
+	taxID.Width = inputWidth
 	taxID.CharLimit = 20
 
 	taxIDType := textinput.New()
 	taxIDType.Placeholder = "Tax ID type"
-	taxIDType.Width = 28
+	taxIDType.Width = inputWidth
 	taxIDType.CharLimit = 20
 
 	countryOfCitizenship := textinput.New()
 	countryOfCitizenship.Placeholder = "Country of citizenship (optional)"
-	countryOfCitizenship.Width = 28
+	countryOfCitizenship.Width = inputWidth
 	countryOfCitizenship.CharLimit = 30
 
 	countryOfBirth := textinput.New()
 	countryOfBirth.Placeholder = "Country of birth (optional)"
-	countryOfBirth.Width = 28
+	countryOfBirth.Width = inputWidth
 	countryOfBirth.CharLimit = 30
 
 	countryOfTaxResidence := textinput.New()
 	countryOfTaxResidence.Placeholder = "Country of tax residence"
-	countryOfTaxResidence.Width = 28
+	countryOfTaxResidence.Width = inputWidth
 	countryOfTaxResidence.CharLimit = 30
 
 	fundingSource := textinput.New()
 	fundingSource.Placeholder = "Funding source (comma-separated)"
-	fundingSource.Width = 28
+	fundingSource.Width = inputWidth
 	fundingSource.CharLimit = 100
 
 	return IdentityInputs{
@@ -299,22 +322,22 @@ func newIdentityInputs() IdentityInputs {
 func newAgreementInputs() AgreementInputs {
 	agreement := textinput.New()
 	agreement.Placeholder = "Agreement name"
-	agreement.Width = 28
+	agreement.Width = inputWidth
 	agreement.CharLimit = 40
 
 	signedAt := textinput.New()
 	signedAt.Placeholder = "Signed at (RFC3339)"
-	signedAt.Width = 28
+	signedAt.Width = inputWidth
 	signedAt.CharLimit = 25
 
 	ipAddress := textinput.New()
 	ipAddress.Placeholder = "IP address"
-	ipAddress.Width = 28
+	ipAddress.Width = inputWidth
 	ipAddress.CharLimit = 45
 
 	revision := textinput.New()
 	revision.Placeholder = "Revision (optional)"
-	revision.Width = 28
+	revision.Width = inputWidth
 	revision.CharLimit = 20
 
 	return AgreementInputs{
@@ -328,22 +351,22 @@ func newAgreementInputs() AgreementInputs {
 func newDocumentInputs() DocumentInputs {
 	documentType := textinput.New()
 	documentType.Placeholder = "Document type"
-	documentType.Width = 28
+	documentType.Width = inputWidth
 	documentType.CharLimit = 30
 
 	documentSubType := textinput.New()
 	documentSubType.Placeholder = "Document sub-type"
-	documentSubType.Width = 28
+	documentSubType.Width = inputWidth
 	documentSubType.CharLimit = 30
 
 	documentContent := textinput.New()
 	documentContent.Placeholder = "Path to document"
-	documentContent.Width = 28
+	documentContent.Width = inputWidth
 	documentContent.CharLimit = 80
 
 	mimeType := textinput.New()
 	mimeType.Placeholder = "MIME type (e.g. image/jpeg)"
-	mimeType.Width = 28
+	mimeType.Width = inputWidth
 	mimeType.CharLimit = 50
 
 	return DocumentInputs{
@@ -357,17 +380,17 @@ func newDocumentInputs() DocumentInputs {
 func newTrustedContactInputs() TrustedContactInputs {
 	givenName := textinput.New()
 	givenName.Placeholder = "Trusted contact first name"
-	givenName.Width = 28
+	givenName.Width = inputWidth
 	givenName.CharLimit = 30
 
 	familyName := textinput.New()
 	familyName.Placeholder = "Trusted contact last name"
-	familyName.Width = 28
+	familyName.Width = inputWidth
 	familyName.CharLimit = 30
 
 	email := textinput.New()
 	email.Placeholder = "Trusted contact email"
-	email.Width = 28
+	email.Width = inputWidth
 	email.CharLimit = 50
 
 	return TrustedContactInputs{
@@ -706,6 +729,8 @@ func (s SignUpPage) View() string {
 		),
 	)
 
+	header = lipgloss.PlaceHorizontal(s.BaseModel.Width, lipgloss.Center, header)
+
 	var fields []string
 	s.renderCurrentPageFields(&fields)
 
@@ -733,13 +758,20 @@ func (s SignUpPage) View() string {
 		"↑/↓: move • ctrl+h / ctrl+l: change page • enter: submit • esc: back • q: quit",
 	)
 
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		header,
+	finalContent := lipgloss.JoinVertical(
+		lipgloss.Center,
 		"",
 		content,
-		"",
+		"\n\n",
 		help,
+	)
+
+	return header + lipgloss.Place(
+		s.BaseModel.Width,
+		s.BaseModel.Height,
+		lipgloss.Center,
+		lipgloss.Center,
+		finalContent,
 	)
 }
 
@@ -857,17 +889,22 @@ func (s SignUpPage) renderCurrentPageFields(fields *[]string) {
 	}
 }
 func renderInput(label string, input textinput.Model, focused bool) string {
+	style := lipgloss.Style{}
 	if focused {
 		input.Focus()
+		style = focusedStyle
 	} else {
 		input.Blur()
+		style = inputStyle
 	}
 
-	return lipgloss.JoinHorizontal(
-		lipgloss.Left,
+	block := lipgloss.JoinVertical(
+		lipgloss.Center,
 		labelStyle.Render(label),
-		input.View(),
+		style.Render(input.View()),
 	)
+
+	return formRowStyle.Render(block)
 }
 
 func (s SignUpPage) addInput(fields *[]string, label string, input textinput.Model, index int) {
