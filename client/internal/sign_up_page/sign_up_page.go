@@ -161,14 +161,6 @@ var (
 	successStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#00FF00")).
 			Bold(true)
-
-	toggleOnStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00FF00")).
-			Bold(true)
-
-	toggleOffStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FF0000")).
-			Bold(true)
 )
 
 func NewSignUpPage(client *http.Client) SignUpPage {
@@ -398,7 +390,7 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return s, tea.Quit
 
-		case "j", "down":
+		case "ctrl+j", "down":
 			s.err = ""
 			s.cursor++
 			if s.cursor >= s.getFieldCount() {
@@ -406,7 +398,7 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return s, nil
 
-		case "k", "up":
+		case "ctrl+k", "up":
 			s.err = ""
 			s.cursor--
 			if s.cursor < 0 {
@@ -464,7 +456,9 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	input := s.getCurrentInput()
 	if input != nil {
 		var updatedInput textinput.Model
+		input.Focus()
 		updatedInput, cmd = input.Update(msg)
+		input.Blur()
 		s.setCurrentInput(updatedInput)
 	}
 
@@ -719,7 +713,7 @@ func (s SignUpPage) View() string {
 
 	if s.err != "" {
 		content = lipgloss.JoinVertical(
-			lipgloss.Left,
+			lipgloss.Center,
 			content,
 			"",
 			errorStyle.Render("❌ "+s.err),
@@ -728,7 +722,7 @@ func (s SignUpPage) View() string {
 
 	if s.success != "" {
 		content = lipgloss.JoinVertical(
-			lipgloss.Left,
+			lipgloss.Center,
 			content,
 			"",
 			successStyle.Render("✓ "+s.success),
@@ -736,7 +730,7 @@ func (s SignUpPage) View() string {
 	}
 
 	help := helpStyle.Render(
-		"↑/↓ move • ctrl+h / ctrl+l change page • enter submit • q quit",
+		"↑/↓: move • ctrl+h / ctrl+l: change page • enter: submit • esc: back • q: quit",
 	)
 
 	return lipgloss.JoinVertical(
