@@ -20,7 +20,6 @@ const (
 	identityPage
 	documentsPage
 	trustedContactPage
-	enabledAssetsPage
 )
 
 const (
@@ -69,7 +68,6 @@ type IdentityInputs struct {
 	countryOfCitizenship  textinput.Model
 	countryOfBirth        textinput.Model
 	countryOfTaxResidence textinput.Model
-	fundingSource         textinput.Model
 }
 
 type Disclosures struct {
@@ -129,7 +127,7 @@ type SignUpPage struct {
 	identityInputs       IdentityInputs
 	documentInputs       DocumentInputs
 	trustedContactInputs TrustedContactInputs
-	enabledAssets        textinput.Model
+	fundingSourceOptions []string
 	currentPage          int
 	cursor               int
 	typing               bool
@@ -179,11 +177,6 @@ var (
 )
 
 func NewSignUpPage(client *http.Client) SignUpPage {
-	enabledAssets := textinput.New()
-	enabledAssets.Placeholder = "Enabled assets (comma-separated)"
-	enabledAssets.Width = inputWidth
-	enabledAssets.CharLimit = 100
-
 	return SignUpPage{
 		BaseModel: basemodel.BaseModel{Client: client},
 		accountInfo: AccountInfo{
@@ -193,12 +186,13 @@ func NewSignUpPage(client *http.Client) SignUpPage {
 				IsPoliticallyExposed:        false,
 				ImmediateFamilyExposed:      false,
 			},
+			EnabledAssets: []string{"us_equity"},
 		},
 		contactInputs:        newContactInputs(),
 		identityInputs:       newIdentityInputs(),
 		documentInputs:       newDocumentInputs(),
 		trustedContactInputs: newTrustedContactInputs(),
-		enabledAssets:        enabledAssets,
+		fundingSourceOptions: []string{"employment_income", "investments", "inheritance", "business_income", "savings", "family"},
 		currentPage:          contactPage,
 		typing:               true,
 		cursor:               0,
@@ -293,11 +287,6 @@ func newIdentityInputs() IdentityInputs {
 	countryOfTaxResidence.Width = inputWidth
 	countryOfTaxResidence.CharLimit = 30
 
-	fundingSource := textinput.New()
-	fundingSource.Placeholder = "Funding source (comma-separated)"
-	fundingSource.Width = inputWidth
-	fundingSource.CharLimit = 100
-
 	return IdentityInputs{
 		givenName:             givenName,
 		familyName:            familyName,
@@ -307,7 +296,6 @@ func newIdentityInputs() IdentityInputs {
 		countryOfCitizenship:  countryOfCitizenship,
 		countryOfBirth:        countryOfBirth,
 		countryOfTaxResidence: countryOfTaxResidence,
-		fundingSource:         fundingSource,
 	}
 }
 
@@ -397,7 +385,7 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					s.err = err.Error()
 					return s, nil
 				}
-				if s.currentPage < enabledAssetsPage {
+				if s.currentPage < trustedContactPage {
 					s.currentPage++
 					s.cursor = 0
 				}
@@ -413,7 +401,7 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return s, nil
 
 			case "enter":
-				if s.currentPage == enabledAssetsPage {
+				if s.currentPage == trustedContactPage {
 					s.err = ""
 					s.success = ""
 					if err := s.validateCurrentPage(); err != nil {
@@ -479,8 +467,6 @@ func (s *SignUpPage) fieldCount() int {
 		return 4
 	case trustedContactPage:
 		return 3
-	case enabledAssetsPage:
-		return 1
 	default:
 		return 0
 	}
@@ -535,8 +521,6 @@ func (s *SignUpPage) getCurrentInput() *textinput.Model {
 		if s.cursor < len(inputs) {
 			return inputs[s.cursor]
 		}
-	case enabledAssetsPage:
-		return &s.enabledAssets
 	}
 	return nil
 }
@@ -590,8 +574,6 @@ func (s *SignUpPage) setCurrentInput(input textinput.Model) {
 		if s.cursor < len(inputs) {
 			*inputs[s.cursor] = input
 		}
-	case enabledAssetsPage:
-		s.enabledAssets = input
 	}
 }
 
@@ -645,10 +627,6 @@ func (s *SignUpPage) validateCurrentPage() error {
 		if strings.TrimSpace(s.documentInputs.mimeType.Value()) == "" {
 			return fmt.Errorf("MIME type is required")
 		}
-	case enabledAssetsPage:
-		if strings.TrimSpace(s.enabledAssets.Value()) == "" {
-			return fmt.Errorf("enabled assets is required")
-		}
 	}
 	return nil
 }
@@ -664,15 +642,13 @@ func (s SignUpPage) View() string {
 		pageName = "Documents"
 	case trustedContactPage:
 		pageName = "Trusted Contact (Optional)"
-	case enabledAssetsPage:
-		pageName = "Enabled Assets"
 	}
 
 	header := titleStyle.Render(
 		fmt.Sprintf("📝 Sign Up — %s (%d/%d)",
 			pageName,
 			s.currentPage+1,
-			enabledAssetsPage+1,
+			trustedContactPage+1,
 		),
 	)
 
@@ -773,10 +749,6 @@ func (s SignUpPage) submit() error {
 		EmailAddress: s.trustedContactInputs.emailAddress.Value(),
 	}
 
-	s.accountInfo.EnabledAssets = strings.Split(
-		s.enabledAssets.Value(), ",",
-	)
-
 	body, err := json.Marshal(s.accountInfo)
 	if err != nil {
 		return err
@@ -826,9 +798,6 @@ func (s SignUpPage) renderCurrentPageFields(fields *[]string) {
 		s.addInput(fields, "First Name", s.trustedContactInputs.givenName, 0)
 		s.addInput(fields, "Last Name", s.trustedContactInputs.familyName, 1)
 		s.addInput(fields, "Email", s.trustedContactInputs.emailAddress, 2)
-
-	case enabledAssetsPage:
-		s.addInput(fields, "Assets", s.enabledAssets, 0)
 	}
 }
 func renderInput(label string, input textinput.Model, focused, typing bool) string {
