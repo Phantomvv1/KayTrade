@@ -705,13 +705,24 @@ func (s SignUpPage) View() string {
 		"↑/↓: move • ctrl+h / ctrl+l: change page • enter: submit/type • esc: stop typing/back • q: quit",
 	)
 
-	finalContent := lipgloss.JoinVertical(
-		lipgloss.Center,
-		"",
-		content,
-		"\n\n",
-		help,
-	)
+	finalContent := ""
+	if s.currentPage != identityPage {
+		finalContent = lipgloss.JoinVertical(
+			lipgloss.Center,
+			"",
+			content,
+			"\n\n",
+			help,
+		)
+	} else {
+		finalContent = lipgloss.JoinVertical(
+			lipgloss.Center,
+			"",
+			content,
+			"",
+			help,
+		)
+	}
 
 	return header + lipgloss.Place(
 		s.BaseModel.Width,
