@@ -18,7 +18,6 @@ import (
 const (
 	contactPage = iota
 	identityPage
-	agreementsPage
 	documentsPage
 	trustedContactPage
 	enabledAssetsPage
@@ -87,13 +86,6 @@ type Agreement struct {
 	Revision  string `json:"revision,omitempty"`
 }
 
-type AgreementInputs struct {
-	agreement textinput.Model
-	signedAt  textinput.Model
-	iPAddress textinput.Model
-	revision  textinput.Model
-}
-
 type Document struct {
 	DocumentType    string `json:"document_type"`
 	DocumentSubType string `json:"document_sub_type"`
@@ -135,7 +127,6 @@ type SignUpPage struct {
 	accountInfo          AccountInfo
 	contactInputs        ContactInputs
 	identityInputs       IdentityInputs
-	agreementInputs      AgreementInputs
 	documentInputs       DocumentInputs
 	trustedContactInputs TrustedContactInputs
 	enabledAssets        textinput.Model
@@ -205,7 +196,6 @@ func NewSignUpPage(client *http.Client) SignUpPage {
 		},
 		contactInputs:        newContactInputs(),
 		identityInputs:       newIdentityInputs(),
-		agreementInputs:      newAgreementInputs(),
 		documentInputs:       newDocumentInputs(),
 		trustedContactInputs: newTrustedContactInputs(),
 		enabledAssets:        enabledAssets,
@@ -321,35 +311,6 @@ func newIdentityInputs() IdentityInputs {
 	}
 }
 
-func newAgreementInputs() AgreementInputs {
-	agreement := textinput.New()
-	agreement.Placeholder = "Agreement name"
-	agreement.Width = inputWidth
-	agreement.CharLimit = 40
-
-	signedAt := textinput.New()
-	signedAt.Placeholder = "Signed at (RFC3339)"
-	signedAt.Width = inputWidth
-	signedAt.CharLimit = 25
-
-	ipAddress := textinput.New()
-	ipAddress.Placeholder = "IP address"
-	ipAddress.Width = inputWidth
-	ipAddress.CharLimit = 45
-
-	revision := textinput.New()
-	revision.Placeholder = "Revision (optional)"
-	revision.Width = inputWidth
-	revision.CharLimit = 20
-
-	return AgreementInputs{
-		agreement: agreement,
-		signedAt:  signedAt,
-		iPAddress: ipAddress,
-		revision:  revision,
-	}
-}
-
 func newDocumentInputs() DocumentInputs {
 	documentType := textinput.New()
 	documentType.Placeholder = "Document type"
@@ -416,7 +377,7 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "ctrl+j", "down":
 				s.err = ""
 				s.cursor++
-				if s.cursor >= s.getFieldCount() {
+				if s.cursor >= s.fieldCount() {
 					s.cursor = 0
 				}
 				return s, nil
@@ -425,7 +386,7 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				s.err = ""
 				s.cursor--
 				if s.cursor < 0 {
-					s.cursor = s.getFieldCount() - 1
+					s.cursor = s.fieldCount() - 1
 				}
 				return s, nil
 
@@ -508,14 +469,12 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, cmd
 }
 
-func (s *SignUpPage) getFieldCount() int {
+func (s *SignUpPage) fieldCount() int {
 	switch s.currentPage {
 	case contactPage:
 		return 8
 	case identityPage:
 		return 9
-	case agreementsPage:
-		return 4
 	case documentsPage:
 		return 4
 	case trustedContactPage:
@@ -553,16 +512,6 @@ func (s *SignUpPage) getCurrentInput() *textinput.Model {
 			&s.identityInputs.countryOfBirth,
 			&s.identityInputs.countryOfTaxResidence,
 			&s.identityInputs.fundingSource,
-		}
-		if s.cursor < len(inputs) {
-			return inputs[s.cursor]
-		}
-	case agreementsPage:
-		inputs := []*textinput.Model{
-			&s.agreementInputs.agreement,
-			&s.agreementInputs.signedAt,
-			&s.agreementInputs.iPAddress,
-			&s.agreementInputs.revision,
 		}
 		if s.cursor < len(inputs) {
 			return inputs[s.cursor]
@@ -618,16 +567,6 @@ func (s *SignUpPage) setCurrentInput(input textinput.Model) {
 			&s.identityInputs.countryOfBirth,
 			&s.identityInputs.countryOfTaxResidence,
 			&s.identityInputs.fundingSource,
-		}
-		if s.cursor < len(inputs) {
-			*inputs[s.cursor] = input
-		}
-	case agreementsPage:
-		inputs := []*textinput.Model{
-			&s.agreementInputs.agreement,
-			&s.agreementInputs.signedAt,
-			&s.agreementInputs.iPAddress,
-			&s.agreementInputs.revision,
 		}
 		if s.cursor < len(inputs) {
 			*inputs[s.cursor] = input
@@ -693,16 +632,6 @@ func (s *SignUpPage) validateCurrentPage() error {
 		if strings.TrimSpace(s.identityInputs.fundingSource.Value()) == "" {
 			return fmt.Errorf("funding source is required")
 		}
-	case agreementsPage:
-		if strings.TrimSpace(s.agreementInputs.agreement.Value()) == "" {
-			return fmt.Errorf("agreement name is required")
-		}
-		if strings.TrimSpace(s.agreementInputs.signedAt.Value()) == "" {
-			return fmt.Errorf("signed at is required")
-		}
-		if strings.TrimSpace(s.agreementInputs.iPAddress.Value()) == "" {
-			return fmt.Errorf("IP address is required")
-		}
 	case documentsPage:
 		if strings.TrimSpace(s.documentInputs.documentType.Value()) == "" {
 			return fmt.Errorf("document type is required")
@@ -731,8 +660,6 @@ func (s SignUpPage) View() string {
 		pageName = "Contact Information"
 	case identityPage:
 		pageName = "Identity"
-	case agreementsPage:
-		pageName = "Agreements"
 	case documentsPage:
 		pageName = "Documents"
 	case trustedContactPage:
@@ -820,15 +747,6 @@ func (s SignUpPage) submit() error {
 		),
 	}
 
-	s.accountInfo.Agreements = []Agreement{
-		{
-			Agreement: s.agreementInputs.agreement.Value(),
-			SignedAt:  s.agreementInputs.signedAt.Value(),
-			IPAddress: s.agreementInputs.iPAddress.Value(),
-			Revision:  s.agreementInputs.revision.Value(),
-		},
-	}
-
 	s.accountInfo.Documents = []Document{
 		{
 			DocumentType:    s.documentInputs.documentType.Value(),
@@ -886,12 +804,6 @@ func (s SignUpPage) renderCurrentPageFields(fields *[]string) {
 		s.addInput(fields, "Birth Country", s.identityInputs.countryOfBirth, 6)
 		s.addInput(fields, "Tax Residence", s.identityInputs.countryOfTaxResidence, 7)
 		s.addInput(fields, "Funding Source", s.identityInputs.fundingSource, 8)
-
-	case agreementsPage:
-		s.addInput(fields, "Agreement", s.agreementInputs.agreement, 0)
-		s.addInput(fields, "Signed At", s.agreementInputs.signedAt, 1)
-		s.addInput(fields, "IP Address", s.agreementInputs.iPAddress, 2)
-		s.addInput(fields, "Revision", s.agreementInputs.revision, 3)
 
 	case documentsPage:
 		s.addInput(fields, "Doc Type", s.documentInputs.documentType, 0)
