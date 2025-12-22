@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
+	"github.com/Phantomvv1/KayTrade/internal/messages"
 	"github.com/Phantomvv1/KayTrade/internal/requests"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -450,6 +451,13 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return s, nil
+
+		case "esc":
+			return s, func() tea.Msg {
+				return messages.PageSwitchMsg{
+					Page: messages.LoginPageNumber,
+				}
+			}
 		}
 	}
 
