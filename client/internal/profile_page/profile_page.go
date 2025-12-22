@@ -531,7 +531,7 @@ func (p ProfilePage) View() string {
 	}
 
 	title := titleStyle.Render("👤 Profile")
-	centeredTitle := lipgloss.Place(p.BaseModel.Width, lipgloss.Height(title), lipgloss.Center, lipgloss.Top, title)
+	// centeredTitle := lipgloss.Place(p.BaseModel.Width, lipgloss.Height(title), lipgloss.Center, lipgloss.Top, title)
 
 	personalInfo := p.renderPersonalInfo()
 
@@ -569,7 +569,8 @@ func (p ProfilePage) View() string {
 	finalView := lipgloss.JoinVertical(
 		lipgloss.Center,
 		"",
-		centeredTitle,
+		// centeredTitle,
+		title,
 		"",
 		content,
 	)
