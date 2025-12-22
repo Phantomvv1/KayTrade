@@ -15,6 +15,7 @@ import (
 	profilepage "github.com/Phantomvv1/KayTrade/internal/profile_page"
 	searchpage "github.com/Phantomvv1/KayTrade/internal/search_page"
 	sellpage "github.com/Phantomvv1/KayTrade/internal/sell_page"
+	signuppage "github.com/Phantomvv1/KayTrade/internal/sign_up_page"
 	tradinginfopage "github.com/Phantomvv1/KayTrade/internal/trading_info_page"
 	watchlistpage "github.com/Phantomvv1/KayTrade/internal/watchlist_page"
 	tea "github.com/charmbracelet/bubbletea"
@@ -31,6 +32,7 @@ type Model struct {
 	tradingInfoPage tradinginfopage.TradingInfoPage
 	profilePage     profilepage.ProfilePage
 	sellPage        sellpage.SellPage
+	signUpPage      signuppage.SignUpPage
 	currentPage     int
 }
 
@@ -53,6 +55,7 @@ func NewModel() Model {
 		tradingInfoPage: tradinginfopage.NewTradingInfoPage(),
 		profilePage:     profilepage.NewProfilePage(client),
 		sellPage:        sellpage.NewSellPage(client),
+		signUpPage:      signuppage.NewSignUpPage(client),
 		currentPage:     messages.LandingPageNumber,
 	}
 }
@@ -159,6 +162,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.SellPageNumber:
 		page, cmd = m.sellPage.Update(msg)
 		m.sellPage = page.(sellpage.SellPage)
+	case messages.SignUpPageNumber:
+		page, cmd = m.signUpPage.Update(msg)
+		m.signUpPage = page.(signuppage.SignUpPage)
 
 	default:
 		m.currentPage = messages.ErrorPageNumber
@@ -190,6 +196,9 @@ func (m Model) View() string {
 		return m.profilePage.View()
 	case messages.SellPageNumber:
 		return m.sellPage.View()
+	case messages.SignUpPageNumber:
+		return m.signUpPage.View()
+
 	default:
 		return m.errorPage.View()
 	}
@@ -225,6 +234,9 @@ func (m *Model) setSize(width, height int) {
 
 	m.sellPage.BaseModel.Width = width
 	m.sellPage.BaseModel.Height = height
+
+	m.signUpPage.BaseModel.Width = width
+	m.signUpPage.BaseModel.Height = height
 }
 
 func (m *Model) updateToken(token string) {
@@ -238,6 +250,7 @@ func (m *Model) updateToken(token string) {
 	m.tradingInfoPage.BaseModel.Token = token
 	m.profilePage.BaseModel.Token = token
 	m.sellPage.BaseModel.Token = token
+	m.signUpPage.BaseModel.Token = token
 }
 
 func (m *Model) getModelFromPageNumber() tea.Model {
@@ -262,6 +275,8 @@ func (m *Model) getModelFromPageNumber() tea.Model {
 		return m.profilePage
 	case messages.SellPageNumber:
 		return m.sellPage
+	case messages.SignUpPageNumber:
+		return m.signUpPage
 	default:
 		return nil
 	}
