@@ -11,14 +11,16 @@ const (
 	BuyPageNumber
 	TradingInfoPageNumber
 	ProfilePageNumber
+	SellPageNumber
 	ErrorPageNumber
 )
 
 type PageSwitchMsg struct {
-	Page    int
-	Err     error
-	Company *CompanyInfo
-	Symbol  string
+	Page        int
+	Err         error
+	Company     *CompanyInfo
+	Symbol      string
+	MaxQuantity float64
 }
 
 type TokenSwitchMsg struct {

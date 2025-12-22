@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -234,18 +235,24 @@ func NewProfilePage(client *http.Client) ProfilePage {
 		}
 	}
 
-	positionsList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
-	positionsList.FilterInput.Focus()
-	positionsList.SetShowHelp(false)
-	positionsList.Title = "Positions"
-	positionsList.AdditionalFullHelpKeys = func() []key.Binding {
+	delegate := list.NewDefaultDelegate()
+	delegate.ShortHelpFunc = func() []key.Binding {
 		return []key.Binding{
-			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
-			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
-			key.NewBinding(key.WithKeys("ctrl+h", "ctrl+left"), key.WithHelp("ctrl+h/←", "switch list")),
-			key.NewBinding(key.WithKeys("ctrl+l", "ctrl+right"), key.WithHelp("ctrl+l/→", "switch list")),
+			key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s", "sell")),
 		}
 	}
+
+	delegate.FullHelpFunc = func() [][]key.Binding {
+		return [][]key.Binding{
+			{
+				key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s", "sell")),
+			},
+		}
+	}
+
+	positionsList := list.New([]list.Item{}, delegate, 0, 0)
+	positionsList.FilterInput.Blur()
+	positionsList.Title = "Positions"
 
 	return ProfilePage{
 		BaseModel: basemodel.BaseModel{Client: client},
@@ -449,6 +456,28 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return p, cmd
 
+			case "s", "S":
+				if p.positions.FilterInput.Focused() {
+					position := p.positions.Items()[p.positions.Cursor()].(positionItem)
+					maxQuantity, err := strconv.ParseFloat(position.position.Qty, 64)
+					if err != nil {
+						return p, func() tea.Msg {
+							return messages.PageSwitchMsg{
+								Page: messages.ErrorPageNumber,
+								Err:  err,
+							}
+						}
+					}
+
+					return p, func() tea.Msg {
+						return messages.PageSwitchMsg{
+							Page:        messages.SellPageNumber,
+							Symbol:      position.position.Symbol,
+							MaxQuantity: maxQuantity,
+						}
+					}
+				}
+
 			default:
 				var cmd tea.Cmd
 				if p.orders.FilterInput.Focused() {
@@ -502,7 +531,7 @@ func (p ProfilePage) View() string {
 	}
 
 	title := titleStyle.Render("👤 Profile")
-	centeredTitle := lipgloss.Place(p.BaseModel.Width, lipgloss.Height(title), lipgloss.Center, lipgloss.Top, title)
+	// centeredTitle := lipgloss.Place(p.BaseModel.Width, lipgloss.Height(title), lipgloss.Center, lipgloss.Top, title)
 
 	personalInfo := p.renderPersonalInfo()
 
@@ -540,7 +569,8 @@ func (p ProfilePage) View() string {
 	finalView := lipgloss.JoinVertical(
 		lipgloss.Center,
 		"",
-		centeredTitle,
+		// centeredTitle,
+		title,
 		"",
 		content,
 	)

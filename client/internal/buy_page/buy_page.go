@@ -680,7 +680,7 @@ func (b *BuyPage) submitOrder() error {
 	return nil
 }
 
-func (b *BuyPage) getFieldNames(purchaseType string) []string {
+func (b BuyPage) getFieldNames(purchaseType string) []string {
 	switch purchaseType {
 	case "limit":
 		return []string{"limit_price"}

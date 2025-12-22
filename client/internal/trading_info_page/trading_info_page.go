@@ -13,6 +13,7 @@ import (
 type TradingInfoPage struct {
 	BaseModel                       basemodel.BaseModel
 	Viewport                        viewport.Model
+	PrevPage                        int
 	ready                           bool
 	qunatityExplanation             string
 	timeInForceExplanation          string
@@ -98,7 +99,7 @@ func (t TradingInfoPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			return t, func() tea.Msg {
 				return messages.PageSwitchMsg{
-					Page: messages.BuyPageNumber,
+					Page: t.PrevPage,
 				}
 			}
 
