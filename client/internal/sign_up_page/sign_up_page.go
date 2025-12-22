@@ -141,6 +141,7 @@ type SignUpPage struct {
 	enabledAssets        textinput.Model
 	currentPage          int
 	cursor               int
+	typing               bool
 	err                  string
 	success              string
 }
@@ -209,6 +210,7 @@ func NewSignUpPage(client *http.Client) SignUpPage {
 		trustedContactInputs: newTrustedContactInputs(),
 		enabledAssets:        enabledAssets,
 		currentPage:          contactPage,
+		typing:               true,
 		cursor:               0,
 	}
 }
@@ -407,70 +409,88 @@ func (s SignUpPage) Init() tea.Cmd {
 func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "ctrl+c":
-			return s, tea.Quit
-
-		case "ctrl+j", "down":
-			s.err = ""
-			s.cursor++
-			if s.cursor >= s.getFieldCount() {
-				s.cursor = 0
-			}
-			return s, nil
-
-		case "ctrl+k", "up":
-			s.err = ""
-			s.cursor--
-			if s.cursor < 0 {
-				s.cursor = s.getFieldCount() - 1
-			}
-			return s, nil
-
-		case "ctrl+l", "ctrl+right":
-			s.err = ""
-			s.success = ""
-			if err := s.validateCurrentPage(); err != nil {
-				s.err = err.Error()
+	if s.typing {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "ctrl+j", "down":
+				s.err = ""
+				s.cursor++
+				if s.cursor >= s.getFieldCount() {
+					s.cursor = 0
+				}
 				return s, nil
-			}
-			if s.currentPage < enabledAssetsPage {
-				s.currentPage++
-				s.cursor = 0
-			}
-			return s, nil
 
-		case "ctrl+h", "ctrl+left":
-			s.err = ""
-			s.success = ""
-			if s.currentPage > contactPage {
-				s.currentPage--
-				s.cursor = 0
-			}
-			return s, nil
+			case "ctrl+k", "up":
+				s.err = ""
+				s.cursor--
+				if s.cursor < 0 {
+					s.cursor = s.getFieldCount() - 1
+				}
+				return s, nil
 
-		case "enter":
-			if s.currentPage == enabledAssetsPage {
+			case "ctrl+l", "ctrl+right":
 				s.err = ""
 				s.success = ""
 				if err := s.validateCurrentPage(); err != nil {
 					s.err = err.Error()
 					return s, nil
 				}
-				if err := s.submit(); err != nil {
-					s.err = err.Error()
-				} else {
-					s.success = "Sign up successful!"
+				if s.currentPage < enabledAssetsPage {
+					s.currentPage++
+					s.cursor = 0
 				}
-			}
-			return s, nil
+				return s, nil
 
-		case "esc":
-			return s, func() tea.Msg {
-				return messages.PageSwitchMsg{
-					Page: messages.LoginPageNumber,
+			case "ctrl+h", "ctrl+left":
+				s.err = ""
+				s.success = ""
+				if s.currentPage > contactPage {
+					s.currentPage--
+					s.cursor = 0
+				}
+				return s, nil
+
+			case "enter":
+				if s.currentPage == enabledAssetsPage {
+					s.err = ""
+					s.success = ""
+					if err := s.validateCurrentPage(); err != nil {
+						s.err = err.Error()
+						return s, nil
+					}
+					if err := s.submit(); err != nil {
+						s.err = err.Error()
+					} else {
+						s.success = "Sign up successful!"
+					}
+				}
+
+				s.err = "Error, can't submit if you aren't on the last page and haven't filled all the mandatory fields!"
+
+				return s, nil
+
+			case "esc":
+				s.typing = false
+				return s, nil
+			}
+		}
+	} else {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "q", "ctrl+c":
+				return s, tea.Quit
+
+			case "enter":
+				s.typing = true
+				return s, nil
+
+			case "esc":
+				return s, func() tea.Msg {
+					return messages.PageSwitchMsg{
+						Page: messages.LoginPageNumber,
+					}
 				}
 			}
 		}
@@ -755,7 +775,7 @@ func (s SignUpPage) View() string {
 	}
 
 	help := helpStyle.Render(
-		"↑/↓: move • ctrl+h / ctrl+l: change page • enter: submit • esc: back • q: quit",
+		"↑/↓: move • ctrl+h / ctrl+l: change page • enter: submit/type • esc: stop typing/back • q: quit",
 	)
 
 	finalContent := lipgloss.JoinVertical(
@@ -888,13 +908,17 @@ func (s SignUpPage) renderCurrentPageFields(fields *[]string) {
 		s.addInput(fields, "Assets", s.enabledAssets, 0)
 	}
 }
-func renderInput(label string, input textinput.Model, focused bool) string {
+func renderInput(label string, input textinput.Model, focused, typing bool) string {
 	style := lipgloss.Style{}
-	if focused {
-		input.Focus()
-		style = focusedStyle
+	if typing {
+		if focused {
+			input.Focus()
+			style = focusedStyle
+		} else {
+			input.Blur()
+			style = inputStyle
+		}
 	} else {
-		input.Blur()
 		style = inputStyle
 	}
 
@@ -909,6 +933,6 @@ func renderInput(label string, input textinput.Model, focused bool) string {
 
 func (s SignUpPage) addInput(fields *[]string, label string, input textinput.Model, index int) {
 	*fields = append(*fields,
-		renderInput(label, input, s.cursor == index),
+		renderInput(label, input, s.cursor == index, s.typing),
 	)
 }
