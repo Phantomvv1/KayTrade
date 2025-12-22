@@ -232,27 +232,14 @@ func NewProfilePage(client *http.Client) ProfilePage {
 			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
 			key.NewBinding(key.WithKeys("ctrl+h", "ctrl+left"), key.WithHelp("ctrl+h/←", "switch list")),
 			key.NewBinding(key.WithKeys("ctrl+l", "ctrl+right"), key.WithHelp("ctrl+l/→", "switch list")),
+			key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s (sell)", "position")),
 		}
 	}
 
-	delegate := list.NewDefaultDelegate()
-	delegate.ShortHelpFunc = func() []key.Binding {
-		return []key.Binding{
-			key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s", "sell")),
-		}
-	}
-
-	delegate.FullHelpFunc = func() [][]key.Binding {
-		return [][]key.Binding{
-			{
-				key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s", "sell")),
-			},
-		}
-	}
-
-	positionsList := list.New([]list.Item{}, delegate, 0, 0)
+	positionsList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	positionsList.FilterInput.Blur()
 	positionsList.Title = "Positions"
+	positionsList.SetShowHelp(false)
 
 	return ProfilePage{
 		BaseModel: basemodel.BaseModel{Client: client},
@@ -530,6 +517,7 @@ func (p ProfilePage) View() string {
 		)
 	}
 
+	// FIX: Temporary fix
 	title := titleStyle.Render("👤 Profile")
 	// centeredTitle := lipgloss.Place(p.BaseModel.Width, lipgloss.Height(title), lipgloss.Center, lipgloss.Top, title)
 
