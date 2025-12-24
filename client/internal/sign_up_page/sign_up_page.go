@@ -50,8 +50,8 @@ type Identity struct {
 	GivenName             string   `json:"given_name"`
 	FamilyName            string   `json:"family_name"`
 	DateOfBirth           string   `json:"date_of_birth"`
-	TaxID                 string   `json:"tax_id"`
-	TaxIDType             string   `json:"tax_id_type"`
+	TaxID                 string   `json:"tax_id,omitempty"`
+	TaxIDType             string   `json:"tax_id_type,omitempty"`
 	CountryOfCitizenship  string   `json:"country_of_citizenship,omitempty"`
 	CountryOfBirth        string   `json:"country_of_birth,omitempty"`
 	CountryOfTaxResidence string   `json:"country_of_tax_residence"`
@@ -276,12 +276,12 @@ func newIdentityInputs() IdentityInputs {
 	dateOfBirth.CharLimit = 10
 
 	taxID := textinput.New()
-	taxID.Placeholder = "Tax ID"
+	taxID.Placeholder = "Tax ID (optional)"
 	taxID.Width = inputWidth
 	taxID.CharLimit = 20
 
 	taxIDType := textinput.New()
-	taxIDType.Placeholder = "Tax ID type"
+	taxIDType.Placeholder = "Tax ID type (optional)"
 	taxIDType.Width = inputWidth
 	taxIDType.CharLimit = 20
 
@@ -411,6 +411,15 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					s.currentPage--
 					s.cursor = 0
 				}
+
+				return s, nil
+
+			case "tab":
+				s.cursor++
+				if s.cursor >= s.fieldCount() {
+					s.cursor = 0
+				}
+
 				return s, nil
 
 			case "h", "left":
@@ -419,6 +428,7 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if s.fundingCursor < 0 {
 						s.fundingCursor = len(s.fundingSourceOptions) - 1
 					}
+
 					return s, nil
 				}
 
@@ -428,6 +438,7 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if s.fundingCursor >= len(s.fundingSourceOptions) {
 						s.fundingCursor = 0
 					}
+
 					return s, nil
 				}
 
@@ -438,6 +449,7 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					} else {
 						s.fundingSelected[s.fundingCursor] = true
 					}
+
 					return s, nil
 				}
 
@@ -485,7 +497,7 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	input := s.getCurrentInput()
+	input := s.currentInput()
 	if input != nil {
 		var updatedInput textinput.Model
 		input.Focus()
@@ -512,7 +524,7 @@ func (s *SignUpPage) fieldCount() int {
 	}
 }
 
-func (s *SignUpPage) getCurrentInput() *textinput.Model {
+func (s *SignUpPage) currentInput() *textinput.Model {
 	switch s.currentPage {
 	case contactPage:
 		inputs := []*textinput.Model{
@@ -640,11 +652,8 @@ func (s *SignUpPage) validateCurrentPage() error {
 		if strings.TrimSpace(s.identityInputs.dateOfBirth.Value()) == "" {
 			return fmt.Errorf("date of birth is required")
 		}
-		if strings.TrimSpace(s.identityInputs.taxID.Value()) == "" {
-			return fmt.Errorf("tax ID is required")
-		}
-		if strings.TrimSpace(s.identityInputs.taxIDType.Value()) == "" {
-			return fmt.Errorf("tax ID type is required")
+		if strings.TrimSpace(s.identityInputs.taxID.Value()) != "" || strings.TrimSpace(s.identityInputs.taxIDType.Value()) != "" {
+			return fmt.Errorf("both taxID and taxIDType are required if you decide to fill one of them")
 		}
 		if strings.TrimSpace(s.identityInputs.countryOfTaxResidence.Value()) == "" {
 			return fmt.Errorf("country of tax residence is required")
