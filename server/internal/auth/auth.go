@@ -165,6 +165,11 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
+	if acc.Password == "" {
+		ErrorExit(c, http.StatusBadRequest, "password required for creating an account", nil)
+		return
+	}
+
 	password := acc.Password
 	acc.Password = ""
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -117,10 +118,12 @@ type AccountInfo struct {
 	Documents      []Document     `json:"documents"`
 	TrustedContact TrustedContact `json:"trusted_contact"`
 	EnabledAssets  []string       `json:"enabled_assets"`
+	Password       string         `json:"password"`
 }
 
 type SignUpPage struct {
 	BaseModel            basemodel.BaseModel
+	password             textinput.Model
 	accountInfo          AccountInfo
 	contactInputs        ContactInputs
 	identityInputs       IdentityInputs
@@ -188,6 +191,13 @@ var (
 )
 
 func NewSignUpPage(client *http.Client) SignUpPage {
+	password := textinput.New()
+	password.Placeholder = "Email address"
+	password.Width = inputWidth
+	password.CharLimit = 50
+	password.EchoMode = textinput.EchoPassword
+	password.EchoCharacter = '•'
+
 	return SignUpPage{
 		BaseModel: basemodel.BaseModel{Client: client},
 		accountInfo: AccountInfo{
@@ -199,6 +209,7 @@ func NewSignUpPage(client *http.Client) SignUpPage {
 			},
 			EnabledAssets: []string{"us_equity"},
 		},
+		password:             password,
 		contactInputs:        newContactInputs(),
 		identityInputs:       newIdentityInputs(),
 		documentInputs:       newDocumentInputs(),
@@ -460,11 +471,16 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						s.err = err.Error()
 						return s, nil
 					}
+
 					if err := s.submit(); err != nil {
 						s.err = err.Error()
 					} else {
+						log.Println("Success?")
 						s.success = "Sign up successful!"
 					}
+
+					log.Println("Success?")
+					return s, nil
 				}
 
 				s.err = "Error, can't submit if you aren't on the last page and haven't filled all the mandatory fields!"
@@ -512,7 +528,7 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (s *SignUpPage) fieldCount() int {
 	switch s.currentPage {
 	case contactPage:
-		return 7
+		return 8
 	case identityPage:
 		return 9
 	case documentsPage:
@@ -529,6 +545,7 @@ func (s *SignUpPage) currentInput() *textinput.Model {
 	case contactPage:
 		inputs := []*textinput.Model{
 			&s.contactInputs.emailAddress,
+			&s.password,
 			&s.contactInputs.phoneNumber,
 			&s.contactInputs.streetAddress,
 			&s.contactInputs.unit,
@@ -581,6 +598,7 @@ func (s *SignUpPage) setCurrentInput(input textinput.Model) {
 	case contactPage:
 		inputs := []*textinput.Model{
 			&s.contactInputs.emailAddress,
+			&s.password,
 			&s.contactInputs.phoneNumber,
 			&s.contactInputs.streetAddress,
 			&s.contactInputs.unit,
@@ -632,6 +650,9 @@ func (s *SignUpPage) validateCurrentPage() error {
 	case contactPage:
 		if strings.TrimSpace(s.contactInputs.emailAddress.Value()) == "" {
 			return fmt.Errorf("email address is required")
+		}
+		if strings.TrimSpace(s.password.Value()) == "" {
+			return fmt.Errorf("password is required")
 		}
 		if strings.TrimSpace(s.contactInputs.phoneNumber.Value()) == "" {
 			return fmt.Errorf("phone number is required")
@@ -800,6 +821,8 @@ func (s SignUpPage) submit() error {
 		EmailAddress: s.trustedContactInputs.emailAddress.Value(),
 	}
 
+	s.accountInfo.Password = s.password.Value()
+
 	body, err := json.Marshal(s.accountInfo)
 	if err != nil {
 		return err
@@ -807,7 +830,7 @@ func (s SignUpPage) submit() error {
 
 	_, err = requests.MakeRequest(
 		http.MethodPost,
-		requests.BaseURL+"/users/signup",
+		requests.BaseURL+"/sign-up",
 		bytes.NewReader(body),
 		s.BaseModel.Client,
 		s.BaseModel.Token,
@@ -821,12 +844,13 @@ func (s SignUpPage) renderCurrentPageFields(fields *[]string) {
 
 	case contactPage:
 		s.addInput(fields, "Email", s.contactInputs.emailAddress, 0)
-		s.addInput(fields, "Phone", s.contactInputs.phoneNumber, 1)
-		s.addInput(fields, "Street", s.contactInputs.streetAddress, 2)
-		s.addInput(fields, "Unit", s.contactInputs.unit, 3)
-		s.addInput(fields, "City", s.contactInputs.city, 4)
-		s.addInput(fields, "State", s.contactInputs.state, 5)
-		s.addInput(fields, "Postal Code", s.contactInputs.postalCode, 6)
+		s.addInput(fields, "Password", s.password, 1)
+		s.addInput(fields, "Phone", s.contactInputs.phoneNumber, 2)
+		s.addInput(fields, "Street", s.contactInputs.streetAddress, 3)
+		s.addInput(fields, "Unit", s.contactInputs.unit, 4)
+		s.addInput(fields, "City", s.contactInputs.city, 5)
+		s.addInput(fields, "State", s.contactInputs.state, 6)
+		s.addInput(fields, "Postal Code", s.contactInputs.postalCode, 7)
 
 	case identityPage:
 		s.addInput(fields, "First Name", s.identityInputs.givenName, 0)
