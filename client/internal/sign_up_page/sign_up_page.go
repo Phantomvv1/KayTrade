@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -475,11 +474,9 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err := s.submit(); err != nil {
 						s.err = err.Error()
 					} else {
-						log.Println("Success?")
 						s.success = "Sign up successful!"
 					}
 
-					log.Println("Success?")
 					return s, nil
 				}
 
