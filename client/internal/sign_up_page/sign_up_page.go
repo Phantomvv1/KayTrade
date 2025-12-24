@@ -23,7 +23,6 @@ const (
 )
 
 const (
-	formWidth  = 60
 	inputWidth = 27
 )
 
@@ -131,6 +130,8 @@ type SignUpPage struct {
 	currentPage          int
 	cursor               int
 	typing               bool
+	fundingCursor        int
+	fundingSelected      map[int]bool
 	err                  string
 	success              string
 }
@@ -153,7 +154,6 @@ var (
 			Bold(true)
 
 	formRowStyle = lipgloss.NewStyle().
-			Width(formWidth).
 			Align(lipgloss.Center)
 
 	labelStyle = lipgloss.NewStyle().
@@ -174,6 +174,17 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#00FFFF")).
 			Width(32)
+
+	fundingIdleStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFFFFF"))
+
+	fundingFocusedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#00FFFF")).
+				Bold(true)
+
+	fundingSelectedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#BB88FF")).
+				Bold(true)
 )
 
 func NewSignUpPage(client *http.Client) SignUpPage {
@@ -193,6 +204,8 @@ func NewSignUpPage(client *http.Client) SignUpPage {
 		documentInputs:       newDocumentInputs(),
 		trustedContactInputs: newTrustedContactInputs(),
 		fundingSourceOptions: []string{"employment_income", "investments", "inheritance", "business_income", "savings", "family"},
+		fundingCursor:        0,
+		fundingSelected:      make(map[int]bool),
 		currentPage:          contactPage,
 		typing:               true,
 		cursor:               0,
@@ -400,7 +413,34 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return s, nil
 
+			case "h", "left":
+				if s.currentPage == identityPage && s.cursor == 8 {
+					s.fundingCursor--
+					if s.fundingCursor < 0 {
+						s.fundingCursor = len(s.fundingSourceOptions) - 1
+					}
+					return s, nil
+				}
+
+			case "l", "right":
+				if s.currentPage == identityPage && s.cursor == 8 {
+					s.fundingCursor++
+					if s.fundingCursor >= len(s.fundingSourceOptions) {
+						s.fundingCursor = 0
+					}
+					return s, nil
+				}
+
 			case "enter":
+				if s.currentPage == identityPage && s.cursor == 8 {
+					if s.fundingSelected[s.fundingCursor] {
+						delete(s.fundingSelected, s.fundingCursor)
+					} else {
+						s.fundingSelected[s.fundingCursor] = true
+					}
+					return s, nil
+				}
+
 				if s.currentPage == trustedContactPage {
 					s.err = ""
 					s.success = ""
@@ -460,7 +500,7 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (s *SignUpPage) fieldCount() int {
 	switch s.currentPage {
 	case contactPage:
-		return 8
+		return 7
 	case identityPage:
 		return 9
 	case documentsPage:
@@ -609,6 +649,9 @@ func (s *SignUpPage) validateCurrentPage() error {
 		if strings.TrimSpace(s.identityInputs.countryOfTaxResidence.Value()) == "" {
 			return fmt.Errorf("country of tax residence is required")
 		}
+		if len(s.fundingSelected) == 0 {
+			return fmt.Errorf("at least one funding source must be selected")
+		}
 	case documentsPage:
 		if strings.TrimSpace(s.documentInputs.documentType.Value()) == "" {
 			return fmt.Errorf("document type is required")
@@ -726,6 +769,13 @@ func (s SignUpPage) submit() error {
 		CountryOfTaxResidence: s.identityInputs.countryOfTaxResidence.Value(),
 	}
 
+	var sources []string
+	for i := range s.fundingSelected {
+		sources = append(sources, s.fundingSourceOptions[i])
+	}
+
+	s.accountInfo.Identity.FundingSource = sources
+
 	s.accountInfo.Documents = []Document{
 		{
 			DocumentType:    s.documentInputs.documentType.Value(),
@@ -779,6 +829,8 @@ func (s SignUpPage) renderCurrentPageFields(fields *[]string) {
 		s.addInput(fields, "Birth Country", s.identityInputs.countryOfBirth, 6)
 		s.addInput(fields, "Tax Residence", s.identityInputs.countryOfTaxResidence, 7)
 
+		*fields = append(*fields, s.renderFundingSources())
+
 	case documentsPage:
 		s.addInput(fields, "Doc Type", s.documentInputs.documentType, 0)
 		s.addInput(fields, "Sub-Type", s.documentInputs.documentSubType, 1)
@@ -818,4 +870,37 @@ func (s SignUpPage) addInput(fields *[]string, label string, input textinput.Mod
 	*fields = append(*fields,
 		renderInput(label, input, s.cursor == index, s.typing),
 	)
+}
+func (s SignUpPage) renderFundingSources() string {
+	var rows []string
+
+	for i, option := range s.fundingSourceOptions {
+		style := fundingIdleStyle
+
+		if s.typing {
+			if s.fundingSelected[i] {
+				style = fundingSelectedStyle
+			}
+			if s.cursor == 8 && s.fundingCursor == i {
+				style = fundingFocusedStyle
+			}
+		} else {
+			style = fundingIdleStyle
+		}
+
+		prefix := "  "
+		if s.fundingCursor == i && s.cursor == 8 {
+			prefix = " ▸ "
+		}
+
+		rows = append(rows, style.Render(prefix+option))
+	}
+
+	block := lipgloss.JoinVertical(
+		lipgloss.Center,
+		labelStyle.Render("Funding Sources (select one or more)"),
+		lipgloss.JoinHorizontal(lipgloss.Center, rows...),
+	)
+
+	return formRowStyle.Render(block)
 }
