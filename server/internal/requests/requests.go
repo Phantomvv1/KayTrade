@@ -57,11 +57,22 @@ func SendRequest[T any](method, url string, body io.Reader, errs map[int]string,
 	defer res.Body.Close()
 
 	if res.StatusCode/100 != 2 {
-		for code, errMsg := range errs {
-			if res.StatusCode == code {
-				return zero, errors.New(errMsg)
-			}
+		resBody, err := io.ReadAll(res.Body)
+		if err != nil {
+			return zero, err
 		}
+
+		var errMap map[string]any
+		err = json.Unmarshal(resBody, &errMap)
+		if err != nil {
+			return zero, err
+		}
+
+		if errMsg := errs[res.StatusCode]; errMsg != "" {
+			log.Println(errMsg)
+		}
+
+		return zero, errors.New(errMap["message"].(string))
 	}
 
 	resBody, err := io.ReadAll(res.Body)

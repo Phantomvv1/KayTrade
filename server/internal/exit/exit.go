@@ -21,6 +21,5 @@ func RequestExit(c *gin.Context, body any, err error, errMsg string) {
 		return
 	}
 
-	log.Println(body)
 	ErrorExit(c, http.StatusFailedDependency, errMsg, err)
 }
