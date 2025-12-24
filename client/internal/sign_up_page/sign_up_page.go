@@ -497,7 +497,6 @@ func (s *SignUpPage) getCurrentInput() *textinput.Model {
 			&s.identityInputs.countryOfCitizenship,
 			&s.identityInputs.countryOfBirth,
 			&s.identityInputs.countryOfTaxResidence,
-			&s.identityInputs.fundingSource,
 		}
 		if s.cursor < len(inputs) {
 			return inputs[s.cursor]
@@ -550,7 +549,6 @@ func (s *SignUpPage) setCurrentInput(input textinput.Model) {
 			&s.identityInputs.countryOfCitizenship,
 			&s.identityInputs.countryOfBirth,
 			&s.identityInputs.countryOfTaxResidence,
-			&s.identityInputs.fundingSource,
 		}
 		if s.cursor < len(inputs) {
 			*inputs[s.cursor] = input
@@ -610,9 +608,6 @@ func (s *SignUpPage) validateCurrentPage() error {
 		}
 		if strings.TrimSpace(s.identityInputs.countryOfTaxResidence.Value()) == "" {
 			return fmt.Errorf("country of tax residence is required")
-		}
-		if strings.TrimSpace(s.identityInputs.fundingSource.Value()) == "" {
-			return fmt.Errorf("funding source is required")
 		}
 	case documentsPage:
 		if strings.TrimSpace(s.documentInputs.documentType.Value()) == "" {
@@ -729,9 +724,6 @@ func (s SignUpPage) submit() error {
 		CountryOfCitizenship:  s.identityInputs.countryOfCitizenship.Value(),
 		CountryOfBirth:        s.identityInputs.countryOfBirth.Value(),
 		CountryOfTaxResidence: s.identityInputs.countryOfTaxResidence.Value(),
-		FundingSource: strings.Split(
-			s.identityInputs.fundingSource.Value(), ",",
-		),
 	}
 
 	s.accountInfo.Documents = []Document{
@@ -786,7 +778,6 @@ func (s SignUpPage) renderCurrentPageFields(fields *[]string) {
 		s.addInput(fields, "Citizenship", s.identityInputs.countryOfCitizenship, 5)
 		s.addInput(fields, "Birth Country", s.identityInputs.countryOfBirth, 6)
 		s.addInput(fields, "Tax Residence", s.identityInputs.countryOfTaxResidence, 7)
-		s.addInput(fields, "Funding Source", s.identityInputs.fundingSource, 8)
 
 	case documentsPage:
 		s.addInput(fields, "Doc Type", s.documentInputs.documentType, 0)
