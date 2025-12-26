@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -663,10 +662,10 @@ func (s *SignUpPage) validateCurrentPage() error {
 		if strings.TrimSpace(s.identityInputs.dateOfBirth.Value()) == "" {
 			return fmt.Errorf("date of birth is required")
 		}
-		if strings.TrimSpace(s.identityInputs.taxID.Value()) != "" {
+		if strings.TrimSpace(s.identityInputs.taxID.Value()) == "" {
 			return fmt.Errorf("taxID is required")
 		}
-		if strings.TrimSpace(s.identityInputs.taxIDType.Value()) != "" {
+		if strings.TrimSpace(s.identityInputs.taxIDType.Value()) == "" {
 			return fmt.Errorf("taxIDType is required")
 		}
 		if strings.TrimSpace(s.identityInputs.countryOfTaxResidence.Value()) == "" {
