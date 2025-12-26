@@ -209,7 +209,6 @@ func SignUp(c *gin.Context) {
 	headers := BasicAuth()
 
 	reader := bytes.NewReader(req)
-	log.Println(string(req))
 
 	body, err := SendRequest[AlpacaAccount](http.MethodPost, BaseURL+Accounts, reader, errs, headers)
 	if err != nil {

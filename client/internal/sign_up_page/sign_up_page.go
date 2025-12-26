@@ -848,8 +848,6 @@ func (s SignUpPage) submit() error {
 		return err
 	}
 
-	log.Println(string(body))
-
 	_, err = requests.MakeRequest(
 		http.MethodPost,
 		requests.BaseURL+"/sign-up",
