@@ -33,6 +33,7 @@ type keyMap struct {
 	Submit  key.Binding
 	Switch  key.Binding
 	View    key.Binding
+	SignUp  key.Binding
 	Help    key.Binding
 	Quit    key.Binding
 }
@@ -45,7 +46,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Help, k.Quit, k.Submit},
 		{k.Up, k.Down, k.Unfucus},
-		{k.View, k.Switch},
+		{k.View, k.Switch, k.SignUp},
 	}
 }
 
@@ -73,6 +74,10 @@ var keys = keyMap{
 	View: key.NewBinding(
 		key.WithKeys("ctrl+e"),
 		key.WithHelp("ctrl+e", "view password"),
+	),
+	SignUp: key.NewBinding(
+		key.WithKeys("s", "S"),
+		key.WithHelp("s", "sign up"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),
@@ -153,6 +158,12 @@ func (l LoginPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				l.help.ShowAll = !l.help.ShowAll
 			case key.Matches(msg, keys.Submit):
 				l.typing = !l.typing
+			case key.Matches(msg, keys.SignUp):
+				return l, func() tea.Msg {
+					return messages.PageSwitchMsg{
+						Page: messages.SignUpPageNumber,
+					}
+				}
 			case key.Matches(msg, keys.Quit):
 				return l, tea.Quit
 			}

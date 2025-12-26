@@ -12,6 +12,7 @@ const (
 	TradingInfoPageNumber
 	ProfilePageNumber
 	SellPageNumber
+	SignUpPageNumber
 	ErrorPageNumber
 )
 

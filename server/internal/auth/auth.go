@@ -40,19 +40,20 @@ type alpacaContact struct {
 	Email      string   `json:"email_address"`
 	Phone      string   `json:"phone_number"`
 	Street     []string `json:"street_address"`
-	Unit       string   `json:"unit"`
+	Unit       string   `json:"unit,omitempty"`
 	City       string   `json:"city"`
-	State      string   `json:"state"`
-	PostalCode string   `json:"postal_code"`
+	State      string   `json:"state,omitempty"`
+	PostalCode string   `json:"postal_code,omitempty"`
 }
 
 type alpacaIdentity struct {
 	GivenName          string   `json:"given_name"`
 	FamilyName         string   `json:"family_name"`
 	Birth              string   `json:"date_of_birth"`
-	TaxId              string   `json:"tax_id"`
-	TaxIdType          string   `json:"tax_id_type"`
-	CountryCitizenship string   `json:"country_of_citizenship"`
+	TaxId              string   `json:"tax_id,omitempty"`
+	TaxIdType          string   `json:"tax_id_type,omitempty"`
+	CountryCitizenship string   `json:"country_of_citizenship,omitempty"`
+	CountryOfBirth     string   `json:"country_of_birth,omitempty"`
 	CountryTax         string   `json:"country_of_tax_residence"`
 	FundingSource      []string `json:"funding_source"`
 }
@@ -165,8 +166,19 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
+	if acc.Password == "" {
+		ErrorExit(c, http.StatusBadRequest, "password required for creating an account", nil)
+		return
+	}
+
 	password := acc.Password
 	acc.Password = ""
+
+	acc.Agreements = make([]map[string]string, 1)
+	acc.Agreements[0] = make(map[string]string)
+	acc.Agreements[0]["agreement"] = "customer_agreement"
+	acc.Agreements[0]["signed_at"] = time.Now().UTC().Format(time.RFC3339)
+	acc.Agreements[0]["ip_address"] = c.ClientIP()
 
 	req, err := json.Marshal(acc)
 	if err != nil {
