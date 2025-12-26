@@ -173,6 +173,12 @@ func SignUp(c *gin.Context) {
 	password := acc.Password
 	acc.Password = ""
 
+	acc.Agreements = make([]map[string]string, 1)
+	acc.Agreements[0] = make(map[string]string)
+	acc.Agreements[0]["agreement"] = "customer_agreement"
+	acc.Agreements[0]["signed_at"] = time.Now().UTC().Format(time.RFC3339)
+	acc.Agreements[0]["ip_address"] = c.ClientIP()
+
 	req, err := json.Marshal(acc)
 	if err != nil {
 		ErrorExit(c, http.StatusInternalServerError, "couldn't recreate the request", err)
