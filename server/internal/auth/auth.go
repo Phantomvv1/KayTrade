@@ -591,7 +591,7 @@ func GetAccountTradingDetails(c *gin.Context) {
 
 	body, err := SendRequest[TradingDetails](http.MethodGet, BaseURL+Trading+id+"/account", nil, nil, headers)
 	if err != nil {
-		RequestExit(c, body, err, "unable to get the trading detailsof the account")
+		RequestExit(c, body, err, "unable to get the trading details of the account")
 		return
 	}
 
