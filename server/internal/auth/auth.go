@@ -40,19 +40,20 @@ type alpacaContact struct {
 	Email      string   `json:"email_address"`
 	Phone      string   `json:"phone_number"`
 	Street     []string `json:"street_address"`
-	Unit       string   `json:"unit"`
+	Unit       string   `json:"unit,omitempty"`
 	City       string   `json:"city"`
-	State      string   `json:"state"`
-	PostalCode string   `json:"postal_code"`
+	State      string   `json:"state,omitempty"`
+	PostalCode string   `json:"postal_code,omitempty"`
 }
 
 type alpacaIdentity struct {
 	GivenName          string   `json:"given_name"`
 	FamilyName         string   `json:"family_name"`
 	Birth              string   `json:"date_of_birth"`
-	TaxId              string   `json:"tax_id"`
-	TaxIdType          string   `json:"tax_id_type"`
-	CountryCitizenship string   `json:"country_of_citizenship"`
+	TaxId              string   `json:"tax_id,omitempty"`
+	TaxIdType          string   `json:"tax_id_type,omitempty"`
+	CountryCitizenship string   `json:"country_of_citizenship,omitempty"`
+	CountryOfBirth     string   `json:"country_of_birth,omitempty"`
 	CountryTax         string   `json:"country_of_tax_residence"`
 	FundingSource      []string `json:"funding_source"`
 }
@@ -208,6 +209,7 @@ func SignUp(c *gin.Context) {
 	headers := BasicAuth()
 
 	reader := bytes.NewReader(req)
+	log.Println(string(req))
 
 	body, err := SendRequest[AlpacaAccount](http.MethodPost, BaseURL+Accounts, reader, errs, headers)
 	if err != nil {

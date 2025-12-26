@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -30,7 +31,7 @@ type Contact struct {
 	EmailAddress  string   `json:"email_address"`
 	PhoneNumber   string   `json:"phone_number"`
 	StreetAddress []string `json:"street_address"`
-	Unit          string   `json:"unit"`
+	Unit          string   `json:"unit,omitempty"`
 	City          string   `json:"city"`
 	State         string   `json:"state,omitempty"`
 	PostalCode    string   `json:"postal_code,omitempty"`
@@ -76,18 +77,11 @@ type Disclosures struct {
 	ImmediateFamilyExposed      bool `json:"immediate_family_exposed"`
 }
 
-type Agreement struct {
-	Agreement string `json:"agreement"`
-	SignedAt  string `json:"signed_at"`
-	IPAddress string `json:"ip_address"`
-	Revision  string `json:"revision,omitempty"`
-}
-
 type Document struct {
-	DocumentType    string `json:"document_type"`
-	DocumentSubType string `json:"document_sub_type"`
-	Content         string `json:"content"`
-	MimeType        string `json:"mime_type"`
+	DocumentType    string `json:"document_type,omitempty"`
+	DocumentSubType string `json:"document_sub_type,omitempty"`
+	Content         string `json:"content,omitempty"`
+	MimeType        string `json:"mime_type,omitempty"`
 }
 
 type DocumentInputs struct {
@@ -110,14 +104,13 @@ type TrustedContactInputs struct {
 }
 
 type AccountInfo struct {
-	Contact        Contact        `json:"contact"`
-	Identity       Identity       `json:"identity"`
-	Disclosures    Disclosures    `json:"disclosures"`
-	Agreements     []Agreement    `json:"agreements"`
-	Documents      []Document     `json:"documents"`
-	TrustedContact TrustedContact `json:"trusted_contact"`
-	EnabledAssets  []string       `json:"enabled_assets"`
-	Password       string         `json:"password"`
+	Contact        Contact         `json:"contact"`
+	Identity       Identity        `json:"identity"`
+	Disclosures    Disclosures     `json:"disclosures"`
+	Documents      []Document      `json:"documents,omitempty"`
+	TrustedContact *TrustedContact `json:"trusted_contact,omitempty"`
+	EnabledAssets  []string        `json:"enabled_assets"`
+	Password       string          `json:"password"`
 }
 
 type SignUpPage struct {
@@ -229,7 +222,7 @@ func newContactInputs() ContactInputs {
 	emailAddress.CharLimit = 50
 
 	phoneNumber := textinput.New()
-	phoneNumber.Placeholder = "Phone number"
+	phoneNumber.Placeholder = "Phone number (with country code)"
 	phoneNumber.Width = inputWidth
 	phoneNumber.CharLimit = 20
 
@@ -286,12 +279,12 @@ func newIdentityInputs() IdentityInputs {
 	dateOfBirth.CharLimit = 10
 
 	taxID := textinput.New()
-	taxID.Placeholder = "Tax ID (optional)"
+	taxID.Placeholder = "Tax ID"
 	taxID.Width = inputWidth
 	taxID.CharLimit = 20
 
 	taxIDType := textinput.New()
-	taxIDType.Placeholder = "Tax ID type (optional)"
+	taxIDType.Placeholder = "Tax ID type"
 	taxIDType.Width = inputWidth
 	taxIDType.CharLimit = 20
 
@@ -334,7 +327,7 @@ func newDocumentInputs() DocumentInputs {
 	documentSubType.CharLimit = 30
 
 	documentContent := textinput.New()
-	documentContent.Placeholder = "Path to document"
+	documentContent.Placeholder = "Content (base64)"
 	documentContent.Width = inputWidth
 	documentContent.CharLimit = 80
 
@@ -363,7 +356,7 @@ func newTrustedContactInputs() TrustedContactInputs {
 	familyName.CharLimit = 30
 
 	email := textinput.New()
-	email.Placeholder = "Trusted contact email"
+	email.Placeholder = "Trusted contact email (Optional)"
 	email.Width = inputWidth
 	email.CharLimit = 50
 
@@ -670,8 +663,11 @@ func (s *SignUpPage) validateCurrentPage() error {
 		if strings.TrimSpace(s.identityInputs.dateOfBirth.Value()) == "" {
 			return fmt.Errorf("date of birth is required")
 		}
-		if strings.TrimSpace(s.identityInputs.taxID.Value()) != "" || strings.TrimSpace(s.identityInputs.taxIDType.Value()) != "" {
-			return fmt.Errorf("both taxID and taxIDType are required if you decide to fill one of them")
+		if strings.TrimSpace(s.identityInputs.taxID.Value()) != "" {
+			return fmt.Errorf("taxID is required")
+		}
+		if strings.TrimSpace(s.identityInputs.taxIDType.Value()) != "" {
+			return fmt.Errorf("taxIDType is required")
 		}
 		if strings.TrimSpace(s.identityInputs.countryOfTaxResidence.Value()) == "" {
 			return fmt.Errorf("country of tax residence is required")
@@ -680,17 +676,36 @@ func (s *SignUpPage) validateCurrentPage() error {
 			return fmt.Errorf("at least one funding source must be selected")
 		}
 	case documentsPage:
-		if strings.TrimSpace(s.documentInputs.documentType.Value()) == "" {
-			return fmt.Errorf("document type is required")
+		if strings.TrimSpace(s.documentInputs.documentType.Value()) != "" ||
+			strings.TrimSpace(s.documentInputs.documentSubType.Value()) != "" ||
+			strings.TrimSpace(s.documentInputs.content.Value()) != "" ||
+			strings.TrimSpace(s.documentInputs.mimeType.Value()) != "" {
+
+			if strings.TrimSpace(s.documentInputs.documentType.Value()) == "" {
+				return fmt.Errorf("document type is required")
+			}
+			if strings.TrimSpace(s.documentInputs.documentSubType.Value()) == "" {
+				return fmt.Errorf("document sub-type is required")
+			}
+			if strings.TrimSpace(s.documentInputs.content.Value()) == "" {
+				return fmt.Errorf("document path is required")
+			}
+			if strings.TrimSpace(s.documentInputs.mimeType.Value()) == "" {
+				return fmt.Errorf("MIME type is required")
+			}
 		}
-		if strings.TrimSpace(s.documentInputs.documentSubType.Value()) == "" {
-			return fmt.Errorf("document sub-type is required")
-		}
-		if strings.TrimSpace(s.documentInputs.content.Value()) == "" {
-			return fmt.Errorf("document path is required")
-		}
-		if strings.TrimSpace(s.documentInputs.mimeType.Value()) == "" {
-			return fmt.Errorf("MIME type is required")
+
+	case trustedContactPage:
+		if strings.TrimSpace(s.trustedContactInputs.givenName.Value()) != "" ||
+			strings.TrimSpace(s.trustedContactInputs.familyName.Value()) != "" ||
+			strings.TrimSpace(s.trustedContactInputs.emailAddress.Value()) != "" {
+
+			if strings.TrimSpace(s.trustedContactInputs.givenName.Value()) == "" {
+				return fmt.Errorf("given name is required")
+			}
+			if strings.TrimSpace(s.trustedContactInputs.familyName.Value()) == "" {
+				return fmt.Errorf("family name is required")
+			}
 		}
 	}
 	return nil
@@ -704,7 +719,7 @@ func (s SignUpPage) View() string {
 	case identityPage:
 		pageName = "Identity"
 	case documentsPage:
-		pageName = "Documents"
+		pageName = "Documents (Optional)"
 	case trustedContactPage:
 		pageName = "Trusted Contact (Optional)"
 	}
@@ -803,19 +818,27 @@ func (s SignUpPage) submit() error {
 
 	s.accountInfo.Identity.FundingSource = sources
 
-	s.accountInfo.Documents = []Document{
-		{
-			DocumentType:    s.documentInputs.documentType.Value(),
-			DocumentSubType: s.documentInputs.documentSubType.Value(),
-			Content:         s.documentInputs.content.Value(),
-			MimeType:        s.documentInputs.mimeType.Value(),
-		},
+	if s.documentInputs.documentType.Value() != "" {
+		s.accountInfo.Documents = []Document{
+			{
+				DocumentType:    s.documentInputs.documentType.Value(),
+				DocumentSubType: s.documentInputs.documentSubType.Value(),
+				Content:         s.documentInputs.content.Value(),
+				MimeType:        s.documentInputs.mimeType.Value(),
+			},
+		}
+	} else {
+		s.accountInfo.Documents = nil
 	}
 
-	s.accountInfo.TrustedContact = TrustedContact{
-		GivenName:    s.trustedContactInputs.givenName.Value(),
-		FamilyName:   s.trustedContactInputs.familyName.Value(),
-		EmailAddress: s.trustedContactInputs.emailAddress.Value(),
+	if s.trustedContactInputs.givenName.Value() != "" {
+		s.accountInfo.TrustedContact = &TrustedContact{
+			GivenName:    s.trustedContactInputs.givenName.Value(),
+			FamilyName:   s.trustedContactInputs.familyName.Value(),
+			EmailAddress: s.trustedContactInputs.emailAddress.Value(),
+		}
+	} else {
+		s.accountInfo.TrustedContact = nil
 	}
 
 	s.accountInfo.Password = s.password.Value()
@@ -824,6 +847,8 @@ func (s SignUpPage) submit() error {
 	if err != nil {
 		return err
 	}
+
+	log.Println(string(body))
 
 	_, err = requests.MakeRequest(
 		http.MethodPost,
@@ -864,7 +889,7 @@ func (s SignUpPage) renderCurrentPageFields(fields *[]string) {
 	case documentsPage:
 		s.addInput(fields, "Doc Type", s.documentInputs.documentType, 0)
 		s.addInput(fields, "Sub-Type", s.documentInputs.documentSubType, 1)
-		s.addInput(fields, "Path", s.documentInputs.content, 2)
+		s.addInput(fields, "Content", s.documentInputs.content, 2)
 		s.addInput(fields, "MIME", s.documentInputs.mimeType, 3)
 
 	case trustedContactPage:
