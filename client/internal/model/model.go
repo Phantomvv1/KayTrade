@@ -12,6 +12,7 @@ import (
 	landingpage "github.com/Phantomvv1/KayTrade/internal/landing_page"
 	loginpage "github.com/Phantomvv1/KayTrade/internal/login_page"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
+	orderpage "github.com/Phantomvv1/KayTrade/internal/order_page"
 	profilepage "github.com/Phantomvv1/KayTrade/internal/profile_page"
 	searchpage "github.com/Phantomvv1/KayTrade/internal/search_page"
 	sellpage "github.com/Phantomvv1/KayTrade/internal/sell_page"
@@ -33,6 +34,7 @@ type Model struct {
 	profilePage     profilepage.ProfilePage
 	sellPage        sellpage.SellPage
 	signUpPage      signuppage.SignUpPage
+	orderPage       orderpage.OrderPage
 	currentPage     int
 }
 
@@ -56,6 +58,7 @@ func NewModel() Model {
 		profilePage:     profilepage.NewProfilePage(client),
 		sellPage:        sellpage.NewSellPage(client),
 		signUpPage:      signuppage.NewSignUpPage(client),
+		orderPage:       orderpage.,
 		currentPage:     messages.LandingPageNumber,
 	}
 }
@@ -73,17 +76,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorPage.PrevPage = m.currentPage
 		m.errorPage.Err = msg.Err
 
-		if m.currentPage != messages.ErrorPageNumber &&
-			m.currentPage != messages.CompanyPageNumber &&
-			m.currentPage != messages.BuyPageNumber &&
-			m.currentPage != messages.TradingInfoPageNumber {
-
+		if m.currentPage == messages.SearchPageNumber || m.currentPage == messages.WatchlistPageNumber {
 			m.companyPage.PrevPage = m.currentPage
 		}
 
 		if m.currentPage == messages.SellPageNumber || m.currentPage == messages.BuyPageNumber {
 			m.tradingInfoPage.PrevPage = m.currentPage
 		}
+
+		if msg.Order != nil {
+			m.orderPage.Order = msg.Order
+		}
+
+		// if msg.Position != nil {
+		// 	m.positionPage.Position = msg.Position
+		// }
 
 		if msg.Symbol != "" {
 			m.buyPage.Symbol = msg.Symbol
