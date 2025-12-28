@@ -470,7 +470,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		p.orders.SetSize(p.BaseModel.Width/2-10, p.BaseModel.Height-16)
+		p.orders.SetSize(p.BaseModel.Width/2-46, p.BaseModel.Height-16)
 		p.positions.SetSize(p.BaseModel.Width/3-30, p.BaseModel.Height-16)
 
 		return p, nil

@@ -181,7 +181,7 @@ func (o OrderPage) renderBasicInfo() string {
 	rows = append(rows, o.renderField("Time In Force", strings.ToUpper(o.Order.TimeInForce)))
 	rows = append(rows, o.renderField("Asset Class", strings.ToUpper(o.Order.AssetClass)))
 
-	return boxStyle.Render(lipgloss.JoinVertical(lipgloss.Center, rows...))
+	return boxStyle.Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 func (o OrderPage) renderPricingInfo() string {
@@ -219,7 +219,7 @@ func (o OrderPage) renderPricingInfo() string {
 
 	// Only show this section if there's pricing info
 	if len(rows) > 1 {
-		return boxStyle.Render(lipgloss.JoinVertical(lipgloss.Center, rows...))
+		return boxStyle.Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 	}
 	return ""
 }
@@ -277,7 +277,7 @@ func (o OrderPage) renderStatusInfo() string {
 		rows = append(rows, o.renderField("Failed", o.formatTimestamp(o.Order.FailedAt)))
 	}
 
-	return boxStyle.Render(lipgloss.JoinVertical(lipgloss.Center, rows...))
+	return boxStyle.Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 func (o OrderPage) renderAdditionalInfo() string {
@@ -299,7 +299,7 @@ func (o OrderPage) renderAdditionalInfo() string {
 
 	// Only show this section if there's additional info
 	if len(rows) > 1 {
-		return boxStyle.Render(lipgloss.JoinVertical(lipgloss.Center, rows...))
+		return boxStyle.Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 	}
 	return ""
 }
