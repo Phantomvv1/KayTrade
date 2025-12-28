@@ -395,7 +395,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "enter":
 				if p.orders.FilterInput.Focused() {
-					order := p.orders.Items()[0].(orderItem)
+					order := p.orders.Items()[p.orders.Cursor()].(orderItem)
 					return p, func() tea.Msg {
 						return messages.PageSwitchMsg{
 							Page:  messages.OrderPageNumber,
@@ -403,7 +403,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					}
 				} else {
-					position := p.positions.Items()[0].(positionItem)
+					position := p.positions.Items()[p.positions.Cursor()].(positionItem)
 					return p, func() tea.Msg {
 						return messages.PageSwitchMsg{
 							Page:     messages.PositionPageNumber,
