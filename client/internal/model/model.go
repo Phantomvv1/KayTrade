@@ -58,7 +58,7 @@ func NewModel() Model {
 		profilePage:     profilepage.NewProfilePage(client),
 		sellPage:        sellpage.NewSellPage(client),
 		signUpPage:      signuppage.NewSignUpPage(client),
-		orderPage:       orderpage.,
+		orderPage:       orderpage.NewOrderPage(client),
 		currentPage:     messages.LandingPageNumber,
 	}
 }
