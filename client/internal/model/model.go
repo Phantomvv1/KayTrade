@@ -172,7 +172,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.SignUpPageNumber:
 		page, cmd = m.signUpPage.Update(msg)
 		m.signUpPage = page.(signuppage.SignUpPage)
-
+	case messages.OrderPageNumber:
+		page, cmd = m.orderPage.Update(msg)
+		m.orderPage = page.(orderpage.OrderPage)
 	default:
 		m.currentPage = messages.ErrorPageNumber
 		m.errorPage.Err = errors.New("Unkown error")
@@ -205,6 +207,8 @@ func (m Model) View() string {
 		return m.sellPage.View()
 	case messages.SignUpPageNumber:
 		return m.signUpPage.View()
+	case messages.OrderPageNumber:
+		return m.orderPage.View()
 
 	default:
 		return m.errorPage.View()
@@ -244,6 +248,9 @@ func (m *Model) setSize(width, height int) {
 
 	m.signUpPage.BaseModel.Width = width
 	m.signUpPage.BaseModel.Height = height
+
+	m.orderPage.BaseModel.Width = width
+	m.orderPage.BaseModel.Height = height
 }
 
 func (m *Model) updateToken(token string) {
@@ -258,6 +265,7 @@ func (m *Model) updateToken(token string) {
 	m.profilePage.BaseModel.Token = token
 	m.sellPage.BaseModel.Token = token
 	m.signUpPage.BaseModel.Token = token
+	m.orderPage.BaseModel.Token = token
 }
 
 func (m *Model) getModelFromPageNumber() tea.Model {
@@ -284,6 +292,8 @@ func (m *Model) getModelFromPageNumber() tea.Model {
 		return m.sellPage
 	case messages.SignUpPageNumber:
 		return m.signUpPage
+	case messages.OrderPageNumber:
+		return m.orderPage
 	default:
 		return nil
 	}
