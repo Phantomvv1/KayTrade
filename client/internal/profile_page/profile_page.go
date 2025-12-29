@@ -176,13 +176,16 @@ func NewProfilePage(client *http.Client) ProfilePage {
 	ordersList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	ordersList.FilterInput.Focus()
 	ordersList.Title = "Orders"
+	ordersList.KeyMap.GoToStart.Unbind()
+	ordersList.KeyMap.GoToEnd.Unbind()
 	ordersList.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
-			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
 			key.NewBinding(key.WithKeys("ctrl+h", "ctrl+left"), key.WithHelp("ctrl+h/←", "switch list")),
 			key.NewBinding(key.WithKeys("ctrl+l", "ctrl+right"), key.WithHelp("ctrl+l/→", "switch list")),
 			key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s (sell)", "position")),
+			key.NewBinding(key.WithKeys("c"), key.WithHelp("c (cancel)", "order")),
 		}
 	}
 
@@ -395,8 +398,6 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "enter":
 				if p.orders.FilterInput.Focused() {
-					// fmt.Printf("\033[2J")
-					// fmt.Printf("\033[H")
 					fmt.Printf("\033c")
 					fmt.Printf("\033[?25l")
 					order := p.orders.Items()[p.orders.Cursor()].(orderItem)
