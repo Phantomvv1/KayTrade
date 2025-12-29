@@ -13,6 +13,7 @@ import (
 	loginpage "github.com/Phantomvv1/KayTrade/internal/login_page"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
 	orderpage "github.com/Phantomvv1/KayTrade/internal/order_page"
+	positionpage "github.com/Phantomvv1/KayTrade/internal/position_page"
 	profilepage "github.com/Phantomvv1/KayTrade/internal/profile_page"
 	searchpage "github.com/Phantomvv1/KayTrade/internal/search_page"
 	sellpage "github.com/Phantomvv1/KayTrade/internal/sell_page"
@@ -35,6 +36,7 @@ type Model struct {
 	sellPage        sellpage.SellPage
 	signUpPage      signuppage.SignUpPage
 	orderPage       orderpage.OrderPage
+	positionPage    positionpage.PositionPage
 	currentPage     int
 }
 
@@ -59,6 +61,7 @@ func NewModel() Model {
 		sellPage:        sellpage.NewSellPage(client),
 		signUpPage:      signuppage.NewSignUpPage(client),
 		orderPage:       orderpage.NewOrderPage(client),
+		positionPage:    positionpage.NewPositionPage(client),
 		currentPage:     messages.LandingPageNumber,
 	}
 }
@@ -88,9 +91,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.orderPage.Order = msg.Order
 		}
 
-		// if msg.Position != nil {
-		// 	m.positionPage.Position = msg.Position
-		// }
+		if msg.Position != nil {
+			m.positionPage.Position = msg.Position
+		}
 
 		if msg.Symbol != "" {
 			m.buyPage.Symbol = msg.Symbol
@@ -175,6 +178,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.OrderPageNumber:
 		page, cmd = m.orderPage.Update(msg)
 		m.orderPage = page.(orderpage.OrderPage)
+	case messages.PositionPageNumber:
+		page, cmd = m.positionPage.Update(msg)
+		m.positionPage = page.(positionpage.PositionPage)
+
 	default:
 		m.currentPage = messages.ErrorPageNumber
 		m.errorPage.Err = errors.New("Unkown error")
@@ -209,6 +216,8 @@ func (m Model) View() string {
 		return m.signUpPage.View()
 	case messages.OrderPageNumber:
 		return m.orderPage.View()
+	case messages.PositionPageNumber:
+		return m.positionPage.View()
 
 	default:
 		return m.errorPage.View()
@@ -251,6 +260,9 @@ func (m *Model) setSize(width, height int) {
 
 	m.orderPage.BaseModel.Width = width
 	m.orderPage.BaseModel.Height = height
+
+	m.positionPage.BaseModel.Width = width
+	m.positionPage.BaseModel.Height = height
 }
 
 func (m *Model) updateToken(token string) {
@@ -266,6 +278,7 @@ func (m *Model) updateToken(token string) {
 	m.sellPage.BaseModel.Token = token
 	m.signUpPage.BaseModel.Token = token
 	m.orderPage.BaseModel.Token = token
+	m.positionPage.BaseModel.Token = token
 }
 
 func (m *Model) getModelFromPageNumber() tea.Model {
@@ -294,6 +307,8 @@ func (m *Model) getModelFromPageNumber() tea.Model {
 		return m.signUpPage
 	case messages.OrderPageNumber:
 		return m.orderPage
+	case messages.PositionPageNumber:
+		return m.positionPage
 	default:
 		return nil
 	}

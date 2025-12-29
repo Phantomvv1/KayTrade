@@ -395,7 +395,10 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "enter":
 				if p.orders.FilterInput.Focused() {
-					fmt.Printf("\033[H")
+					// fmt.Printf("\033[2J")
+					// fmt.Printf("\033[H")
+					fmt.Printf("\033c")
+					fmt.Printf("\033[?25l")
 					order := p.orders.Items()[p.orders.Cursor()].(orderItem)
 					return p, func() tea.Msg {
 						return messages.PageSwitchMsg{
@@ -404,9 +407,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					}
 				} else {
-					fmt.Printf("\033[2J")
 					fmt.Printf("\033[H")
-					fmt.Printf("\033c")
 					position := p.positions.Items()[p.positions.Cursor()].(positionItem)
 					return p, func() tea.Msg {
 						return messages.PageSwitchMsg{
