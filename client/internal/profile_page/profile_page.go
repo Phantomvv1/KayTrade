@@ -440,6 +440,31 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 
+			case "c", "C":
+				if p.orders.FilterInput.Focused() {
+					order := p.orders.SelectedItem().(orderItem).order
+					if order.CanceledAt == "" && order.ExpiredAt == "" &&
+						order.FailedAt == "" && order.FilledAt == "" {
+
+						err := p.CancelOrder()
+						if err != nil {
+							return p, func() tea.Msg {
+								return messages.PageSwitchMsg{
+									Page: messages.ErrorPageNumber,
+									Err:  err,
+								}
+							}
+						}
+
+						updatedOrder := p.orders.SelectedItem().(orderItem).order
+						updatedOrder.CanceledAt = time.Now().UTC().Format(time.RFC3339)
+						updatedOrder.Status = "Canceled"
+						p.orders.SetItem(p.orders.Cursor(), orderItem{order: updatedOrder})
+					}
+
+					return p, nil
+				}
+
 			default:
 				var cmd tea.Cmd
 				if p.orders.FilterInput.Focused() {
@@ -646,6 +671,16 @@ func (p ProfilePage) renderAccountSettings() string {
 
 func (p ProfilePage) renderField(label, value string) string {
 	return labelStyle.Render(label+":") + "  " + valueStyle.Render(value)
+}
+
+func (p ProfilePage) CancelOrder() error {
+	order := p.orders.SelectedItem().(orderItem)
+	_, err := requests.MakeRequest(http.MethodDelete, requests.BaseURL+"/trading/orders/"+order.order.ID, nil, http.DefaultClient, p.BaseModel.Token)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p *ProfilePage) Reload() {
