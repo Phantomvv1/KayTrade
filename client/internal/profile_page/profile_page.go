@@ -73,56 +73,6 @@ type AlpacaAccount struct {
 	TrustedContact TrustedContact `json:"trusted_contact"`
 }
 
-type Order struct {
-	AssetClass     string  `json:"asset_class"`
-	AssetID        string  `json:"asset_id"`
-	CanceledAt     string  `json:"canceled_at"`
-	CreatedAt      string  `json:"created_at"`
-	ExpiredAt      string  `json:"expired_at"`
-	ExpiresAt      string  `json:"expires_at"`
-	FailedAt       string  `json:"failed_at"`
-	FilledAt       string  `json:"filled_at"`
-	FilledAvgPrice string  `json:"filled_avg_price"`
-	FilledQty      string  `json:"filled_qty"`
-	ID             string  `json:"id"`
-	LimitPrice     *string `json:"limit_price"`
-	Notional       *string `json:"notional"`
-	OrderType      string  `json:"order_type"`
-	PositionIntent string  `json:"position_intent"`
-	Quantity       string  `json:"qty"`
-	Side           string  `json:"side"`
-	Status         string  `json:"status"`
-	StopPrice      *string `json:"stop_price"`
-	SubmittedAt    string  `json:"submitted_at"`
-	Symbol         string  `json:"symbol"`
-	TimeInForce    string  `json:"time_in_force"`
-	TrailPercent   *string `json:"trail_percent"`
-	TrailPrice     *string `json:"trail_price"`
-	Type           string  `json:"type"`
-	UpdatedAt      string  `json:"updated_at"`
-}
-
-type Position struct {
-	AssetClass             string `json:"asset_class"`
-	AssetID                string `json:"asset_id"`
-	AssetMarginable        bool   `json:"asset_marginable"`
-	AvgEntryPrice          string `json:"avg_entry_price"`
-	ChangeToday            string `json:"change_today"`
-	CostBasis              string `json:"cost_basis"`
-	CurrentPrice           string `json:"current_price"`
-	Exchange               string `json:"exchange"`
-	LastdayPrice           string `json:"lastday_price"`
-	MarketValue            string `json:"market_value"`
-	Qty                    string `json:"qty"`
-	QtyAvailable           string `json:"qty_available"`
-	Side                   string `json:"side"`
-	Symbol                 string `json:"symbol"`
-	UnrealizedIntradayPL   string `json:"unrealized_intraday_pl"`
-	UnrealizedIntradayPLPC string `json:"unrealized_intraday_plpc"`
-	UnrealizedPL           string `json:"unrealized_pl"`
-	UnrealizedPLPC         string `json:"unrealized_plpc"`
-}
-
 type ProfilePage struct {
 	BaseModel      basemodel.BaseModel
 	tradingDetails TradingDetails
@@ -181,13 +131,13 @@ var (
 type profileDataMsg struct {
 	tradingDetails TradingDetails
 	alpacaAccount  AlpacaAccount
-	orders         []Order
-	positions      []Position
+	orders         []messages.Order
+	positions      []messages.Position
 	err            error
 }
 
 type orderItem struct {
-	order Order
+	order messages.Order
 }
 
 func (o orderItem) Title() string {
@@ -209,7 +159,7 @@ func (o orderItem) Description() string {
 func (o orderItem) FilterValue() string { return o.order.Symbol }
 
 type positionItem struct {
-	position Position
+	position messages.Position
 }
 
 func (p positionItem) Title() string {
@@ -258,8 +208,8 @@ func (p ProfilePage) Init() tea.Cmd {
 func (p ProfilePage) fetchProfileData() tea.Msg {
 	tradingDetails := TradingDetails{}
 	alpacaAccount := AlpacaAccount{}
-	orders := []Order{}
-	positions := []Position{}
+	orders := []messages.Order{}
+	positions := []messages.Position{}
 
 	wg := sync.WaitGroup{}
 	wg.Add(4)
@@ -443,6 +393,29 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return p, cmd
 
+			case "enter":
+				if p.orders.FilterInput.Focused() {
+					fmt.Printf("\033[H")
+					order := p.orders.Items()[p.orders.Cursor()].(orderItem)
+					return p, func() tea.Msg {
+						return messages.PageSwitchMsg{
+							Page:  messages.OrderPageNumber,
+							Order: &order.order,
+						}
+					}
+				} else {
+					fmt.Printf("\033[2J")
+					fmt.Printf("\033[H")
+					fmt.Printf("\033c")
+					position := p.positions.Items()[p.positions.Cursor()].(positionItem)
+					return p, func() tea.Msg {
+						return messages.PageSwitchMsg{
+							Page:     messages.PositionPageNumber,
+							Position: &position.position,
+						}
+					}
+				}
+
 			case "s", "S":
 				if p.positions.FilterInput.Focused() {
 					position := p.positions.Items()[p.positions.Cursor()].(positionItem)
@@ -497,7 +470,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		p.orders.SetSize(p.BaseModel.Width/2-10, p.BaseModel.Height-16)
+		p.orders.SetSize(p.BaseModel.Width/2-46, p.BaseModel.Height-16)
 		p.positions.SetSize(p.BaseModel.Width/3-30, p.BaseModel.Height-16)
 
 		return p, nil
