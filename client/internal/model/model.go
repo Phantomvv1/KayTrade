@@ -405,10 +405,6 @@ func (m Model) saveRefreshToken() error {
 }
 
 func encryptAESGCM(plaintext []byte, key []byte) ([]byte, error) {
-	if len(key) != 32 {
-		return nil, errors.New("AES-256 requires 32-byte key")
-	}
-
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
