@@ -1,10 +1,17 @@
 package model
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
+	"os"
+	"path/filepath"
 
 	buypage "github.com/Phantomvv1/KayTrade/internal/buy_page"
 	companypage "github.com/Phantomvv1/KayTrade/internal/company_page"
@@ -37,6 +44,7 @@ type Model struct {
 	signUpPage      signuppage.SignUpPage
 	orderPage       orderpage.OrderPage
 	positionPage    positionpage.PositionPage
+	client          *http.Client
 	currentPage     int
 }
 
@@ -62,6 +70,7 @@ func NewModel() Model {
 		signUpPage:      signuppage.NewSignUpPage(client),
 		orderPage:       orderpage.NewOrderPage(client),
 		positionPage:    positionpage.NewPositionPage(client),
+		client:          client,
 		currentPage:     messages.LandingPageNumber,
 	}
 }
@@ -119,11 +128,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentPage = msg.Page
 		model := m.getModelFromPageNumber()
 		return m, model.Init()
-	case messages.ReloadAndSwitchPageMsg:
-		m.Reload(msg.Page)
-		m.currentPage = msg.Page
-		model := m.getModelFromPageNumber()
-		return m, model.Init()
 	case messages.PageSwitchWithoutInitMsg:
 		m.currentPage = msg.Page
 		return m, nil
@@ -137,6 +141,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, nil
+	case messages.QuitMsg:
+		if err := m.saveRefreshToken(); err != nil {
+
+		}
+
 	}
 
 	var cmd tea.Cmd
@@ -360,4 +369,61 @@ func (m *Model) Reloaded(page int) bool {
 	default:
 		return false
 	}
+}
+
+func (m Model) extractRefreshToken() (string, error) {
+	u, err := url.Parse("http://localhost:42069")
+	if err != nil {
+		return "", err
+	}
+
+	cookie := m.client.Jar.Cookies(u)[0]
+	if cookie.Name != "refresh" {
+		return "", errors.New("refresh token not found in cookie jar")
+	}
+
+	return cookie.Value, nil
+}
+
+func (m Model) saveRefreshToken() error {
+	token, err := m.extractRefreshToken()
+	if err != nil {
+		return err
+	}
+
+	key := []byte(os.Getenv("ENCRYPTION_KEY"))
+	encrypted, err := encryptAESGCM([]byte(token), key)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(
+		filepath.Join(os.Getenv("HOME"), "kaytrade"),
+		encrypted,
+		0600,
+	)
+}
+
+func encryptAESGCM(plaintext []byte, key []byte) ([]byte, error) {
+	if len(key) != 32 {
+		return nil, errors.New("AES-256 requires 32-byte key")
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+
+	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
+	return ciphertext, nil
 }
