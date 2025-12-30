@@ -397,8 +397,14 @@ func (m Model) saveRefreshToken() error {
 		return err
 	}
 
+	// Config dir for now. Will think abouth which is better: config or config
+	config, err := os.UserConfigDir()
+	if err != nil {
+		return err
+	}
+
 	return os.WriteFile(
-		filepath.Join(os.Getenv("HOME"), "kaytrade"),
+		filepath.Join(config, "kaytrade"),
 		encrypted,
 		0600,
 	)
@@ -422,4 +428,31 @@ func encryptAESGCM(plaintext []byte, key []byte) ([]byte, error) {
 
 	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
 	return ciphertext, nil
+}
+
+func decryptAESGCM(cipherText []byte, key []byte) (string, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(cipherText) < nonceSize {
+		return "", errors.New("ciphertext too short")
+	}
+
+	nonce := cipherText[:nonceSize]
+	encrypted := cipherText[nonceSize:]
+
+	plaintext, err := gcm.Open(nil, nonce, encrypted, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return string(plaintext), nil
 }
