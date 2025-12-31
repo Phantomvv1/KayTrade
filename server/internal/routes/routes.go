@@ -20,7 +20,7 @@ func NewRouter() *gin.Engine {
 	r.Any("/", func(c *gin.Context) { c.JSON(http.StatusOK, nil) })
 	r.POST("/sign-up", SignUp)
 	r.POST("/log-in", LogIn)
-	r.POST("/refresh", JSONParserMiddleware, Refresh)
+	r.POST("/refresh", Refresh)
 	r.GET("/clock", clock.GetClock)
 	r.GET("/search", AuthMiddleware, watchlist.SearchCompanies)
 	r.GET("/company-information/:symbol", AuthMiddleware, watchlist.GetCompanyInformation)

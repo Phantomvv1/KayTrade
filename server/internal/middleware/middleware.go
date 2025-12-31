@@ -19,7 +19,7 @@ func AuthMiddleware(c *gin.Context) {
 	}
 
 	token = strings.TrimPrefix(token, "Bearer ")
-	id, accountType, email, err := ValidateJWT(token, false)
+	id, accountType, email, err := ValidateJWT(token)
 	if err != nil {
 		log.Println(err)
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
