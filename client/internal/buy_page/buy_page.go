@@ -170,7 +170,9 @@ func (b BuyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
-			return b, tea.Quit
+			return b, func() tea.Msg {
+				return messages.QuitMsg{}
+			}
 
 		case "j", "down":
 			b.err = ""

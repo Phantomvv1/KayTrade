@@ -98,7 +98,7 @@ func GenerateJWT(id string, accountType byte, email string) (string, error) {
 	return token.SignedString([]byte(jwtKey))
 }
 
-func ValidateJWT(tokenString string, force bool) (string, byte, string, error) {
+func ValidateJWT(tokenString string) (string, byte, string, error) {
 	claims := &jwt.MapClaims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
@@ -118,7 +118,7 @@ func ValidateJWT(tokenString string, force bool) (string, byte, string, error) {
 		return "", 0, "", errors.New("Error parsing the expiration date of the token")
 	}
 
-	if int64(expiration) < time.Now().Unix() && !force {
+	if int64(expiration) < time.Now().Unix() {
 		return "", 0, "", errors.New("Error token has expired")
 	}
 
@@ -349,14 +349,6 @@ func InvalidateRefreshTokens(conn *pgx.Conn, userID string) error {
 }
 
 func Refresh(c *gin.Context) {
-	token := c.GetString("token")
-	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error incorrectly provided token"})
-		return
-	}
-
-	id, accountType, email, _ := ValidateJWT(token, true) // already expired
-
 	refresh, err := c.Cookie("refresh")
 	if err != nil {
 		log.Println(err)
@@ -372,29 +364,37 @@ func Refresh(c *gin.Context) {
 	}
 	defer conn.Close(context.Background())
 
-	//Extra safety check
-	ownerMatch, valid := false, false
-	err = conn.QueryRow(context.Background(), "select valid, case when user_id = $1 then true else false end from r_tokens r where r.token = $2", id, refresh).
-		Scan(&valid, &ownerMatch)
-	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error unable to check the owner of the refresh token"})
-		return
-	}
+	var (
+		id          string
+		email       string
+		accountType int
+		valid       bool
+		expired     bool
+	)
 
-	if !ownerMatch && !valid {
-		err = InvalidateRefreshTokens(conn, id)
-		if err != nil {
-			log.Println(err)
-			c.JSON(http.StatusForbidden, gin.H{"error": "Error stolen token"})
+	err = conn.QueryRow(
+		context.Background(),
+		`
+	SELECT
+	    a.id,
+	    a.email,
+	    a.type,
+	    r.valid,
+	    current_timestamp > r.expiration AS expired
+	FROM r_tokens r
+	JOIN authentication a
+	  ON a.id = r.user_id
+	WHERE r.token = $1
+	`,
+		refresh,
+	).Scan(&id, &email, &accountType, &valid, &expired)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			ErrorExit(c, http.StatusUnauthorized, "invalid refresh token", err)
 			return
 		}
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error stolen token"})
-		return
-	}
 
-	if !ownerMatch {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error unathorized"})
+		ErrorExit(c, http.StatusInternalServerError, "couldn't get information from the database", err)
 		return
 	}
 
@@ -406,19 +406,10 @@ func Refresh(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error expried refresh token"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error refresh token reused"})
 		return
 	}
 
-	expired := false
-	err = conn.QueryRow(context.Background(), "select case when current_timestamp > expiration then true else false end from r_tokens where user_id = $1 and token = $2", id, refresh).Scan(&expired)
-	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error unable to check the expiration ts of the refresh token"})
-		return
-	}
-
-	// Expired token. The user needs to log in again
 	if expired {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error expried refresh token"})
 		return
@@ -441,7 +432,7 @@ func Refresh(c *gin.Context) {
 
 	c.SetCookie("refresh", newRefresh, int((5 * 24 * time.Hour).Seconds()), "/", Domain, Secure, true)
 
-	token, err = GenerateJWT(id, accountType, email)
+	token, err := GenerateJWT(id, byte(accountType), email)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error unable to generate a new token"})

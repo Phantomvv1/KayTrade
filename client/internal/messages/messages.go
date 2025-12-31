@@ -38,10 +38,6 @@ type LoginSuccessMsg struct {
 	Page  int
 }
 
-type ReloadAndSwitchPageMsg struct {
-	Page int
-}
-
 type PageSwitchWithoutInitMsg struct {
 	Page int
 }
@@ -53,6 +49,8 @@ type ReloadMsg struct {
 type SmartPageSwitchMsg struct {
 	Page int
 }
+
+type QuitMsg struct{}
 
 type CompanyInfo struct {
 	Symbol       string  `json:"symbol"`

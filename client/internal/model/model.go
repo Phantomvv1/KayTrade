@@ -1,10 +1,18 @@
 package model
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
+	"os"
+	"path/filepath"
 
 	buypage "github.com/Phantomvv1/KayTrade/internal/buy_page"
 	companypage "github.com/Phantomvv1/KayTrade/internal/company_page"
@@ -15,6 +23,7 @@ import (
 	orderpage "github.com/Phantomvv1/KayTrade/internal/order_page"
 	positionpage "github.com/Phantomvv1/KayTrade/internal/position_page"
 	profilepage "github.com/Phantomvv1/KayTrade/internal/profile_page"
+	"github.com/Phantomvv1/KayTrade/internal/requests"
 	searchpage "github.com/Phantomvv1/KayTrade/internal/search_page"
 	sellpage "github.com/Phantomvv1/KayTrade/internal/sell_page"
 	signuppage "github.com/Phantomvv1/KayTrade/internal/sign_up_page"
@@ -37,6 +46,7 @@ type Model struct {
 	signUpPage      signuppage.SignUpPage
 	orderPage       orderpage.OrderPage
 	positionPage    positionpage.PositionPage
+	client          *http.Client
 	currentPage     int
 }
 
@@ -48,7 +58,7 @@ func NewModel() Model {
 
 	client := &http.Client{Jar: jar}
 
-	return Model{
+	model := Model{
 		landingPage:     landingpage.LandingPage{},
 		errorPage:       errorpage.ErrorPage{},
 		watchlistPage:   watchlistpage.NewWatchlistPage(client),
@@ -62,8 +72,48 @@ func NewModel() Model {
 		signUpPage:      signuppage.NewSignUpPage(client),
 		orderPage:       orderpage.NewOrderPage(client),
 		positionPage:    positionpage.NewPositionPage(client),
+		client:          client,
 		currentPage:     messages.LandingPageNumber,
 	}
+
+	refreshToken, err := readAndDecryptAESGCM([]byte(os.Getenv("ENCRYPTION_KEY")))
+	if err != nil {
+		log.Println(err)
+		model.landingPage.LogIn = true
+		return model
+	}
+
+	u, err := url.Parse("http://localhost:42069")
+	if err != nil {
+		model.landingPage.LogIn = true
+		return model
+	}
+
+	client.Jar.SetCookies(u, []*http.Cookie{{
+		Name:  "refresh",
+		Value: refreshToken,
+		Path:  "/",
+	}})
+
+	body, err := requests.MakeRequest(http.MethodPost, "http://localhost:42069/refresh", nil, client, "")
+	if err != nil {
+		log.Println(err)
+		model.landingPage.LogIn = true
+		return model
+	}
+
+	var info map[string]string
+	err = json.Unmarshal(body, &info)
+	if err != nil {
+		log.Println(err)
+		model.landingPage.LogIn = true
+		return model
+	}
+
+	model.updateToken(info["token"])
+	model.landingPage.LogIn = false
+
+	return model
 }
 
 func (m Model) Init() tea.Cmd {
@@ -119,11 +169,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentPage = msg.Page
 		model := m.getModelFromPageNumber()
 		return m, model.Init()
-	case messages.ReloadAndSwitchPageMsg:
-		m.Reload(msg.Page)
-		m.currentPage = msg.Page
-		model := m.getModelFromPageNumber()
-		return m, model.Init()
 	case messages.PageSwitchWithoutInitMsg:
 		m.currentPage = msg.Page
 		return m, nil
@@ -137,6 +182,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, nil
+	case messages.QuitMsg:
+		if err := m.saveRefreshToken(); err != nil {
+			log.Println("Unable to save the refresh token")
+			log.Println(err)
+			return m, tea.Quit
+		}
+
+		return m, tea.Quit
 	}
 
 	var cmd tea.Cmd
@@ -360,4 +413,106 @@ func (m *Model) Reloaded(page int) bool {
 	default:
 		return false
 	}
+}
+
+func (m Model) extractRefreshToken() (string, error) {
+	u, err := url.Parse("http://localhost:42069")
+	if err != nil {
+		return "", err
+	}
+
+	cookie := m.client.Jar.Cookies(u)[0]
+	if cookie.Name != "refresh" {
+		return "", errors.New("refresh token not found in cookie jar")
+	}
+
+	return cookie.Value, nil
+}
+
+func (m Model) saveRefreshToken() error {
+	token, err := m.extractRefreshToken()
+	if err != nil {
+		return err
+	}
+
+	key := []byte(os.Getenv("ENCRYPTION_KEY"))
+	encrypted, err := encryptAESGCM([]byte(token), key)
+	if err != nil {
+		return err
+	}
+
+	// Config dir for now. Will think abouth which is better: config or config
+	config, err := os.UserConfigDir()
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(config+"/kaytrade", 0700)
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		return err
+	}
+
+	return os.WriteFile(
+		filepath.Join(config, "/kaytrade", "/kaytrade"),
+		encrypted,
+		0600,
+	)
+}
+
+func encryptAESGCM(plaintext []byte, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+
+	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
+	return ciphertext, nil
+}
+
+func readAndDecryptAESGCM(key []byte) (string, error) {
+	config, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	cipherText, err := os.ReadFile(config + "/kaytrade" + "/kaytrade")
+	if err != nil {
+		return "", err
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(cipherText) < nonceSize {
+		return "", errors.New("ciphertext too short")
+	}
+
+	nonce := cipherText[:nonceSize]
+	encrypted := cipherText[nonceSize:]
+
+	plaintext, err := gcm.Open(nil, nonce, encrypted, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return string(plaintext), nil
 }

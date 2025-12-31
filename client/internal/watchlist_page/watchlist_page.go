@@ -62,7 +62,6 @@ func (c companyItem) FilterValue() string { return c.company.Name }
 
 func NewWatchlistPage(client *http.Client) WatchlistPage {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
-	l.KeyMap.Quit = key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit"))
 	l.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s", "search")),
@@ -167,7 +166,9 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		w.companies.FilterInput.Focus()
 	case tea.KeyMsg:
 		var cmd tea.Cmd
-		w.companies, cmd = w.companies.Update(msg)
+		if !w.filtering && (msg.String() != "q" || msg.String() != "ctrl+c") {
+			w.companies, cmd = w.companies.Update(msg)
+		}
 		if w.filtering {
 			switch msg.String() {
 			case "esc":
@@ -241,6 +242,11 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return messages.SmartPageSwitchMsg{
 						Page: messages.ProfilePageNumber,
 					}
+				}
+
+			case "q", "ctrl+c":
+				return w, func() tea.Msg {
+					return messages.QuitMsg{}
 				}
 			}
 		}
