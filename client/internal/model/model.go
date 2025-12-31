@@ -143,9 +143,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case messages.QuitMsg:
 		if err := m.saveRefreshToken(); err != nil {
-
+			log.Println("Unable to save the refresh token")
+			return m, tea.Quit
 		}
 
+		return m, tea.Quit
 	}
 
 	var cmd tea.Cmd
