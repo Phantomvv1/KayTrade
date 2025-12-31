@@ -352,7 +352,9 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			switch msg.String() {
 			case "q", "ctrl+c":
-				return p, tea.Quit
+				return p, func() tea.Msg {
+					return messages.QuitMsg{}
+				}
 
 			case "esc":
 				activeFilterValue := ""

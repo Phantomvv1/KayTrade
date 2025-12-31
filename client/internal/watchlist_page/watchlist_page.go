@@ -62,7 +62,12 @@ func (c companyItem) FilterValue() string { return c.company.Name }
 
 func NewWatchlistPage(client *http.Client) WatchlistPage {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
-	l.KeyMap.Quit = key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit"))
+	l.KeyMap.Quit.Unbind()
+	l.AdditionalShortHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
+		}
+	}
 	l.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s", "search")),
@@ -70,6 +75,7 @@ func NewWatchlistPage(client *http.Client) WatchlistPage {
 			key.NewBinding(key.WithKeys("r", "R"), key.WithHelp("r", "remove company")),
 			key.NewBinding(key.WithKeys("d", "D"), key.WithHelp("d", "remove all companies")),
 			key.NewBinding(key.WithKeys("p", "P"), key.WithHelp("p", "profile page")),
+			key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
 		}
 	}
 
@@ -241,6 +247,11 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return messages.SmartPageSwitchMsg{
 						Page: messages.ProfilePageNumber,
 					}
+				}
+
+			case "q", "ctrl+c":
+				return w, func() tea.Msg {
+					return messages.QuitMsg{}
 				}
 			}
 		}

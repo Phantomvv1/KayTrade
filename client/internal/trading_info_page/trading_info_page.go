@@ -94,7 +94,9 @@ func (t TradingInfoPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
-			return t, tea.Quit
+			return t, func() tea.Msg {
+				return messages.QuitMsg{}
+			}
 
 		case "esc":
 			return t, func() tea.Msg {

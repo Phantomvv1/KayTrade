@@ -25,7 +25,9 @@ func (l LandingPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			l.quitting = true
-			return l, tea.Quit
+			return l, func() tea.Msg {
+				return messages.QuitMsg{}
+			}
 		default:
 			return l, func() tea.Msg {
 				return messages.PageSwitchMsg{

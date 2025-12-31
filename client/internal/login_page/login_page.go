@@ -165,7 +165,9 @@ func (l LoginPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			case key.Matches(msg, keys.Quit):
-				return l, tea.Quit
+				return l, func() tea.Msg {
+					return messages.QuitMsg{}
+				}
 			}
 		}
 	}

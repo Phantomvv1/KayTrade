@@ -486,7 +486,9 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "q", "ctrl+c":
-				return s, tea.Quit
+				return s, func() tea.Msg {
+					return messages.QuitMsg{}
+				}
 
 			case "enter":
 				s.typing = true

@@ -71,7 +71,9 @@ func (p PositionPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
-			return p, tea.Quit
+			return p, func() tea.Msg {
+				return messages.QuitMsg{}
+			}
 
 		case "esc":
 			return p, func() tea.Msg {

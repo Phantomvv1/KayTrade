@@ -266,7 +266,9 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if c.ws != nil {
 				c.ws.Close()
 			}
-			return c, tea.Quit
+			return c, func() tea.Msg {
+				return messages.QuitMsg{}
+			}
 
 		case "esc":
 			if c.ws != nil {
@@ -511,7 +513,9 @@ func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 		if c.ws != nil {
 			c.ws.Close()
 		}
-		return *c, tea.Quit
+		return *c, func() tea.Msg {
+			return messages.QuitMsg{}
+		}
 
 	case "esc":
 		if c.ws != nil {
@@ -624,7 +628,9 @@ func (c *CompanyPage) handleLiveChartKeys(key string) (tea.Model, tea.Cmd) {
 		if c.ws != nil {
 			c.ws.Close()
 		}
-		return *c, tea.Quit
+		return *c, func() tea.Msg {
+			return messages.QuitMsg{}
+		}
 
 	case "esc":
 		if c.ws != nil {

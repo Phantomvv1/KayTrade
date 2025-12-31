@@ -144,6 +144,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.QuitMsg:
 		if err := m.saveRefreshToken(); err != nil {
 			log.Println("Unable to save the refresh token")
+			log.Println(err)
 			return m, tea.Quit
 		}
 
@@ -405,8 +406,14 @@ func (m Model) saveRefreshToken() error {
 		return err
 	}
 
+	err = os.MkdirAll(config+"/kaytrade", 0700)
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		return err
+	}
+
 	return os.WriteFile(
-		filepath.Join(config, "kaytrade"),
+		filepath.Join(config, "/kaytrade", "/kaytrade"),
 		encrypted,
 		0600,
 	)
