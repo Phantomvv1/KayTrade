@@ -12,6 +12,7 @@ import (
 
 type LandingPage struct {
 	BaseModel basemodel.BaseModel
+	LogIn     bool
 	quitting  bool
 }
 
@@ -29,9 +30,17 @@ func (l LandingPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return messages.QuitMsg{}
 			}
 		default:
-			return l, func() tea.Msg {
-				return messages.PageSwitchMsg{
-					Page: messages.LoginPageNumber,
+			if l.LogIn {
+				return l, func() tea.Msg {
+					return messages.PageSwitchMsg{
+						Page: messages.LoginPageNumber,
+					}
+				}
+			} else {
+				return l, func() tea.Msg {
+					return messages.PageSwitchMsg{
+						Page: messages.WatchlistPageNumber,
+					}
 				}
 			}
 		}

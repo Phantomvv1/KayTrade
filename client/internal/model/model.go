@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"io"
 	"log"
@@ -22,6 +23,7 @@ import (
 	orderpage "github.com/Phantomvv1/KayTrade/internal/order_page"
 	positionpage "github.com/Phantomvv1/KayTrade/internal/position_page"
 	profilepage "github.com/Phantomvv1/KayTrade/internal/profile_page"
+	"github.com/Phantomvv1/KayTrade/internal/requests"
 	searchpage "github.com/Phantomvv1/KayTrade/internal/search_page"
 	sellpage "github.com/Phantomvv1/KayTrade/internal/sell_page"
 	signuppage "github.com/Phantomvv1/KayTrade/internal/sign_up_page"
@@ -56,7 +58,7 @@ func NewModel() Model {
 
 	client := &http.Client{Jar: jar}
 
-	return Model{
+	model := Model{
 		landingPage:     landingpage.LandingPage{},
 		errorPage:       errorpage.ErrorPage{},
 		watchlistPage:   watchlistpage.NewWatchlistPage(client),
@@ -73,6 +75,45 @@ func NewModel() Model {
 		client:          client,
 		currentPage:     messages.LandingPageNumber,
 	}
+
+	refreshToken, err := readAndDecryptAESGCM([]byte(os.Getenv("ENCRYPTION_KEY")))
+	if err != nil {
+		log.Println(err)
+		model.landingPage.LogIn = true
+		return model
+	}
+
+	u, err := url.Parse("http://localhost:42069")
+	if err != nil {
+		model.landingPage.LogIn = true
+		return model
+	}
+
+	client.Jar.SetCookies(u, []*http.Cookie{{
+		Name:  "refresh",
+		Value: refreshToken,
+		Path:  "/",
+	}})
+
+	body, err := requests.MakeRequest(http.MethodPost, "http://localhost:42069/refresh", nil, client, "")
+	if err != nil {
+		log.Println(err)
+		model.landingPage.LogIn = true
+		return model
+	}
+
+	var info map[string]string
+	err = json.Unmarshal(body, &info)
+	if err != nil {
+		log.Println(err)
+		model.landingPage.LogIn = true
+		return model
+	}
+
+	model.updateToken(info["token"])
+	model.landingPage.LogIn = false
+
+	return model
 }
 
 func (m Model) Init() tea.Cmd {
@@ -439,7 +480,17 @@ func encryptAESGCM(plaintext []byte, key []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
-func decryptAESGCM(cipherText []byte, key []byte) (string, error) {
+func readAndDecryptAESGCM(key []byte) (string, error) {
+	config, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	cipherText, err := os.ReadFile(config + "/kaytrade" + "/kaytrade")
+	if err != nil {
+		return "", err
+	}
+
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", err
