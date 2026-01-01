@@ -48,6 +48,7 @@ type Model struct {
 	positionPage    positionpage.PositionPage
 	client          *http.Client
 	currentPage     int
+	prevMsg         tea.Msg
 }
 
 func NewModel() Model {
@@ -121,6 +122,7 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.prevMsg = msg
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
@@ -190,6 +192,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, tea.Quit
+	case messages.RefreshMsg:
+		err := m.Refresh()
+		if err != nil {
+			return m, func() tea.Msg {
+				return messages.PageSwitchMsg{
+					Page: messages.ErrorPageNumber,
+					Err:  err,
+				}
+			}
+		}
+
+		return m, func() tea.Msg {
+			return m.prevMsg
+		}
 	}
 
 	var cmd tea.Cmd
@@ -515,4 +531,21 @@ func readAndDecryptAESGCM(key []byte) (string, error) {
 	}
 
 	return string(plaintext), nil
+}
+
+func (m *Model) Refresh() error {
+	body, err := requests.MakeRequest(http.MethodPost, requests.BaseURL+"/refresh", nil, m.client, "")
+	if err != nil {
+		return err
+	}
+
+	var info map[string]string
+	err = json.Unmarshal(body, &info)
+	if err != nil {
+		return err
+	}
+
+	m.updateToken(info["token"])
+
+	return nil
 }

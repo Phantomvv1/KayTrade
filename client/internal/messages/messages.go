@@ -52,6 +52,8 @@ type SmartPageSwitchMsg struct {
 
 type QuitMsg struct{}
 
+type RefreshMsg struct{}
+
 type CompanyInfo struct {
 	Symbol       string  `json:"symbol"`
 	OpeningPrice float64 `json:"opening_price,omitempty"`
