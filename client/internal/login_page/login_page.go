@@ -89,7 +89,7 @@ var keys = keyMap{
 	),
 }
 
-func NewLoginPage(client *http.Client) LoginPage {
+func NewLoginPage(client *http.Client, tokenStore *basemodel.TokenStore) LoginPage {
 	email := textinput.New()
 	email.Placeholder = "email"
 	email.Width = 25
@@ -112,7 +112,7 @@ func NewLoginPage(client *http.Client) LoginPage {
 		help:      help,
 		cursor:    0,
 		typing:    true,
-		BaseModel: basemodel.BaseModel{Client: client},
+		BaseModel: basemodel.BaseModel{Client: client, TokenStore: tokenStore},
 	}
 }
 
@@ -252,7 +252,7 @@ func (l LoginPage) submit() tea.Msg {
 	}
 
 	reader := bytes.NewReader(reqBody)
-	body, err := requests.MakeRequest(http.MethodPost, requests.BaseURL+"/log-in", reader, l.BaseModel.Client, "")
+	body, err := requests.MakeRequest(http.MethodPost, requests.BaseURL+"/log-in", reader, l.BaseModel.Client, &basemodel.TokenStore{Token: ""})
 	if err != nil {
 		log.Println(err)
 		return messages.PageSwitchMsg{
