@@ -9,7 +9,12 @@ import (
 
 	. "github.com/Phantomvv1/KayTrade/internal/auth"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/time/rate"
 )
+
+var rateLimitMap = make(map[string]*rate.Limiter)
+
+// var mu = sync.Mutex{}
 
 func AuthMiddleware(c *gin.Context) {
 	token := c.GetHeader("Authorization")
@@ -95,6 +100,21 @@ func StartParserMiddleware(c *gin.Context) {
 	}
 
 	c.Set("start", start)
+
+	c.Next()
+}
+
+func RateLimiterMiddleware(c *gin.Context) {
+	rateLimiter, ok := rateLimitMap[c.ClientIP()]
+	if !ok {
+		rateLimitMap[c.ClientIP()] = rate.NewLimiter(rate.Limit(time.Second), 10)
+		rateLimitMap[c.ClientIP()].Allow()
+	}
+
+	if !rateLimiter.Allow() {
+		c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "Error too many requests are being sent by this user"})
+		return
+	}
 
 	c.Next()
 }
