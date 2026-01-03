@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	. "github.com/Phantomvv1/KayTrade/internal/auth"
@@ -13,8 +14,7 @@ import (
 )
 
 var rateLimitMap = make(map[string]*rate.Limiter)
-
-// var mu = sync.Mutex{}
+var mu = sync.RWMutex{}
 
 func AuthMiddleware(c *gin.Context) {
 	token := c.GetHeader("Authorization")
@@ -105,10 +105,20 @@ func StartParserMiddleware(c *gin.Context) {
 }
 
 func RateLimiterMiddleware(c *gin.Context) {
-	rateLimiter, ok := rateLimitMap[c.ClientIP()]
+	ip := c.ClientIP()
+
+	mu.RLock()
+	rateLimiter, ok := rateLimitMap[ip]
+	mu.RUnlock()
+
 	if !ok {
-		rateLimitMap[c.ClientIP()] = rate.NewLimiter(rate.Limit(time.Second), 10)
-		rateLimitMap[c.ClientIP()].Allow()
+		mu.Lock()
+		rateLimiter, ok = rateLimitMap[ip]
+		if !ok {
+			rateLimiter = rate.NewLimiter(rate.Every(time.Second), 10)
+			rateLimitMap[ip] = rateLimiter
+		}
+		mu.Unlock()
 	}
 
 	if !rateLimiter.Allow() {
