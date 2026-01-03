@@ -677,7 +677,7 @@ func (p ProfilePage) renderField(label, value string) string {
 
 func (p ProfilePage) CancelOrder() error {
 	order := p.orders.SelectedItem().(orderItem)
-	_, err := requests.MakeRequest(http.MethodDelete, requests.BaseURL+"/trading/orders/"+order.order.ID, nil, http.DefaultClient, p.BaseModel.TokenStore)
+	_, err := requests.MakeRequest(http.MethodDelete, requests.BaseURL+"/trading/orders/"+order.order.ID, nil, p.BaseModel.Client, p.BaseModel.TokenStore)
 	if err != nil {
 		return err
 	}

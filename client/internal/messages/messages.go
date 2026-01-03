@@ -1,7 +1,5 @@
 package messages
 
-import tea "github.com/charmbracelet/bubbletea"
-
 const (
 	LandingPageNumber = iota
 	WatchlistPageNumber
@@ -26,11 +24,6 @@ type PageSwitchMsg struct {
 	MaxQuantity float64
 	Order       *Order
 	Position    *Position
-}
-
-type TokenSwitchMsg struct {
-	Token     string
-	RetryFunc func() tea.Msg
 }
 
 type LoginSuccessMsg struct {

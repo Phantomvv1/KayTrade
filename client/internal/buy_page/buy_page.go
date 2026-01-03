@@ -674,7 +674,7 @@ func (b *BuyPage) submitOrder() error {
 		return fmt.Errorf("failed to encode request: %v", err)
 	}
 
-	_, err = requests.MakeRequest(http.MethodPost, requests.BaseURL+"/trading", bytes.NewReader(jsonData), http.DefaultClient, b.BaseModel.TokenStore)
+	_, err = requests.MakeRequest(http.MethodPost, requests.BaseURL+"/trading", bytes.NewReader(jsonData), b.BaseModel.Client, b.BaseModel.TokenStore)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %v", err)
 	}

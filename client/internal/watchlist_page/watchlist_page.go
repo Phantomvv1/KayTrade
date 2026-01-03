@@ -99,7 +99,7 @@ func (w WatchlistPage) init() tea.Msg {
 
 	go func() {
 		defer wg.Done()
-		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/watchlist/info", nil, http.DefaultClient, w.BaseModel.TokenStore)
+		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/watchlist/info", nil, w.BaseModel.Client, w.BaseModel.TokenStore)
 		if err != nil {
 			err1 = err
 			return
@@ -112,7 +112,7 @@ func (w WatchlistPage) init() tea.Msg {
 
 	go func() {
 		defer wg.Done()
-		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/data/stocks/top-market-movers?top=5", nil, http.DefaultClient, &basemodel.TokenStore{Token: ""})
+		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/data/stocks/top-market-movers?top=5", nil, w.BaseModel.Client, &basemodel.TokenStore{Token: ""})
 		if err != nil {
 			err2 = err
 			return

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 
@@ -39,6 +40,8 @@ func MakeRequest(method string, urlString string, reader io.Reader, client *http
 		var info map[string]string
 		json.Unmarshal(body, &info)
 		if info["error"] == ErrorTokenExpired.Error() {
+			log.Println("Refreshing")
+
 			body, err := MakeRequest(http.MethodPost, "http://localhost:42069/refresh", nil, client, TokenStore)
 			if err != nil {
 				return nil, err

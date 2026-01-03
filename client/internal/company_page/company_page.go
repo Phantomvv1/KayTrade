@@ -1005,7 +1005,7 @@ func (c *CompanyPage) fetchDataCmd() tea.Cmd {
 			http.MethodGet,
 			url,
 			nil,
-			http.DefaultClient,
+			c.BaseModel.Client,
 			c.BaseModel.TokenStore,
 		)
 		if err != nil {
@@ -1074,7 +1074,7 @@ func (c *CompanyPage) listenWebSocket() tea.Cmd {
 
 func (c CompanyPage) addCompanyToWatchlist() tea.Cmd {
 	return func() tea.Msg {
-		_, err := requests.MakeRequest(http.MethodPost, requests.BaseURL+"/watchlist/"+c.CompanyInfo.Symbol, nil, http.DefaultClient, c.BaseModel.TokenStore)
+		_, err := requests.MakeRequest(http.MethodPost, requests.BaseURL+"/watchlist/"+c.CompanyInfo.Symbol, nil, c.BaseModel.Client, c.BaseModel.TokenStore)
 		if err != nil {
 			return addCompanyMsg{err: err}
 		}

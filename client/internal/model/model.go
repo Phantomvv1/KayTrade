@@ -117,6 +117,9 @@ func NewModel() Model {
 	model.tokenStore.Token = info["token"]
 	model.landingPage.LogIn = false
 
+	cookies := client.Jar.Cookies(u)
+	client.Jar.SetCookies(u, []*http.Cookie{cookies[len(cookies)-1]})
+
 	return model
 }
 
