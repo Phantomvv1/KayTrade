@@ -60,7 +60,7 @@ func (c companyItem) Title() string       { return c.company.Name }
 func (c companyItem) Description() string { return c.company.Description }
 func (c companyItem) FilterValue() string { return c.company.Name }
 
-func NewWatchlistPage(client *http.Client) WatchlistPage {
+func NewWatchlistPage(client *http.Client, tokenStore *basemodel.TokenStore) WatchlistPage {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	l.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
@@ -78,7 +78,7 @@ func NewWatchlistPage(client *http.Client) WatchlistPage {
 	s.Style = spinnerStyle
 
 	return WatchlistPage{
-		BaseModel:      basemodel.BaseModel{Client: client},
+		BaseModel:      basemodel.BaseModel{Client: client, TokenStore: tokenStore},
 		titleBar:       "📈 Watchlist",
 		companies:      l,
 		spinner:        s,
@@ -99,7 +99,7 @@ func (w WatchlistPage) init() tea.Msg {
 
 	go func() {
 		defer wg.Done()
-		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/watchlist/info", nil, http.DefaultClient, w.BaseModel.Token)
+		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/watchlist/info", nil, w.BaseModel.Client, w.BaseModel.TokenStore)
 		if err != nil {
 			err1 = err
 			return
@@ -112,7 +112,7 @@ func (w WatchlistPage) init() tea.Msg {
 
 	go func() {
 		defer wg.Done()
-		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/data/stocks/top-market-movers?top=5", nil, http.DefaultClient, "")
+		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/data/stocks/top-market-movers?top=5", nil, w.BaseModel.Client, &basemodel.TokenStore{Token: ""})
 		if err != nil {
 			err2 = err
 			return
@@ -327,7 +327,7 @@ func (w WatchlistPage) View() string {
 }
 
 func (w WatchlistPage) removeCompanyFromWatchlist(company messages.CompanyInfo) error {
-	_, err := requests.MakeRequest(http.MethodDelete, requests.BaseURL+"/watchlist/"+company.Symbol, nil, &http.Client{}, w.BaseModel.Token)
+	_, err := requests.MakeRequest(http.MethodDelete, requests.BaseURL+"/watchlist/"+company.Symbol, nil, &http.Client{}, w.BaseModel.TokenStore)
 	if err != nil {
 		return err
 	}
@@ -336,7 +336,7 @@ func (w WatchlistPage) removeCompanyFromWatchlist(company messages.CompanyInfo) 
 }
 
 func (w WatchlistPage) removeAllCompaniesFromWatchlist() error {
-	_, err := requests.MakeRequest(http.MethodDelete, requests.BaseURL+"/watchlist", nil, &http.Client{}, w.BaseModel.Token)
+	_, err := requests.MakeRequest(http.MethodDelete, requests.BaseURL+"/watchlist", nil, &http.Client{}, w.BaseModel.TokenStore)
 	if err != nil {
 		return err
 	}

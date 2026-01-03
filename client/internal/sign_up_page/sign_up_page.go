@@ -181,7 +181,7 @@ var (
 				Bold(true)
 )
 
-func NewSignUpPage(client *http.Client) SignUpPage {
+func NewSignUpPage(client *http.Client, tokenStore *basemodel.TokenStore) SignUpPage {
 	password := textinput.New()
 	password.Placeholder = "Email address"
 	password.Width = inputWidth
@@ -190,7 +190,7 @@ func NewSignUpPage(client *http.Client) SignUpPage {
 	password.EchoCharacter = '•'
 
 	return SignUpPage{
-		BaseModel: basemodel.BaseModel{Client: client},
+		BaseModel: basemodel.BaseModel{Client: client, TokenStore: tokenStore},
 		accountInfo: AccountInfo{
 			Disclosures: Disclosures{
 				IsControlPerson:             false,
@@ -854,7 +854,7 @@ func (s SignUpPage) submit() error {
 		requests.BaseURL+"/sign-up",
 		bytes.NewReader(body),
 		s.BaseModel.Client,
-		s.BaseModel.Token,
+		s.BaseModel.TokenStore,
 	)
 
 	return err

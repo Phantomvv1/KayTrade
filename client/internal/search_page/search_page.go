@@ -39,7 +39,7 @@ type itemMsg struct {
 	items []list.Item
 }
 
-func NewSearchPage(client *http.Client) SearchPage {
+func NewSearchPage(client *http.Client, tokenStore *basemodel.TokenStore) SearchPage {
 	search := textinput.New()
 	search.Placeholder = "Searching by symbol of the company"
 	search.Width = 50
@@ -65,7 +65,7 @@ func NewSearchPage(client *http.Client) SearchPage {
 	sugg.KeyMap = list.KeyMap{}
 
 	return SearchPage{
-		BaseModel:   basemodel.BaseModel{Client: client},
+		BaseModel:   basemodel.BaseModel{Client: client, TokenStore: tokenStore},
 		searchField: search,
 		name:        false,
 		suggestions: sugg,
@@ -197,7 +197,7 @@ func (s SearchPage) View() string {
 func (s SearchPage) SendSearchRequest() ([]Asset, error) {
 	arr := strings.Split(s.searchField.Placeholder, " ")
 	value := strings.ReplaceAll(s.searchField.Value(), " ", "+")
-	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/search?"+arr[2]+"="+value, nil, http.DefaultClient, s.BaseModel.Token)
+	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/search?"+arr[2]+"="+value, nil, s.BaseModel.Client, s.BaseModel.TokenStore)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +213,7 @@ func (s SearchPage) SendSearchRequest() ([]Asset, error) {
 
 func (s SearchPage) GetCompanyInfo() (*messages.CompanyInfo, error) {
 	item := s.suggestions.Items()[s.suggestions.Cursor()].(asset)
-	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/company-information/"+item.asset.Symbol, nil, http.DefaultClient, s.BaseModel.Token)
+	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/company-information/"+item.asset.Symbol, nil, s.BaseModel.Client, s.BaseModel.TokenStore)
 	if err != nil {
 		return nil, err
 	}

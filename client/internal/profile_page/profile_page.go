@@ -172,7 +172,7 @@ func (p positionItem) Description() string {
 
 func (p positionItem) FilterValue() string { return p.position.Symbol }
 
-func NewProfilePage(client *http.Client) ProfilePage {
+func NewProfilePage(client *http.Client, tokenStore *basemodel.TokenStore) ProfilePage {
 	ordersList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	ordersList.FilterInput.Focus()
 	ordersList.Title = "Orders"
@@ -195,7 +195,7 @@ func NewProfilePage(client *http.Client) ProfilePage {
 	positionsList.SetShowHelp(false)
 
 	return ProfilePage{
-		BaseModel: basemodel.BaseModel{Client: client},
+		BaseModel: basemodel.BaseModel{Client: client, TokenStore: tokenStore},
 		orders:    ordersList,
 		positions: positionsList,
 		filtering: false,
@@ -224,7 +224,7 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 			requests.BaseURL+"/users/trading-details",
 			nil,
 			p.BaseModel.Client,
-			p.BaseModel.Token,
+			p.BaseModel.TokenStore,
 		)
 		if err != nil {
 			err1 = err
@@ -245,7 +245,7 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 			requests.BaseURL+"/users/alpaca?status=all",
 			nil,
 			p.BaseModel.Client,
-			p.BaseModel.Token,
+			p.BaseModel.TokenStore,
 		)
 		if err != nil {
 			err2 = err
@@ -266,7 +266,7 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 			requests.BaseURL+"/trading/alpaca?status=all",
 			nil,
 			p.BaseModel.Client,
-			p.BaseModel.Token,
+			p.BaseModel.TokenStore,
 		)
 		if err != nil {
 			err3 = err
@@ -286,7 +286,7 @@ func (p ProfilePage) fetchProfileData() tea.Msg {
 			requests.BaseURL+"/trading/positions",
 			nil,
 			p.BaseModel.Client,
-			p.BaseModel.Token,
+			p.BaseModel.TokenStore,
 		)
 		if err != nil {
 			err4 = err
@@ -677,7 +677,7 @@ func (p ProfilePage) renderField(label, value string) string {
 
 func (p ProfilePage) CancelOrder() error {
 	order := p.orders.SelectedItem().(orderItem)
-	_, err := requests.MakeRequest(http.MethodDelete, requests.BaseURL+"/trading/orders/"+order.order.ID, nil, http.DefaultClient, p.BaseModel.Token)
+	_, err := requests.MakeRequest(http.MethodDelete, requests.BaseURL+"/trading/orders/"+order.order.ID, nil, p.BaseModel.Client, p.BaseModel.TokenStore)
 	if err != nil {
 		return err
 	}

@@ -56,7 +56,7 @@ var (
 			Bold(true)
 )
 
-func NewSellPage(client *http.Client) SellPage {
+func NewSellPage(client *http.Client, tokenStore *basemodel.TokenStore) SellPage {
 	quantity := textinput.New()
 	quantity.Placeholder = "Quantity"
 	quantity.Width = 28
@@ -65,7 +65,7 @@ func NewSellPage(client *http.Client) SellPage {
 	quantity.Focus()
 
 	return SellPage{
-		BaseModel:       basemodel.BaseModel{Client: client},
+		BaseModel:       basemodel.BaseModel{Client: client, TokenStore: tokenStore},
 		quantity:        quantity,
 		side:            "sell",
 		purchaseType:    []string{"market", "limit", "stop", "stop_limit", "trailing_stop"},
@@ -371,7 +371,7 @@ func (s *SellPage) submitOrder() error {
 		return fmt.Errorf("failed to encode request: %v", err)
 	}
 
-	_, err = requests.MakeRequest(http.MethodPost, requests.BaseURL+"/trading", bytes.NewReader(jsonData), http.DefaultClient, s.BaseModel.Token)
+	_, err = requests.MakeRequest(http.MethodPost, requests.BaseURL+"/trading", bytes.NewReader(jsonData), s.BaseModel.Client, s.BaseModel.TokenStore)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %v", err)
 	}

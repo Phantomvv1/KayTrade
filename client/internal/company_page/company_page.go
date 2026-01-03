@@ -118,7 +118,7 @@ type addCompanyMsg struct {
 	err error
 }
 
-func NewCompanyPage(client *http.Client) CompanyPage {
+func NewCompanyPage(client *http.Client, tokenStore *basemodel.TokenStore) CompanyPage {
 	// Create historical chart
 	chart := timeserieslinechart.New(120, 30,
 		timeserieslinechart.WithStyle(
@@ -144,7 +144,7 @@ func NewCompanyPage(client *http.Client) CompanyPage {
 	}
 
 	return CompanyPage{
-		BaseModel: basemodel.BaseModel{Client: client},
+		BaseModel: basemodel.BaseModel{Client: client, TokenStore: tokenStore},
 		activeTab: tabOverview,
 		tabs:      tabs,
 		chart:     chart,
@@ -1005,8 +1005,8 @@ func (c *CompanyPage) fetchDataCmd() tea.Cmd {
 			http.MethodGet,
 			url,
 			nil,
-			http.DefaultClient,
-			c.BaseModel.Token,
+			c.BaseModel.Client,
+			c.BaseModel.TokenStore,
 		)
 		if err != nil {
 			return fetchDataMsg{err: err}
@@ -1074,7 +1074,7 @@ func (c *CompanyPage) listenWebSocket() tea.Cmd {
 
 func (c CompanyPage) addCompanyToWatchlist() tea.Cmd {
 	return func() tea.Msg {
-		_, err := requests.MakeRequest(http.MethodPost, requests.BaseURL+"/watchlist/"+c.CompanyInfo.Symbol, nil, http.DefaultClient, c.BaseModel.Token)
+		_, err := requests.MakeRequest(http.MethodPost, requests.BaseURL+"/watchlist/"+c.CompanyInfo.Symbol, nil, c.BaseModel.Client, c.BaseModel.TokenStore)
 		if err != nil {
 			return addCompanyMsg{err: err}
 		}

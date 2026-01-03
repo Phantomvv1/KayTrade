@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 
+	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	buypage "github.com/Phantomvv1/KayTrade/internal/buy_page"
 	companypage "github.com/Phantomvv1/KayTrade/internal/company_page"
 	errorpage "github.com/Phantomvv1/KayTrade/internal/error_page"
@@ -47,6 +48,7 @@ type Model struct {
 	orderPage       orderpage.OrderPage
 	positionPage    positionpage.PositionPage
 	client          *http.Client
+	tokenStore      *basemodel.TokenStore
 	currentPage     int
 }
 
@@ -57,22 +59,24 @@ func NewModel() Model {
 	}
 
 	client := &http.Client{Jar: jar}
+	tokenStore := &basemodel.TokenStore{Token: ""}
 
 	model := Model{
 		landingPage:     landingpage.LandingPage{},
 		errorPage:       errorpage.ErrorPage{},
-		watchlistPage:   watchlistpage.NewWatchlistPage(client),
-		loginPage:       loginpage.NewLoginPage(client),
-		searchPage:      searchpage.NewSearchPage(client),
-		companyPage:     companypage.NewCompanyPage(client),
-		buyPage:         buypage.NewBuyPage(client),
+		watchlistPage:   watchlistpage.NewWatchlistPage(client, tokenStore),
+		loginPage:       loginpage.NewLoginPage(client, tokenStore),
+		searchPage:      searchpage.NewSearchPage(client, tokenStore),
+		companyPage:     companypage.NewCompanyPage(client, tokenStore),
+		buyPage:         buypage.NewBuyPage(client, tokenStore),
 		tradingInfoPage: tradinginfopage.NewTradingInfoPage(),
-		profilePage:     profilepage.NewProfilePage(client),
-		sellPage:        sellpage.NewSellPage(client),
-		signUpPage:      signuppage.NewSignUpPage(client),
+		profilePage:     profilepage.NewProfilePage(client, tokenStore),
+		sellPage:        sellpage.NewSellPage(client, tokenStore),
+		signUpPage:      signuppage.NewSignUpPage(client, tokenStore),
 		orderPage:       orderpage.NewOrderPage(client),
 		positionPage:    positionpage.NewPositionPage(client),
 		client:          client,
+		tokenStore:      tokenStore,
 		currentPage:     messages.LandingPageNumber,
 	}
 
@@ -95,7 +99,7 @@ func NewModel() Model {
 		Path:  "/",
 	}})
 
-	body, err := requests.MakeRequest(http.MethodPost, "http://localhost:42069/refresh", nil, client, "")
+	body, err := requests.MakeRequest(http.MethodPost, "http://localhost:42069/refresh", nil, client, model.tokenStore)
 	if err != nil {
 		log.Println(err)
 		model.landingPage.LogIn = true
@@ -110,8 +114,11 @@ func NewModel() Model {
 		return model
 	}
 
-	model.updateToken(info["token"])
+	model.tokenStore.Token = info["token"]
 	model.landingPage.LogIn = false
+
+	cookies := client.Jar.Cookies(u)
+	client.Jar.SetCookies(u, []*http.Cookie{cookies[len(cookies)-1]})
 
 	return model
 }
@@ -161,11 +168,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		model := m.getModelFromPageNumber()
 		return m, model.Init()
-	case messages.TokenSwitchMsg:
-		m.updateToken(msg.Token)
-		return m, msg.RetryFunc
 	case messages.LoginSuccessMsg:
-		m.updateToken(msg.Token)
+		m.tokenStore.Token = msg.Token
 		m.currentPage = msg.Page
 		model := m.getModelFromPageNumber()
 		return m, model.Init()
@@ -316,22 +320,6 @@ func (m *Model) setSize(width, height int) {
 
 	m.positionPage.BaseModel.Width = width
 	m.positionPage.BaseModel.Height = height
-}
-
-func (m *Model) updateToken(token string) {
-	m.watchlistPage.BaseModel.Token = token
-	m.errorPage.BaseModel.Token = token
-	m.landingPage.BaseModel.Token = token
-	m.loginPage.BaseModel.Token = token
-	m.searchPage.BaseModel.Token = token
-	m.companyPage.BaseModel.Token = token
-	m.buyPage.BaseModel.Token = token
-	m.tradingInfoPage.BaseModel.Token = token
-	m.profilePage.BaseModel.Token = token
-	m.sellPage.BaseModel.Token = token
-	m.signUpPage.BaseModel.Token = token
-	m.orderPage.BaseModel.Token = token
-	m.positionPage.BaseModel.Token = token
 }
 
 func (m *Model) getModelFromPageNumber() tea.Model {
