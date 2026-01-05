@@ -189,7 +189,7 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			case "enter":
-				item := w.companies.Items()[w.companies.Index()]
+				item := w.companies.SelectedItem()
 				i := item.(companyItem)
 				return w, func() tea.Msg {
 					return messages.PageSwitchMsg{
@@ -203,7 +203,7 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return w, nil
 				}
 
-				item := w.companies.Items()[w.companies.Index()]
+				item := w.companies.SelectedItem()
 				i := item.(companyItem)
 				err := w.removeCompanyFromWatchlist(i.company)
 				if err != nil {
