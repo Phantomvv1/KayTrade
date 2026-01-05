@@ -115,14 +115,14 @@ func RateLimiterMiddleware(c *gin.Context) {
 		mu.Lock()
 		rateLimiter, ok = rateLimitMap[ip]
 		if !ok {
-			rateLimiter = rate.NewLimiter(rate.Every(time.Second), 10)
+			rateLimiter = rate.NewLimiter(rate.Every(time.Second), 30)
 			rateLimitMap[ip] = rateLimiter
 		}
 		mu.Unlock()
 	}
 
 	if !rateLimiter.Allow() {
-		c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "Error too many requests are being sent by this user"})
+		c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "Error too many requests are being sent"})
 		return
 	}
 
