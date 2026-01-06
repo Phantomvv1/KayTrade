@@ -16,6 +16,7 @@ import (
 
 func NewRouter() *gin.Engine {
 	r := gin.Default()
+	r.Use(RateLimiterMiddleware)
 
 	r.Any("/", func(c *gin.Context) { c.JSON(http.StatusOK, nil) })
 	r.POST("/sign-up", SignUp)

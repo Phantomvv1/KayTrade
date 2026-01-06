@@ -402,7 +402,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if p.orders.FilterInput.Focused() {
 					fmt.Printf("\033c")
 					fmt.Printf("\033[?25l")
-					order := p.orders.Items()[p.orders.Cursor()].(orderItem)
+					order := p.orders.SelectedItem().(orderItem)
 					return p, func() tea.Msg {
 						return messages.PageSwitchMsg{
 							Page:  messages.OrderPageNumber,
@@ -411,7 +411,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				} else {
 					fmt.Printf("\033[H")
-					position := p.positions.Items()[p.positions.Cursor()].(positionItem)
+					position := p.positions.SelectedItem().(positionItem)
 					return p, func() tea.Msg {
 						return messages.PageSwitchMsg{
 							Page:     messages.PositionPageNumber,
@@ -422,7 +422,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "s", "S":
 				if p.positions.FilterInput.Focused() {
-					position := p.positions.Items()[p.positions.Cursor()].(positionItem)
+					position := p.positions.SelectedItem().(positionItem)
 					maxQuantity, err := strconv.ParseFloat(position.position.Qty, 64)
 					if err != nil {
 						return p, func() tea.Msg {
@@ -461,7 +461,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						updatedOrder := p.orders.SelectedItem().(orderItem).order
 						updatedOrder.CanceledAt = time.Now().UTC().Format(time.RFC3339)
 						updatedOrder.Status = "Canceled"
-						p.orders.SetItem(p.orders.Cursor(), orderItem{order: updatedOrder})
+						p.orders.SetItem(p.orders.Index(), orderItem{order: updatedOrder})
 					}
 
 					return p, nil

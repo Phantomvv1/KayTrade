@@ -133,8 +133,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.setSize(msg.Width, msg.Height)
 		return m, nil
 	case messages.PageSwitchMsg:
-		m.errorPage.PrevPage = m.currentPage
-		m.errorPage.Err = msg.Err
+		if m.currentPage != messages.ErrorPageNumber {
+			m.errorPage.PrevPage = m.currentPage
+			m.errorPage.Err = msg.Err
+		}
 
 		if m.currentPage == messages.SearchPageNumber || m.currentPage == messages.WatchlistPageNumber {
 			m.companyPage.PrevPage = m.currentPage
@@ -240,7 +242,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.positionPage = page.(positionpage.PositionPage)
 
 	default:
-		m.currentPage = messages.ErrorPageNumber
+		if m.currentPage != messages.ErrorPageNumber {
+			m.errorPage.PrevPage = m.currentPage
+			m.currentPage = messages.ErrorPageNumber
+		}
+
 		m.errorPage.Err = errors.New("Unkown error")
 	}
 
