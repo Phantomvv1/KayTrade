@@ -14,6 +14,8 @@ import (
 	"os"
 	"path/filepath"
 
+	bankrelationshipcreationpage "github.com/Phantomvv1/KayTrade/internal/bank_relationship_creation_page"
+	bankrelationshippage "github.com/Phantomvv1/KayTrade/internal/bank_relationship_creation_page"
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	buypage "github.com/Phantomvv1/KayTrade/internal/buy_page"
 	companypage "github.com/Phantomvv1/KayTrade/internal/company_page"
@@ -34,22 +36,23 @@ import (
 )
 
 type Model struct {
-	landingPage     landingpage.LandingPage
-	errorPage       errorpage.ErrorPage
-	watchlistPage   watchlistpage.WatchlistPage
-	loginPage       loginpage.LoginPage
-	searchPage      searchpage.SearchPage
-	companyPage     companypage.CompanyPage
-	buyPage         buypage.BuyPage
-	tradingInfoPage tradinginfopage.TradingInfoPage
-	profilePage     profilepage.ProfilePage
-	sellPage        sellpage.SellPage
-	signUpPage      signuppage.SignUpPage
-	orderPage       orderpage.OrderPage
-	positionPage    positionpage.PositionPage
-	client          *http.Client
-	tokenStore      *basemodel.TokenStore
-	currentPage     int
+	landingPage                        landingpage.LandingPage
+	errorPage                          errorpage.ErrorPage
+	watchlistPage                      watchlistpage.WatchlistPage
+	loginPage                          loginpage.LoginPage
+	searchPage                         searchpage.SearchPage
+	companyPage                        companypage.CompanyPage
+	buyPage                            buypage.BuyPage
+	tradingInfoPage                    tradinginfopage.TradingInfoPage
+	profilePage                        profilepage.ProfilePage
+	sellPage                           sellpage.SellPage
+	signUpPage                         signuppage.SignUpPage
+	orderPage                          orderpage.OrderPage
+	positionPage                       positionpage.PositionPage
+	bankRelationshipCreationPageNumber bankrelationshipcreationpage.BankRelationshipCreation
+	client                             *http.Client
+	tokenStore                         *basemodel.TokenStore
+	currentPage                        int
 }
 
 func NewModel() Model {
@@ -62,22 +65,23 @@ func NewModel() Model {
 	tokenStore := &basemodel.TokenStore{Token: ""}
 
 	model := Model{
-		landingPage:     landingpage.LandingPage{},
-		errorPage:       errorpage.ErrorPage{},
-		watchlistPage:   watchlistpage.NewWatchlistPage(client, tokenStore),
-		loginPage:       loginpage.NewLoginPage(client, tokenStore),
-		searchPage:      searchpage.NewSearchPage(client, tokenStore),
-		companyPage:     companypage.NewCompanyPage(client, tokenStore),
-		buyPage:         buypage.NewBuyPage(client, tokenStore),
-		tradingInfoPage: tradinginfopage.NewTradingInfoPage(),
-		profilePage:     profilepage.NewProfilePage(client, tokenStore),
-		sellPage:        sellpage.NewSellPage(client, tokenStore),
-		signUpPage:      signuppage.NewSignUpPage(client, tokenStore),
-		orderPage:       orderpage.NewOrderPage(client),
-		positionPage:    positionpage.NewPositionPage(client),
-		client:          client,
-		tokenStore:      tokenStore,
-		currentPage:     messages.LandingPageNumber,
+		landingPage:                        landingpage.LandingPage{},
+		errorPage:                          errorpage.ErrorPage{},
+		watchlistPage:                      watchlistpage.NewWatchlistPage(client, tokenStore),
+		loginPage:                          loginpage.NewLoginPage(client, tokenStore),
+		searchPage:                         searchpage.NewSearchPage(client, tokenStore),
+		companyPage:                        companypage.NewCompanyPage(client, tokenStore),
+		buyPage:                            buypage.NewBuyPage(client, tokenStore),
+		tradingInfoPage:                    tradinginfopage.NewTradingInfoPage(),
+		profilePage:                        profilepage.NewProfilePage(client, tokenStore),
+		sellPage:                           sellpage.NewSellPage(client, tokenStore),
+		signUpPage:                         signuppage.NewSignUpPage(client, tokenStore),
+		orderPage:                          orderpage.NewOrderPage(client),
+		positionPage:                       positionpage.NewPositionPage(client),
+		bankRelationshipCreationPageNumber: bankrelationshipcreationpage.NewBankRelationship(client, tokenStore),
+		client:                             client,
+		tokenStore:                         tokenStore,
+		currentPage:                        messages.LandingPageNumber,
 	}
 
 	refreshToken, err := readAndDecryptAESGCM([]byte(os.Getenv("ENCRYPTION_KEY")))
@@ -238,6 +242,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		page, cmd = m.orderPage.Update(msg)
 		m.orderPage = page.(orderpage.OrderPage)
 	case messages.PositionPageNumber:
+		page, cmd = m.positionPage.Update(msg)
+		m.positionPage = page.(positionpage.PositionPage)
+	case messages.BankRelationshipCreationPageNumber:
 		page, cmd = m.positionPage.Update(msg)
 		m.positionPage = page.(positionpage.PositionPage)
 
