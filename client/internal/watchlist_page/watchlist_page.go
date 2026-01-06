@@ -244,6 +244,13 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 
+			case "b", "B":
+				return w, func() tea.Msg {
+					return messages.PageSwitchMsg{
+						Page: messages.BankRelationshipCreationPageNumber,
+					}
+				}
+
 			case "q", "ctrl+c":
 				return w, func() tea.Msg {
 					return messages.QuitMsg{}
@@ -280,27 +287,62 @@ func (w WatchlistPage) View() string {
 	}
 
 	// Right panel (Top movers)
-	moverCards := []string{"Top Market Movers:\n"}
-	moverCards = append(moverCards, "ticker price change %change")
+	colSymbol := lipgloss.NewStyle().Width(10)
+	colPrice := lipgloss.NewStyle().Width(10)
+	colChange := lipgloss.NewStyle().Width(10)
+	colPercent := lipgloss.NewStyle().Width(10)
+
+	title := lipgloss.NewStyle().
+		Width(40).
+		Align(lipgloss.Center).
+		Render("Top Market Movers")
+
+	headerRow := lipgloss.JoinHorizontal(
+		lipgloss.Left,
+		colSymbol.Render("Ticker"),
+		colPrice.Render("Price"),
+		colChange.Render("Change"),
+		colPercent.Render("% Change"),
+	)
+
+	rows := []string{
+		title,
+		"",
+		headerRow,
+	}
+
 	for i, m := range w.movers {
-		changeColor := green
+		color := green
 		if i >= 5 {
-			changeColor = red
+			color = red
 		}
 
-		line := fmt.Sprintf("%s"+strings.Repeat(" ", 7-len(m.Symbol)), m.Symbol) // allign price
-		p := fmt.Sprintf("%.2f", m.Price)
-		price := lipgloss.NewStyle().Foreground(changeColor).Render(p + strings.Repeat(" ", 6-len(p))) // allign change
-		c := fmt.Sprintf("%.2f", m.Change)
-		line += price + fmt.Sprintf(c+strings.Repeat(" ", 7-len(c))+"%.2f", m.PercentChange) // allign percent change
-		moverCards = append(moverCards, line)
+		price := fmt.Sprintf("%.2f", m.Price)
+		change := fmt.Sprintf("%.2f", m.Change)
+		percent := fmt.Sprintf("%.2f", m.PercentChange)
+
+		row := lipgloss.JoinHorizontal(
+			lipgloss.Left,
+			colSymbol.Render(m.Symbol),
+			colPrice.Render(
+				lipgloss.NewStyle().Foreground(color).Render(price),
+			),
+			colChange.Render(
+				lipgloss.NewStyle().Foreground(color).Render(change),
+			),
+			colPercent.Render(
+				lipgloss.NewStyle().Foreground(color).Render(percent),
+			),
+		)
+
+		rows = append(rows, row)
 	}
 
 	right := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(purple).
 		Padding(1, 2).
-		Render(strings.Join(moverCards, "\n"))
+		Render(strings.Join(rows, "\n"))
 
 	content := ""
 	if !w.emptyWatchlist {
