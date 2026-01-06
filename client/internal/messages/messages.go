@@ -13,6 +13,7 @@ const (
 	SignUpPageNumber
 	OrderPageNumber
 	PositionPageNumber
+	BankRelationshipPageNumber
 	BankRelationshipCreationPageNumber
 	ErrorPageNumber
 )

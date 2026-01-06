@@ -44,14 +44,15 @@ type achInputs struct {
 }
 
 type BankRelationshipCreation struct {
-	BaseModel   basemodel.BaseModel
-	bankType    string
-	bankInputs  bankInputs
-	achInputs   achInputs
-	cursor      int
-	totalFields int
-	err         string
-	success     string
+	BaseModel            basemodel.BaseModel
+	bankRelationshipType string
+	bankInputs           bankInputs
+	achInputs            achInputs
+	cursor               int
+	totalFields          int
+	typing               bool
+	err                  string
+	success              string
 }
 
 var (
@@ -159,11 +160,12 @@ func NewAchInputs() achInputs {
 
 func NewBankRelationship(client *http.Client, tokenStore *basemodel.TokenStore) BankRelationshipCreation {
 	return BankRelationshipCreation{
-		BaseModel:  basemodel.BaseModel{Client: client, TokenStore: tokenStore},
-		bankType:   normalBankType,
-		bankInputs: NewBankInputs(),
-		achInputs:  NewAchInputs(),
-		cursor:     0,
+		BaseModel:            basemodel.BaseModel{Client: client, TokenStore: tokenStore},
+		bankRelationshipType: normalBankType,
+		bankInputs:           NewBankInputs(),
+		achInputs:            NewAchInputs(),
+		typing:               true,
+		cursor:               0,
 	}
 }
 
@@ -172,7 +174,7 @@ func (b BankRelationshipCreation) Init() tea.Cmd {
 }
 
 func (b *BankRelationshipCreation) calculateTotalFields() int {
-	if b.bankType == normalBankType {
+	if b.bankRelationshipType == normalBankType {
 		count := 4 // name, bankCode, bankCodeType, accountNumber
 		if b.bankInputs.bankCodeType[b.bankInputs.bankCodeTypeIdx] == "BIC" {
 			count += 4 // country, stateProvince, city, streetAddress
@@ -190,80 +192,108 @@ func (b BankRelationshipCreation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "ctrl+c":
-			return b, func() tea.Msg {
-				return messages.QuitMsg{}
-			}
-
-		case "ctrl+j", "down":
-			b.err = ""
-			b.success = ""
-			b.cursor++
-			if b.cursor >= b.totalFields {
-				b.cursor = 0
-			}
-			return b, nil
-
-		case "ctrl+k", "up":
-			b.err = ""
-			b.success = ""
-			b.cursor--
-			if b.cursor < 0 {
-				b.cursor = b.totalFields - 1
-			}
-			return b, nil
-
-		case "h", "left":
-			b.err = ""
-			b.success = ""
-			if b.bankType == normalBankType && b.cursor == 2 {
-				b.bankInputs.bankCodeTypeIdx--
-				if b.bankInputs.bankCodeTypeIdx < 0 {
-					b.bankInputs.bankCodeTypeIdx = len(b.bankInputs.bankCodeType) - 1
-				}
-				b.totalFields = b.calculateTotalFields()
+		if b.typing {
+			switch msg.String() {
+			case "esc":
+				b.typing = false
 				return b, nil
-			} else if b.bankType == bankTypeAch && b.cursor == 1 {
-				b.achInputs.bankAccountTypeIdx--
-				if b.achInputs.bankAccountTypeIdx < 0 {
-					b.achInputs.bankAccountTypeIdx = len(b.achInputs.bankAccountType) - 1
+
+			case "ctrl+j", "down":
+				b.err = ""
+				b.success = ""
+				b.cursor++
+				if b.cursor >= b.totalFields {
+					b.cursor = 0
 				}
 				return b, nil
-			}
 
-		case "l", "right":
-			b.err = ""
-			b.success = ""
-			if b.bankType == normalBankType && b.cursor == 2 {
-				b.bankInputs.bankCodeTypeIdx++
-				if b.bankInputs.bankCodeTypeIdx >= len(b.bankInputs.bankCodeType) {
-					b.bankInputs.bankCodeTypeIdx = 0
-				}
-				b.totalFields = b.calculateTotalFields()
-				return b, nil
-			} else if b.bankType == bankTypeAch && b.cursor == 1 {
-				b.achInputs.bankAccountTypeIdx++
-				if b.achInputs.bankAccountTypeIdx >= len(b.achInputs.bankAccountType) {
-					b.achInputs.bankAccountTypeIdx = 0
+			case "ctrl+k", "up":
+				b.err = ""
+				b.success = ""
+				b.cursor--
+				if b.cursor < 0 {
+					b.cursor = b.totalFields - 1
 				}
 				return b, nil
-			}
 
-		case "enter":
-			b.err = ""
-			b.success = ""
-			if err := b.submitRelationship(); err != nil {
-				b.err = err.Error()
-			} else {
-				b.success = "Bank relationship created successfully!"
+			case "h", "left":
+				b.err = ""
+				b.success = ""
+				if b.bankRelationshipType == normalBankType && b.cursor == 2 {
+					b.bankInputs.bankCodeTypeIdx--
+					if b.bankInputs.bankCodeTypeIdx < 0 {
+						b.bankInputs.bankCodeTypeIdx = len(b.bankInputs.bankCodeType) - 1
+					}
+					b.totalFields = b.calculateTotalFields()
+					return b, nil
+				} else if b.bankRelationshipType == bankTypeAch && b.cursor == 1 {
+					b.achInputs.bankAccountTypeIdx--
+					if b.achInputs.bankAccountTypeIdx < 0 {
+						b.achInputs.bankAccountTypeIdx = len(b.achInputs.bankAccountType) - 1
+					}
+					return b, nil
+				}
+
+			case "l", "right":
+				b.err = ""
+				b.success = ""
+				if b.bankRelationshipType == normalBankType && b.cursor == 2 {
+					b.bankInputs.bankCodeTypeIdx++
+					if b.bankInputs.bankCodeTypeIdx >= len(b.bankInputs.bankCodeType) {
+						b.bankInputs.bankCodeTypeIdx = 0
+					}
+					b.totalFields = b.calculateTotalFields()
+					return b, nil
+				} else if b.bankRelationshipType == bankTypeAch && b.cursor == 1 {
+					b.achInputs.bankAccountTypeIdx++
+					if b.achInputs.bankAccountTypeIdx >= len(b.achInputs.bankAccountType) {
+						b.achInputs.bankAccountTypeIdx = 0
+					}
+					return b, nil
+				}
+
+			case "enter":
+				b.err = ""
+				b.success = ""
+				if err := b.submitRelationship(); err != nil {
+					b.err = err.Error()
+				} else {
+					b.success = "Bank relationship created successfully!"
+				}
+				return b, nil
 			}
-			return b, nil
+		} else {
+			switch msg.String() {
+			case "q", "ctrl+c":
+				return b, func() tea.Msg {
+					return messages.QuitMsg{}
+				}
+
+			case "esc":
+				return b, func() tea.Msg {
+					return messages.SmartPageSwitchMsg{
+						Page: messages.BankRelationshipPageNumber,
+					}
+				}
+
+			case "enter":
+				b.typing = true
+				return b, nil
+
+			case "s", "S":
+				if b.bankRelationshipType == normalBankType {
+					b.bankRelationshipType = bankTypeAch
+				} else {
+					b.bankRelationshipType = normalBankType
+				}
+
+				return b, nil
+			}
 		}
 	}
 
 	// Update the focused input
-	if b.bankType == normalBankType {
+	if b.bankRelationshipType == normalBankType {
 		b.updateBankInput(msg, &cmd)
 	} else {
 		b.updateAchInput(msg, &cmd)
@@ -294,23 +324,22 @@ func (b *BankRelationshipCreation) updateBankInput(msg tea.Msg, cmd *tea.Cmd) {
 }
 
 func (b *BankRelationshipCreation) updateAchInput(msg tea.Msg, cmd *tea.Cmd) {
-	idx := b.cursor
-	if idx == 0 {
+	switch b.cursor {
+	case 0:
 		b.achInputs.accountOwnerName, *cmd = b.achInputs.accountOwnerName.Update(msg)
-	} else if idx == 1 {
-		// Slider - no update needed
-	} else if idx == 2 {
+	case 2:
 		b.achInputs.bankAccountNumber, *cmd = b.achInputs.bankAccountNumber.Update(msg)
-	} else if idx == 3 {
+	case 3:
 		b.achInputs.bankRoutingNumber, *cmd = b.achInputs.bankRoutingNumber.Update(msg)
-	} else if idx == 4 {
+	case 4:
 		b.achInputs.nickname, *cmd = b.achInputs.nickname.Update(msg)
+
 	}
 }
 
 func (b BankRelationshipCreation) View() string {
 	var header string
-	if b.bankType == normalBankType {
+	if b.bankRelationshipType == normalBankType {
 		header = titleStyle.Render("🏦 Create Bank Relationship")
 	} else {
 		header = titleStyle.Render("🏦 Create ACH Relationship")
@@ -318,7 +347,7 @@ func (b BankRelationshipCreation) View() string {
 
 	var fields []string
 
-	if b.bankType == normalBankType {
+	if b.bankRelationshipType == normalBankType {
 		fields = b.renderBankFields()
 	} else {
 		fields = b.renderAchFields()
@@ -326,7 +355,6 @@ func (b BankRelationshipCreation) View() string {
 
 	content := lipgloss.JoinVertical(lipgloss.Center, fields...)
 
-	// Add error/success messages
 	if b.err != "" {
 		content = lipgloss.JoinVertical(lipgloss.Center, content, "", errorStyle.Render("❌ "+b.err))
 	}
@@ -336,12 +364,10 @@ func (b BankRelationshipCreation) View() string {
 
 	help := helpStyle.Render("j/k/↑/↓: navigate | h/l/←/→: change option | enter: submit | q: quit")
 
-	// Calculate spacing
 	headerHeight := lipgloss.Height(header)
 	contentHeight := lipgloss.Height(content)
 	helpHeight := lipgloss.Height(help)
 
-	// Center everything
 	centeredHeader := lipgloss.Place(b.BaseModel.Width, headerHeight, lipgloss.Center, lipgloss.Top, header)
 	centeredContent := lipgloss.Place(b.BaseModel.Width, contentHeight, lipgloss.Center, lipgloss.Top, content)
 	centeredHelp := lipgloss.Place(b.BaseModel.Width, helpHeight, lipgloss.Center, lipgloss.Top, help)
@@ -529,7 +555,7 @@ func (b BankRelationshipCreation) renderSlider(options []string, selectedIdx int
 func (b *BankRelationshipCreation) submitRelationship() error {
 	data := make(map[string]any)
 
-	if b.bankType == normalBankType {
+	if b.bankRelationshipType == normalBankType {
 		return b.submitBankRelationship(data)
 	} else {
 		return b.submitAchRelationship(data)
