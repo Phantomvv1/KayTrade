@@ -683,12 +683,12 @@ func (b *BankRelationshipCreation) submitAchRelationship(data map[string]any) er
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		return fmt.Errorf("failed to encode request: %v", err)
+		return fmt.Errorf("failed to encode request: %w", err)
 	}
 
 	_, err = requests.MakeRequest(http.MethodPost, requests.BaseURL+"/funding/ach", bytes.NewReader(jsonData), b.BaseModel.Client, b.BaseModel.TokenStore)
 	if err != nil {
-		return fmt.Errorf("failed to create ACH relationship: %v", err)
+		return fmt.Errorf("failed to create ACH relationship: %w", err)
 	}
 
 	return nil
