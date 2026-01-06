@@ -261,6 +261,14 @@ func (b BankRelationshipCreation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					b.success = "Bank relationship created successfully!"
 				}
 				return b, nil
+
+			case "tab":
+				b.cursor++
+				if b.cursor >= b.totalFields {
+					b.cursor = 0
+				}
+
+				return b, nil
 			}
 		} else {
 			switch msg.String() {
