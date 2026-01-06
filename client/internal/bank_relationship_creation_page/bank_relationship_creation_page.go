@@ -19,7 +19,7 @@ import (
 const (
 	normalBankType = "bank"
 	bankTypeAch    = "ach"
-	inputWidth     = 28
+	inputWidth     = 27
 )
 
 type bankInputs struct {
@@ -87,27 +87,27 @@ func NewBankInputs() bankInputs {
 	bankCode := textinput.New()
 	bankCode.Placeholder = "Bank code"
 	bankCode.Width = inputWidth
-	bankCode.CharLimit = 20
+	bankCode.CharLimit = 50
 
 	accountNumber := textinput.New()
 	accountNumber.Placeholder = "Account number"
 	accountNumber.Width = inputWidth
-	accountNumber.CharLimit = 60
+	accountNumber.CharLimit = 50
 
 	country := textinput.New()
 	country.Placeholder = "Country"
 	country.Width = inputWidth
-	country.CharLimit = 10
+	country.CharLimit = 50
 
 	stateProvince := textinput.New()
 	stateProvince.Placeholder = "State/Province"
 	stateProvince.Width = inputWidth
-	stateProvince.CharLimit = 30
+	stateProvince.CharLimit = 50
 
 	city := textinput.New()
 	city.Placeholder = "City"
 	city.Width = inputWidth
-	city.CharLimit = 20
+	city.CharLimit = 50
 
 	streetAddress := textinput.New()
 	streetAddress.Placeholder = "Street address"
@@ -136,17 +136,17 @@ func NewAchInputs() achInputs {
 	bankAccountNumber := textinput.New()
 	bankAccountNumber.Placeholder = "Bank account number"
 	bankAccountNumber.Width = inputWidth
-	bankAccountNumber.CharLimit = 60
+	bankAccountNumber.CharLimit = 50
 
 	bankRoutingNumber := textinput.New()
 	bankRoutingNumber.Placeholder = "Bank routing number"
 	bankRoutingNumber.Width = inputWidth
-	bankRoutingNumber.CharLimit = 10
+	bankRoutingNumber.CharLimit = 50
 
 	nickname := textinput.New()
 	nickname.Placeholder = "Nickname (optional)"
 	nickname.Width = inputWidth
-	nickname.CharLimit = 30
+	nickname.CharLimit = 50
 
 	return achInputs{
 		accountOwnerName:   accountOwnerName,
@@ -305,34 +305,56 @@ func (b BankRelationshipCreation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (b *BankRelationshipCreation) updateBankInput(msg tea.Msg, cmd *tea.Cmd) {
 	idx := b.cursor
 	if idx == 0 {
+		b.bankInputs.name.Focus()
 		b.bankInputs.name, *cmd = b.bankInputs.name.Update(msg)
+		b.bankInputs.name.Blur()
 	} else if idx == 1 {
+		b.bankInputs.bankCode.Focus()
 		b.bankInputs.bankCode, *cmd = b.bankInputs.bankCode.Update(msg)
+		b.bankInputs.bankCode.Blur()
 	} else if idx == 2 {
 		// Slider - no update needed
 	} else if idx == 3 {
+		b.bankInputs.accountNumber.Focus()
 		b.bankInputs.accountNumber, *cmd = b.bankInputs.accountNumber.Update(msg)
+		b.bankInputs.accountNumber.Blur()
 	} else if idx == 4 && b.bankInputs.bankCodeType[b.bankInputs.bankCodeTypeIdx] == "BIC" {
+		b.bankInputs.country.Focus()
 		b.bankInputs.country, *cmd = b.bankInputs.country.Update(msg)
+		b.bankInputs.country.Blur()
 	} else if idx == 5 && b.bankInputs.bankCodeType[b.bankInputs.bankCodeTypeIdx] == "BIC" {
+		b.bankInputs.stateProvince.Focus()
 		b.bankInputs.stateProvince, *cmd = b.bankInputs.stateProvince.Update(msg)
+		b.bankInputs.stateProvince.Blur()
 	} else if idx == 6 && b.bankInputs.bankCodeType[b.bankInputs.bankCodeTypeIdx] == "BIC" {
+		b.bankInputs.city.Focus()
 		b.bankInputs.city, *cmd = b.bankInputs.city.Update(msg)
+		b.bankInputs.city.Blur()
 	} else if idx == 7 && b.bankInputs.bankCodeType[b.bankInputs.bankCodeTypeIdx] == "BIC" {
+		b.bankInputs.streetAddress.Focus()
 		b.bankInputs.streetAddress, *cmd = b.bankInputs.streetAddress.Update(msg)
+		b.bankInputs.streetAddress.Blur()
 	}
 }
 
 func (b *BankRelationshipCreation) updateAchInput(msg tea.Msg, cmd *tea.Cmd) {
 	switch b.cursor {
 	case 0:
+		b.achInputs.accountOwnerName.Focus()
 		b.achInputs.accountOwnerName, *cmd = b.achInputs.accountOwnerName.Update(msg)
+		b.achInputs.accountOwnerName.Blur()
 	case 2:
+		b.achInputs.bankAccountNumber.Focus()
 		b.achInputs.bankAccountNumber, *cmd = b.achInputs.bankAccountNumber.Update(msg)
+		b.achInputs.bankAccountNumber.Blur()
 	case 3:
+		b.achInputs.bankRoutingNumber.Focus()
 		b.achInputs.bankRoutingNumber, *cmd = b.achInputs.bankRoutingNumber.Update(msg)
+		b.achInputs.bankRoutingNumber.Blur()
 	case 4:
+		b.achInputs.nickname.Focus()
 		b.achInputs.nickname, *cmd = b.achInputs.nickname.Update(msg)
+		b.achInputs.nickname.Blur()
 
 	}
 }
@@ -362,7 +384,7 @@ func (b BankRelationshipCreation) View() string {
 		content = lipgloss.JoinVertical(lipgloss.Center, content, "", successStyle.Render("✓ "+b.success))
 	}
 
-	help := helpStyle.Render("j/k/↑/↓: navigate | h/l/←/→: change option | enter: submit | q: quit")
+	help := helpStyle.Render("ctrl+j/k/↑/↓: navigate | ctrl+h/l/←/→: change option | esc: stop typing/back | s: switch bank type | enter: submit/type | q: quit")
 
 	headerHeight := lipgloss.Height(header)
 	contentHeight := lipgloss.Height(content)
@@ -512,23 +534,32 @@ func (b BankRelationshipCreation) renderAchFields() []string {
 }
 
 func (b BankRelationshipCreation) renderField(label, value string, focused bool) string {
-	styledLabel := labelStyle.Render(label + ":")
+	styledLabel := labelStyle.Render(label)
 
 	var fieldStyle lipgloss.Style
 	if focused {
-		fieldStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00FFFF")).
-			Background(lipgloss.Color("#2a2a4e")).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#00FFFF")).
-			Width(30).
-			Align(lipgloss.Center)
+		if b.typing {
+			fieldStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#00FFFF")).
+				Background(lipgloss.Color("#2a2a4e")).
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#00FFFF")).
+				Width(32).
+				Align(lipgloss.Center)
+		} else {
+			fieldStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFFFFF")).
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#666666")).
+				Width(32).
+				Align(lipgloss.Center)
+		}
 	} else {
 		fieldStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFFFF")).
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#666666")).
-			Width(30).
+			Width(32).
 			Align(lipgloss.Center)
 	}
 
