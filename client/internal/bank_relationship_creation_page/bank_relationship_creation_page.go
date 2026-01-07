@@ -260,6 +260,11 @@ func (b BankRelationshipCreationPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					b.err = err.Error()
 				} else {
 					b.success = "Bank relationship created successfully!"
+					return b, func() tea.Msg {
+						return messages.ReloadMsg{
+							Page: messages.BankRelationshipPageNumber,
+						}
+					}
 				}
 				return b, nil
 
