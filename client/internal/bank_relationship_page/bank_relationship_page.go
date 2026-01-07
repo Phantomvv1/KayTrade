@@ -67,8 +67,7 @@ type bankRelationshipItem struct {
 var (
 	titleStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#00FFFF")).
-			Bold(true).
-			Padding(0, 2)
+			Bold(true)
 
 	emptyStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#BB88FF")).
@@ -115,7 +114,7 @@ func NewBankRelationshipPage(client *http.Client, tokenStore *basemodel.TokenSto
 	l.Title = "Bank Relationships"
 	l.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
-			key.NewBinding(key.WithKeys("c", "C"), key.WithHelp("c (create)", "relationship"))
+			key.NewBinding(key.WithKeys("c", "C"), key.WithHelp("c (create)", "relationship")),
 		}
 	}
 
@@ -212,6 +211,13 @@ func (b BankRelationshipPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+		case "c", "C":
+			return b, func() tea.Msg {
+				return messages.PageSwitchMsg{
+					Page: messages.BankRelationshipCreationPageNumber,
+				}
+			}
+
 		default:
 			var cmd tea.Cmd
 			b.bankRelationships, cmd = b.bankRelationships.Update(msg)
@@ -282,14 +288,13 @@ func (b BankRelationshipPage) View() string {
 		content = lipgloss.JoinVertical(
 			lipgloss.Center,
 			title,
-			"",
+			"\n\n\n\n",
 			b.bankRelationships.View(),
 		)
 	}
 
 	finalView := lipgloss.JoinVertical(
-		lipgloss.Left,
-		"\n",
+		lipgloss.Center,
 		lipgloss.Place(b.BaseModel.Width, lipgloss.Height(content), lipgloss.Center, lipgloss.Top, content),
 		"",
 	)
