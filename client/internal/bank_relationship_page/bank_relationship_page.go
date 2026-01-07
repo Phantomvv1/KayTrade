@@ -6,9 +6,12 @@ import (
 	"sync"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
+	"github.com/Phantomvv1/KayTrade/internal/messages"
 	"github.com/Phantomvv1/KayTrade/internal/requests"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type bankRelationship struct {
@@ -42,11 +45,12 @@ type achRelationship struct {
 	UpdatedAt         string  `json:"updated_at"`
 }
 
-type BanekRelationship struct {
+type BankRelationshipPage struct {
 	BaseModel         basemodel.BaseModel
 	bankRelationships list.Model
 	loaded            bool
 	emptyBankRels     bool
+	Reloaded          bool
 }
 
 type initResult struct {
@@ -60,46 +64,75 @@ type bankRelationshipItem struct {
 	achRelationship  *achRelationship
 }
 
+var (
+	titleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#00FFFF")).
+			Bold(true).
+			Padding(0, 2)
+
+	emptyStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#BB88FF")).
+			Italic(true).
+			Padding(2, 0)
+
+	helpStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#666666")).
+			Padding(1, 0)
+)
+
 func (b bankRelationshipItem) Title() string {
 	if b.bankRelationship != nil {
-		return b.bankRelationship.AccountNumber + " - " + "bank"
+		return b.bankRelationship.AccountNumber + " - Bank"
 	} else if b.achRelationship != nil {
-		return b.bankRelationship.AccountNumber + " - " + "ach"
+		return b.achRelationship.BankAccountNumber + " - ACH"
 	} else {
-		return "Error no account number found"
+		return "Error: No account number found"
 	}
 }
+
 func (b bankRelationshipItem) Description() string {
 	if b.bankRelationship != nil {
 		return b.bankRelationship.BankCodeType + ", " + b.bankRelationship.Status
 	} else if b.achRelationship != nil {
 		return b.achRelationship.BankAccountType + ", " + b.achRelationship.Status
 	} else {
-		return "Error no details found"
+		return "Error: No details found"
 	}
 }
+
 func (b bankRelationshipItem) FilterValue() string {
 	if b.bankRelationship != nil {
 		return b.bankRelationship.AccountNumber
 	} else if b.achRelationship != nil {
-		return b.bankRelationship.AccountNumber
+		return b.achRelationship.BankAccountNumber
 	} else {
 		return ""
 	}
 }
 
-func NewBankRelationshipPage(client *http.Client, tokenStore *basemodel.TokenStore) BanekRelationship {
+func NewBankRelationshipPage(client *http.Client, tokenStore *basemodel.TokenStore) BankRelationshipPage {
 	l := list.New(nil, list.NewDefaultDelegate(), 0, 0)
+	l.Title = "Bank Relationships"
+	l.AdditionalFullHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			key.NewBinding(key.WithKeys("c", "C"), key.WithHelp("c (create)", "relationship"))
+		}
+	}
 
-	return BanekRelationship{
+	return BankRelationshipPage{
 		BaseModel:         basemodel.BaseModel{Client: client, TokenStore: tokenStore},
 		bankRelationships: l,
 		loaded:            false,
 		emptyBankRels:     false,
+		Reloaded:          true,
 	}
 }
 
-func (b BanekRelationship) Init() tea.Cmd {
+func (b BankRelationshipPage) Init() tea.Cmd {
+	return b.fetchBankRelationships
+}
+
+func (b BankRelationshipPage) fetchBankRelationships() tea.Msg {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
@@ -109,7 +142,13 @@ func (b BanekRelationship) Init() tea.Cmd {
 
 	go func() {
 		defer wg.Done()
-		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/funding/alpaca", nil, b.BaseModel.Client, b.BaseModel.TokenStore)
+		body, err := requests.MakeRequest(
+			http.MethodGet,
+			requests.BaseURL+"/funding/alpaca",
+			nil,
+			b.BaseModel.Client,
+			b.BaseModel.TokenStore,
+		)
 		if err != nil {
 			err1 = err
 			return
@@ -120,7 +159,13 @@ func (b BanekRelationship) Init() tea.Cmd {
 
 	go func() {
 		defer wg.Done()
-		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"funding/ach", nil, b.BaseModel.Client, b.BaseModel.TokenStore)
+		body, err := requests.MakeRequest(
+			http.MethodGet,
+			requests.BaseURL+"/funding/ach",
+			nil,
+			b.BaseModel.Client,
+			b.BaseModel.TokenStore,
+		)
 		if err != nil {
 			err2 = err
 			return
@@ -130,34 +175,70 @@ func (b BanekRelationship) Init() tea.Cmd {
 
 	wg.Wait()
 
-	if err1 != nil || err2 != nil {
-		if err1 != nil {
-			return func() tea.Msg {
-				return initResult{err: err1}
-			}
-		} else {
-			return func() tea.Msg {
-				return initResult{err: err2}
-			}
-		}
+	if err1 != nil {
+		return initResult{err: err1}
 	}
 
-	return func() tea.Msg {
-		return initResult{bankRelationships: bankRelationships, achRelationships: achRelationships, err: nil}
+	if err2 != nil {
+		return initResult{err: err2}
+	}
+
+	return initResult{
+		bankRelationships: bankRelationships,
+		achRelationships:  achRelationships,
+		err:               nil,
 	}
 }
 
-func (b BanekRelationship) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (b BankRelationshipPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-	case initResult:
-		b.loaded = true
-		for i, bankRel := range msg.bankRelationships {
-			b.bankRelationships.InsertItem(i, bankRelationshipItem{bankRelationship: &bankRel})
+		switch msg.String() {
+		case "q", "ctrl+c":
+			return b, func() tea.Msg {
+				return messages.QuitMsg{}
+			}
+
+		case "esc":
+			if b.bankRelationships.FilterValue() != "" {
+				var cmd tea.Cmd
+				b.bankRelationships, cmd = b.bankRelationships.Update(msg)
+				return b, cmd
+			}
+
+			return b, func() tea.Msg {
+				return messages.SmartPageSwitchMsg{
+					Page: messages.WatchlistPageNumber,
+				}
+			}
+
+		default:
+			var cmd tea.Cmd
+			b.bankRelationships, cmd = b.bankRelationships.Update(msg)
+			return b, cmd
 		}
 
-		for i, bankRel := range msg.achRelationships {
-			b.bankRelationships.InsertItem(i, bankRelationshipItem{achRelationship: &bankRel})
+	case initResult:
+		if msg.err != nil {
+			return b, func() tea.Msg {
+				return messages.PageSwitchMsg{
+					Page: messages.ErrorPageNumber,
+					Err:  msg.err,
+				}
+			}
+		}
+
+		b.loaded = true
+
+		idx := 0
+		for _, rel := range msg.bankRelationships {
+			b.bankRelationships.InsertItem(idx, bankRelationshipItem{bankRelationship: &rel})
+			idx++
+		}
+
+		for _, rel := range msg.achRelationships {
+			b.bankRelationships.InsertItem(idx, bankRelationshipItem{achRelationship: &rel})
+			idx++
 		}
 
 		b.bankRelationships.SetSize(b.BaseModel.Width/2-4, b.BaseModel.Height-8)
@@ -165,11 +246,66 @@ func (b BanekRelationship) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(b.bankRelationships.Items()) == 0 {
 			b.emptyBankRels = true
 		}
+
+		return b, nil
 	}
 
-	return b, nil
+	var cmd tea.Cmd
+	b.bankRelationships, cmd = b.bankRelationships.Update(msg)
+	return b, cmd
 }
 
-func (b BanekRelationship) View() string {
-	return ""
+func (b BankRelationshipPage) View() string {
+	if !b.loaded {
+		return lipgloss.Place(
+			b.BaseModel.Width,
+			b.BaseModel.Height,
+			lipgloss.Center,
+			lipgloss.Center,
+			"Loading bank relationships...",
+		)
+	}
+
+	title := titleStyle.Render("🏦 Bank Relationships")
+
+	var content string
+	if b.emptyBankRels {
+		emptyMessage := emptyStyle.Render("No bank relationships found.\nAdd a bank account to start trading.")
+		content = lipgloss.JoinVertical(
+			lipgloss.Center,
+			title,
+			"",
+			"",
+			emptyMessage,
+		)
+	} else {
+		content = lipgloss.JoinVertical(
+			lipgloss.Center,
+			title,
+			"",
+			b.bankRelationships.View(),
+		)
+	}
+
+	finalView := lipgloss.JoinVertical(
+		lipgloss.Left,
+		"\n",
+		lipgloss.Place(b.BaseModel.Width, lipgloss.Height(content), lipgloss.Center, lipgloss.Top, content),
+		"",
+	)
+
+	return lipgloss.Place(
+		b.BaseModel.Width,
+		b.BaseModel.Height,
+		lipgloss.Center,
+		lipgloss.Top,
+		finalView,
+	)
+}
+
+func (b *BankRelationshipPage) Reload() {
+	b.bankRelationships.SetItems([]list.Item{})
+	b.loaded = false
+	b.emptyBankRels = false
+	b.Reloaded = true
 }

@@ -246,8 +246,8 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "b", "B":
 				return w, func() tea.Msg {
-					return messages.PageSwitchMsg{
-						Page: messages.BankRelationshipCreationPageNumber,
+					return messages.SmartPageSwitchMsg{
+						Page: messages.BankRelationshipPageNumber,
 					}
 				}
 
