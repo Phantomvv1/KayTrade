@@ -17,11 +17,12 @@ import (
 )
 
 type SearchPage struct {
-	BaseModel   basemodel.BaseModel
-	searchField textinput.Model
-	suggestions list.Model
-	name        bool
-	ticker      time.Ticker
+	BaseModel    basemodel.BaseModel
+	searchField  textinput.Model
+	suggestions  list.Model
+	name         bool
+	ticker       *time.Ticker
+	searchUpdate bool
 }
 
 type Asset struct {
@@ -67,16 +68,21 @@ func NewSearchPage(client *http.Client, tokenStore *basemodel.TokenStore) Search
 	sugg.KeyMap = list.KeyMap{}
 
 	return SearchPage{
-		BaseModel:   basemodel.BaseModel{Client: client, TokenStore: tokenStore},
-		searchField: search,
-		name:        false,
-		suggestions: sugg,
-		ticker:      *time.NewTicker(time.Millisecond * 300),
+		BaseModel:    basemodel.BaseModel{Client: client, TokenStore: tokenStore},
+		searchField:  search,
+		name:         false,
+		suggestions:  sugg,
+		ticker:       time.NewTicker(time.Millisecond * 300),
+		searchUpdate: false,
 	}
 }
 
+func (s SearchPage) tick() tea.Msg {
+	return <-s.ticker.C
+}
+
 func (s SearchPage) Init() tea.Cmd {
-	return textinput.Blink
+	return tea.Batch(textinput.Blink, s.tick)
 }
 
 func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -85,6 +91,13 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return s, func() tea.Msg {
 			return msg
 		}
+	case time.Time:
+		if s.searchUpdate && s.searchField.Value() != "" {
+			s.searchUpdate = false
+			return s, tea.Batch(s.SearchCmd(), s.tick)
+		}
+
+		return s, s.tick
 	case itemMsg:
 		s.suggestions.SetItems(nil)
 		s.suggestions.SetItems(msg.items)
@@ -137,8 +150,8 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			newField, cmd := s.searchField.Update(msg)
 			s.searchField = newField
 
-			if newField.Value() != old && newField.Value() != "" {
-				return s, tea.Batch(s.SearchCmd(), cmd)
+			if newField.Value() != old {
+				s.searchUpdate = true
 			}
 
 			return s, cmd
