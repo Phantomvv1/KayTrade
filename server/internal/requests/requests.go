@@ -95,10 +95,6 @@ func SendRequest[T any](method, url string, body io.Reader, errs map[int]string,
 		}
 	}
 
-	if res.StatusCode/100 != 2 {
-		return resJson, errors.New("Unkown error")
-	}
-
 	return resJson, nil
 }
 

@@ -295,7 +295,7 @@ func NewTransfer(c *gin.Context) {
 
 	body, err := SendRequest[any](http.MethodPost, BaseURL+Accounts+id+"/transfers", c.Request.Body, nil, headers)
 	if err != nil {
-		RequestExit(c, body, err, "unable to get the transfers for this account")
+		RequestExit(c, body, err, "unable to create the transfer")
 		return
 	}
 
