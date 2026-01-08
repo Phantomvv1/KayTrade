@@ -3,6 +3,7 @@ package bankrelationshippage
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"sync"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
@@ -73,10 +74,6 @@ var (
 			Foreground(lipgloss.Color("#BB88FF")).
 			Italic(true).
 			Padding(2, 0)
-
-	helpStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#666666")).
-			Padding(1, 0)
 )
 
 func (b bankRelationshipItem) Title() string {
@@ -215,6 +212,33 @@ func (b BankRelationshipPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return b, func() tea.Msg {
 				return messages.PageSwitchMsg{
 					Page: messages.BankRelationshipCreationPageNumber,
+				}
+			}
+
+		case "f", "F":
+			bank := b.bankRelationships.SelectedItem().(bankRelationshipItem)
+			relType := strings.Split(bank.Title(), " - ")[1]
+			switch relType {
+			case "ach":
+				return b, func() tea.Msg {
+					return messages.PageSwitchMsg{
+						Page: messages.TransfersPageNumber,
+						FundingInformation: &messages.FundingInformation{
+							TransferType:   relType,
+							RelationshipId: bank.achRelationship.ID,
+						},
+					}
+				}
+
+			case "bank":
+				return b, func() tea.Msg {
+					return messages.PageSwitchMsg{
+						Page: messages.TransfersPageNumber,
+						FundingInformation: &messages.FundingInformation{
+							TransferType: relType,
+							BankId:       bank.bankRelationship.ID,
+						},
+					}
 				}
 			}
 

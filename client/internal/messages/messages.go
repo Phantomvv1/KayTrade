@@ -15,17 +15,19 @@ const (
 	PositionPageNumber
 	BankRelationshipPageNumber
 	BankRelationshipCreationPageNumber
+	TransfersPageNumber
 	ErrorPageNumber
 )
 
 type PageSwitchMsg struct {
-	Page        int
-	Err         error
-	Company     *CompanyInfo
-	Symbol      string
-	MaxQuantity float64
-	Order       *Order
-	Position    *Position
+	Page               int
+	Err                error
+	Company            *CompanyInfo
+	Symbol             string
+	MaxQuantity        float64
+	Order              *Order
+	Position           *Position
+	FundingInformation *FundingInformation
 }
 
 type LoginSuccessMsg struct {
@@ -108,4 +110,12 @@ type Position struct {
 	UnrealizedIntradayPLPC string `json:"unrealized_intraday_plpc"`
 	UnrealizedPL           string `json:"unrealized_pl"`
 	UnrealizedPLPC         string `json:"unrealized_plpc"`
+}
+
+type FundingInformation struct {
+	TransferType string
+
+	// Only 1 of RelationshipId and BankId will be fileld
+	RelationshipId string
+	BankId         string
 }
