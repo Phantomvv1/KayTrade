@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
 	"github.com/Phantomvv1/KayTrade/internal/messages"
@@ -20,6 +21,7 @@ type SearchPage struct {
 	searchField textinput.Model
 	suggestions list.Model
 	name        bool
+	ticker      time.Ticker
 }
 
 type Asset struct {
@@ -69,6 +71,7 @@ func NewSearchPage(client *http.Client, tokenStore *basemodel.TokenStore) Search
 		searchField: search,
 		name:        false,
 		suggestions: sugg,
+		ticker:      *time.NewTicker(time.Millisecond * 300),
 	}
 }
 

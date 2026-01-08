@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -660,8 +659,6 @@ func (b *BankRelationshipCreationPage) submitBankRelationship(data map[string]an
 		return fmt.Errorf("failed to encode request: %w", err)
 	}
 
-	log.Println(string(jsonData))
-
 	_, err = requests.MakeRequest(http.MethodPost, requests.BaseURL+"/funding", bytes.NewReader(jsonData), b.BaseModel.Client, b.BaseModel.TokenStore)
 	if err != nil {
 		return fmt.Errorf("failed to create bank relationship: %w", err)
@@ -690,8 +687,8 @@ func (b *BankRelationshipCreationPage) submitAchRelationship(data map[string]any
 		return errors.New("bank routing number is required")
 	}
 
-	if len(bankRoutingNumber) != 9 {
-		return errors.New("Bank routing number must be 9 digits")
+	if err := validateRoutingNumber(bankRoutingNumber); err != nil {
+		return err
 	}
 
 	data["bank_routing_number"] = bankRoutingNumber
@@ -707,11 +704,29 @@ func (b *BankRelationshipCreationPage) submitAchRelationship(data map[string]any
 		return fmt.Errorf("failed to encode request: %w", err)
 	}
 
-	log.Println(string(jsonData))
-
 	_, err = requests.MakeRequest(http.MethodPost, requests.BaseURL+"/funding/ach", bytes.NewReader(jsonData), b.BaseModel.Client, b.BaseModel.TokenStore)
 	if err != nil {
 		return fmt.Errorf("failed to create ACH relationship: %w", err)
+	}
+
+	return nil
+}
+
+func validateRoutingNumber(routingNumber string) error {
+	if len(routingNumber) != 9 {
+		return errors.New("Bank routing number must be 9 digits")
+	}
+
+	sum := make([]int, 3)
+	for i, digit := range routingNumber {
+		sum[i%3] += int(digit - '0')
+	}
+
+	result := 3*sum[0] + 7*sum[1] + sum[2]
+	result %= 10
+
+	if result != 0 {
+		return errors.New("Error the bank routing number validity check failed")
 	}
 
 	return nil
