@@ -141,6 +141,11 @@ func (t TransfersPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					t.err = err.Error()
 				} else {
 					t.success = "Transfer submitted successfully!"
+					return t, func() tea.Msg {
+						return messages.ReloadMsg{
+							Page: messages.ProfilePageNumber,
+						}
+					}
 				}
 				return t, nil
 			}
