@@ -161,6 +161,7 @@ func (t TransfersPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				t.success = ""
 				t.err = ""
 				t.typing = true
+				t.amount.Focus()
 				return t, func() tea.Msg {
 					return messages.SmartPageSwitchMsg{
 						Page: messages.BankRelationshipPageNumber,
