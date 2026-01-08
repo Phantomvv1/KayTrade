@@ -480,6 +480,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case profileDataMsg:
 		p.loading = false
+		p.Reloaded = false
 		if msg.err != nil {
 			return p, func() tea.Msg {
 				return messages.PageSwitchMsg{
@@ -688,6 +689,8 @@ func (p ProfilePage) CancelOrder() error {
 func (p *ProfilePage) Reload() {
 	p.alpacaAccount = AlpacaAccount{}
 	p.tradingDetails = TradingDetails{}
+	p.orders.SetItems([]list.Item{})
+	p.positions.SetItems([]list.Item{})
 	p.loading = true
 	p.Reloaded = true
 }
