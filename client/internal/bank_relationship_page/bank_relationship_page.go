@@ -217,7 +217,7 @@ func (b BankRelationshipPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "f", "F":
 			bank := b.bankRelationships.SelectedItem().(bankRelationshipItem)
-			relType := strings.Split(bank.Title(), " - ")[1]
+			relType := strings.ToLower(strings.Split(bank.Title(), " - ")[1])
 			switch relType {
 			case "ach":
 				return b, func() tea.Msg {
