@@ -69,7 +69,7 @@ func SendRequest[T any](method, url string, body io.Reader, errs map[int]string,
 		}
 
 		if errMsg := errs[res.StatusCode]; errMsg != "" {
-			log.Println(errMsg)
+			return zero, errors.New(errMsg)
 		}
 
 		return zero, errors.New(errMap["message"].(string))
