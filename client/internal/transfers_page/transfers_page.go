@@ -160,6 +160,7 @@ func (t TransfersPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "esc":
 				t.success = ""
 				t.err = ""
+				t.typing = true
 				return t, func() tea.Msg {
 					return messages.SmartPageSwitchMsg{
 						Page: messages.BankRelationshipPageNumber,
