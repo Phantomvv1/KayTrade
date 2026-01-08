@@ -43,7 +43,7 @@ type achInputs struct {
 	nickname           textinput.Model // not required
 }
 
-type BankRelationshipCreation struct {
+type BankRelationshipCreationPage struct {
 	BaseModel            basemodel.BaseModel
 	bankRelationshipType string
 	bankInputs           bankInputs
@@ -158,8 +158,8 @@ func NewAchInputs() achInputs {
 	}
 }
 
-func NewBankRelationship(client *http.Client, tokenStore *basemodel.TokenStore) BankRelationshipCreation {
-	return BankRelationshipCreation{
+func NewBankRelationship(client *http.Client, tokenStore *basemodel.TokenStore) BankRelationshipCreationPage {
+	return BankRelationshipCreationPage{
 		BaseModel:            basemodel.BaseModel{Client: client, TokenStore: tokenStore},
 		bankRelationshipType: normalBankType,
 		bankInputs:           NewBankInputs(),
@@ -169,11 +169,11 @@ func NewBankRelationship(client *http.Client, tokenStore *basemodel.TokenStore) 
 	}
 }
 
-func (b BankRelationshipCreation) Init() tea.Cmd {
+func (b BankRelationshipCreationPage) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (b *BankRelationshipCreation) calculateTotalFields() int {
+func (b *BankRelationshipCreationPage) calculateTotalFields() int {
 	if b.bankRelationshipType == normalBankType {
 		count := 4 // name, bankCode, bankCodeType, accountNumber
 		if b.bankInputs.bankCodeType[b.bankInputs.bankCodeTypeIdx] == "BIC" {
@@ -185,7 +185,7 @@ func (b *BankRelationshipCreation) calculateTotalFields() int {
 	}
 }
 
-func (b BankRelationshipCreation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (b BankRelationshipCreationPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	b.totalFields = b.calculateTotalFields()
@@ -259,6 +259,11 @@ func (b BankRelationshipCreation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					b.err = err.Error()
 				} else {
 					b.success = "Bank relationship created successfully!"
+					return b, func() tea.Msg {
+						return messages.ReloadMsg{
+							Page: messages.BankRelationshipPageNumber,
+						}
+					}
 				}
 				return b, nil
 
@@ -310,7 +315,7 @@ func (b BankRelationshipCreation) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return b, cmd
 }
 
-func (b *BankRelationshipCreation) updateBankInput(msg tea.Msg, cmd *tea.Cmd) {
+func (b *BankRelationshipCreationPage) updateBankInput(msg tea.Msg, cmd *tea.Cmd) {
 	idx := b.cursor
 	if idx == 0 {
 		b.bankInputs.name.Focus()
@@ -345,7 +350,7 @@ func (b *BankRelationshipCreation) updateBankInput(msg tea.Msg, cmd *tea.Cmd) {
 	}
 }
 
-func (b *BankRelationshipCreation) updateAchInput(msg tea.Msg, cmd *tea.Cmd) {
+func (b *BankRelationshipCreationPage) updateAchInput(msg tea.Msg, cmd *tea.Cmd) {
 	switch b.cursor {
 	case 0:
 		b.achInputs.accountOwnerName.Focus()
@@ -367,7 +372,7 @@ func (b *BankRelationshipCreation) updateAchInput(msg tea.Msg, cmd *tea.Cmd) {
 	}
 }
 
-func (b BankRelationshipCreation) View() string {
+func (b BankRelationshipCreationPage) View() string {
 	var header string
 	if b.bankRelationshipType == normalBankType {
 		header = titleStyle.Render("🏦 Create Bank Relationship")
@@ -419,7 +424,7 @@ func (b BankRelationshipCreation) View() string {
 	return finalView
 }
 
-func (b BankRelationshipCreation) renderBankFields() []string {
+func (b BankRelationshipCreationPage) renderBankFields() []string {
 	var fields []string
 	idx := 0
 
@@ -495,7 +500,7 @@ func (b BankRelationshipCreation) renderBankFields() []string {
 	return fields
 }
 
-func (b BankRelationshipCreation) renderAchFields() []string {
+func (b BankRelationshipCreationPage) renderAchFields() []string {
 	var fields []string
 	idx := 0
 
@@ -541,7 +546,7 @@ func (b BankRelationshipCreation) renderAchFields() []string {
 	return fields
 }
 
-func (b BankRelationshipCreation) renderField(label, value string, focused bool) string {
+func (b BankRelationshipCreationPage) renderField(label, value string, focused bool) string {
 	styledLabel := labelStyle.Render(label)
 
 	var fieldStyle lipgloss.Style
@@ -576,7 +581,7 @@ func (b BankRelationshipCreation) renderField(label, value string, focused bool)
 	return lipgloss.JoinVertical(lipgloss.Center, styledLabel, styledValue)
 }
 
-func (b BankRelationshipCreation) renderSlider(options []string, selectedIdx int, focused bool) string {
+func (b BankRelationshipCreationPage) renderSlider(options []string, selectedIdx int, focused bool) string {
 	selected := strings.ToUpper(options[selectedIdx])
 
 	if focused {
@@ -591,7 +596,7 @@ func (b BankRelationshipCreation) renderSlider(options []string, selectedIdx int
 		Render("◀ " + selected + " ▶")
 }
 
-func (b *BankRelationshipCreation) submitRelationship() error {
+func (b *BankRelationshipCreationPage) submitRelationship() error {
 	data := make(map[string]any)
 
 	if b.bankRelationshipType == normalBankType {
@@ -601,7 +606,7 @@ func (b *BankRelationshipCreation) submitRelationship() error {
 	}
 }
 
-func (b *BankRelationshipCreation) submitBankRelationship(data map[string]any) error {
+func (b *BankRelationshipCreationPage) submitBankRelationship(data map[string]any) error {
 	name := strings.TrimSpace(b.bankInputs.name.Value())
 	if name == "" {
 		return errors.New("name is required")
@@ -662,7 +667,7 @@ func (b *BankRelationshipCreation) submitBankRelationship(data map[string]any) e
 	return nil
 }
 
-func (b *BankRelationshipCreation) submitAchRelationship(data map[string]any) error {
+func (b *BankRelationshipCreationPage) submitAchRelationship(data map[string]any) error {
 	accountOwnerName := strings.TrimSpace(b.achInputs.accountOwnerName.Value())
 	if accountOwnerName == "" {
 		return errors.New("account owner name is required")
@@ -681,6 +686,11 @@ func (b *BankRelationshipCreation) submitAchRelationship(data map[string]any) er
 	if bankRoutingNumber == "" {
 		return errors.New("bank routing number is required")
 	}
+
+	if err := validateRoutingNumber(bankRoutingNumber); err != nil {
+		return err
+	}
+
 	data["bank_routing_number"] = bankRoutingNumber
 
 	// Nickname is optional
@@ -697,6 +707,26 @@ func (b *BankRelationshipCreation) submitAchRelationship(data map[string]any) er
 	_, err = requests.MakeRequest(http.MethodPost, requests.BaseURL+"/funding/ach", bytes.NewReader(jsonData), b.BaseModel.Client, b.BaseModel.TokenStore)
 	if err != nil {
 		return fmt.Errorf("failed to create ACH relationship: %w", err)
+	}
+
+	return nil
+}
+
+func validateRoutingNumber(routingNumber string) error {
+	if len(routingNumber) != 9 {
+		return errors.New("Bank routing number must be 9 digits")
+	}
+
+	sum := make([]int, 3)
+	for i, digit := range routingNumber {
+		sum[i%3] += int(digit - '0')
+	}
+
+	result := 3*sum[0] + 7*sum[1] + sum[2]
+	result %= 10
+
+	if result != 0 {
+		return errors.New("Error the bank routing number validity check failed")
 	}
 
 	return nil

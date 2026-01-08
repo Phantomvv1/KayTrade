@@ -69,6 +69,7 @@ func NewWatchlistPage(client *http.Client, tokenStore *basemodel.TokenStore) Wat
 			key.NewBinding(key.WithKeys("r", "R"), key.WithHelp("r", "remove company")),
 			key.NewBinding(key.WithKeys("d", "D"), key.WithHelp("d", "remove all companies")),
 			key.NewBinding(key.WithKeys("p", "P"), key.WithHelp("p", "profile page")),
+			key.NewBinding(key.WithKeys("b", "B"), key.WithHelp("b", "bank relationship page")),
 		}
 	}
 
@@ -246,8 +247,8 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "b", "B":
 				return w, func() tea.Msg {
-					return messages.PageSwitchMsg{
-						Page: messages.BankRelationshipCreationPageNumber,
+					return messages.SmartPageSwitchMsg{
+						Page: messages.BankRelationshipPageNumber,
 					}
 				}
 
