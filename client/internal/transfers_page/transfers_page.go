@@ -64,7 +64,7 @@ func NewTransfersPage(client *http.Client, tokenStore *basemodel.TokenStore) Tra
 		direction:    []string{"INCOMING", "OUTGOING"},
 		directionIdx: 0,
 		cursor:       0,
-		typing:       false,
+		typing:       true,
 	}
 }
 
@@ -126,6 +126,14 @@ func (t TransfersPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return t, nil
 				}
 
+			case "tab":
+				t.cursor++
+				if t.cursor > 1 {
+					t.cursor = 0
+				}
+
+				return t, nil
+
 			case "enter":
 				t.err = ""
 				t.success = ""
@@ -150,6 +158,8 @@ func (t TransfersPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 			case "esc":
+				t.success = ""
+				t.err = ""
 				return t, func() tea.Msg {
 					return messages.SmartPageSwitchMsg{
 						Page: messages.BankRelationshipPageNumber,
@@ -185,6 +195,8 @@ func (t TransfersPage) View() string {
 		t.amount.Blur()
 	}
 
+	fields = append(fields, t.renderField("Transfer type", t.FundingInformation.TransferType, false))
+
 	fields = append(fields, t.renderField("Amount", t.amount.View(), t.amount.Focused()))
 
 	fields = append(fields, t.renderField("Direction", t.renderSlider(t.direction, t.directionIdx, t.cursor == 1 && t.typing), t.cursor == 1 && t.typing))
@@ -213,7 +225,6 @@ func (t TransfersPage) View() string {
 	centeredContent := lipgloss.Place(t.BaseModel.Width, contentHeight, lipgloss.Center, lipgloss.Top, content)
 	centeredHelp := lipgloss.Place(t.BaseModel.Width, helpHeight, lipgloss.Center, lipgloss.Top, help)
 
-	// Build final view
 	finalView := lipgloss.JoinVertical(
 		lipgloss.Center,
 		centeredHeader,
@@ -237,7 +248,7 @@ func (t TransfersPage) renderField(label, value string, focused bool) string {
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#00FFFF")).
 			Padding(0, 1).
-			Width(30).
+			Width(32).
 			Align(lipgloss.Center)
 	} else {
 		fieldStyle = lipgloss.NewStyle().
@@ -245,7 +256,7 @@ func (t TransfersPage) renderField(label, value string, focused bool) string {
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#666666")).
 			Padding(0, 1).
-			Width(30).
+			Width(32).
 			Align(lipgloss.Center)
 	}
 
@@ -262,11 +273,13 @@ func (t TransfersPage) renderSlider(options []string, selectedIdx int, focused b
 		return lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#00FFFF")).
 			Bold(true).
+			Align(lipgloss.Center).
 			Render("◀ " + selected + " ▶")
 	}
 
 	return lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#FFFFFF")).
+		Align(lipgloss.Center).
 		Render("◀ " + selected + " ▶")
 }
 

@@ -215,7 +215,7 @@ func (b BankRelationshipPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "f", "F":
+		case "t", "T":
 			bank := b.bankRelationships.SelectedItem().(bankRelationshipItem)
 			relType := strings.ToLower(strings.Split(bank.Title(), " - ")[1])
 			switch relType {
@@ -235,7 +235,7 @@ func (b BankRelationshipPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return messages.PageSwitchMsg{
 						Page: messages.TransfersPageNumber,
 						FundingInformation: &messages.FundingInformation{
-							TransferType: relType,
+							TransferType: "wire",
 							BankId:       bank.bankRelationship.ID,
 						},
 					}
