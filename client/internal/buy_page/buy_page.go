@@ -252,6 +252,8 @@ func (b BuyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "esc":
+			b.err = ""
+			b.success = ""
 			return b, func() tea.Msg {
 				return messages.PageSwitchMsg{
 					Page: messages.CompanyPageNumber,
@@ -259,6 +261,8 @@ func (b BuyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "w", "W":
+			b.err = ""
+			b.success = ""
 			return b, func() tea.Msg {
 				return messages.SmartPageSwitchMsg{
 					Page: messages.WatchlistPageNumber,
@@ -266,6 +270,8 @@ func (b BuyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "i", "I":
+			b.err = ""
+			b.success = ""
 			return b, func() tea.Msg {
 				return messages.PageSwitchMsg{
 					Page: messages.TradingInfoPageNumber,

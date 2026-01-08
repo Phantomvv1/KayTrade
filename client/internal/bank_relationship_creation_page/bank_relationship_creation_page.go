@@ -283,6 +283,9 @@ func (b BankRelationshipCreationPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 			case "esc":
+				b.err = ""
+				b.success = ""
+				b.typing = true
 				return b, func() tea.Msg {
 					return messages.SmartPageSwitchMsg{
 						Page: messages.BankRelationshipPageNumber,

@@ -166,6 +166,8 @@ func (s SellPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "esc":
+			s.err = ""
+			s.success = ""
 			return s, func() tea.Msg {
 				return messages.SmartPageSwitchMsg{
 					Page: messages.ProfilePageNumber,
@@ -173,6 +175,8 @@ func (s SellPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "w", "W":
+			s.err = ""
+			s.success = ""
 			return s, func() tea.Msg {
 				return messages.SmartPageSwitchMsg{
 					Page: messages.WatchlistPageNumber,
@@ -180,6 +184,8 @@ func (s SellPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "i", "I":
+			s.err = ""
+			s.success = ""
 			return s, func() tea.Msg {
 				return messages.PageSwitchMsg{
 					Page: messages.TradingInfoPageNumber,

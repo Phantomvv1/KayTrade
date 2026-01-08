@@ -495,6 +495,9 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return s, nil
 
 			case "esc":
+				s.err = ""
+				s.success = ""
+				s.typing = true
 				return s, func() tea.Msg {
 					return messages.PageSwitchMsg{
 						Page: messages.LoginPageNumber,
