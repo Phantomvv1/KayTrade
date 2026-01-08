@@ -435,7 +435,7 @@ func (m *Model) Reloaded(page int) bool {
 	case messages.BankRelationshipPageNumber:
 		reloaded := m.bankRelationshipPage.Reloaded
 		if reloaded {
-			m.profilePage.Reloaded = false
+			m.bankRelationshipPage.Reloaded = false
 		}
 
 		return reloaded

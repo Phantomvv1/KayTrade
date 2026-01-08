@@ -235,7 +235,6 @@ func (b BankRelationshipPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		b.loaded = true
-		b.Reloaded = false
 
 		idx := 0
 		for _, rel := range msg.bankRelationships {
