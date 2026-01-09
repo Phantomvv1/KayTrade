@@ -159,6 +159,7 @@ func (l LoginPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.Submit):
 				l.typing = !l.typing
 			case key.Matches(msg, keys.SignUp):
+				l.typing = true
 				return l, func() tea.Msg {
 					return messages.PageSwitchMsg{
 						Page: messages.SignUpPageNumber,
