@@ -328,7 +328,6 @@ func newDocumentInputs() DocumentInputs {
 	documentContent := textinput.New()
 	documentContent.Placeholder = "Content (base64)"
 	documentContent.Width = inputWidth
-	documentContent.CharLimit = 80
 
 	mimeType := textinput.New()
 	mimeType.Placeholder = "MIME type (e.g. image/jpeg)"
@@ -479,7 +478,19 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "esc":
 				s.typing = false
 				return s, nil
+
+			default:
+				input := s.currentInput()
+				if input != nil {
+					var updatedInput textinput.Model
+					input.Focus()
+					updatedInput, cmd = input.Update(msg)
+					input.Blur()
+					s.setCurrentInput(updatedInput)
+				}
 			}
+
+			return s, cmd
 		}
 	} else {
 		switch msg := msg.(type) {
@@ -505,15 +516,6 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-	}
-
-	input := s.currentInput()
-	if input != nil {
-		var updatedInput textinput.Model
-		input.Focus()
-		updatedInput, cmd = input.Update(msg)
-		input.Blur()
-		s.setCurrentInput(updatedInput)
 	}
 
 	return s, cmd
