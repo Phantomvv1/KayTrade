@@ -328,7 +328,6 @@ func newDocumentInputs() DocumentInputs {
 	documentContent := textinput.New()
 	documentContent.Placeholder = "Content (base64)"
 	documentContent.Width = inputWidth
-	documentContent.CharLimit = 80
 
 	mimeType := textinput.New()
 	mimeType.Placeholder = "MIME type (e.g. image/jpeg)"
