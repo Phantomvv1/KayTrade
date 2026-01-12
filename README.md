@@ -25,7 +25,7 @@ KayTrade is a modern trading platform designed to provide efficient and reliable
 - **Client-Server Architecture**: Separated concerns with dedicated client and server components
 - **High Performance**: Built with Go for optimal speed and efficiency
 - **Scalable Design**: Modular architecture supporting future enhancements
-- **Command-Line Interface**: Easy-to-use TUI for trading operations
+- **Terminal User Interface**: Easy-to-use TUI for trading operations
 - **Cross-Platform**: Works on Linux, macOS, and *maybe* Windows
 
 ## 🏗️ Architecture
