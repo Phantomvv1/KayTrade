@@ -185,6 +185,7 @@ cd KayTrade
 go mod tidy
 ```
 4. Database and cache:
+
 Install Postgres version 17/18 and Redis/Valkey version 8
 
 ### Running in Development Mode
