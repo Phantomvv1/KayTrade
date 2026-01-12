@@ -70,7 +70,7 @@ cd KayTrade
 cd client
 
 docker build -t kaytrade ./client
-docker run -it --rm kaytrade-client
+docker run -it --rm kaytrade
 ```
 
 ### Method 3: Build from Source

@@ -1,6 +1,6 @@
 FROM golang:1.25-latest
 
-WORKDIR /kaytrade-client
+WORKDIR /kaytrade
 
 COPY go.mod go.sum ./
 RUN go mod tidy
