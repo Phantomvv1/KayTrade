@@ -719,9 +719,9 @@ func (c CompanyPage) View() string {
 	// Help text
 	help := ""
 	if c.tabs[c.activeTab] == tabChart {
-		help = "[1-5] timeframe  [Ctrl+←/→] pan left/right  [Ctrl+↑/↓] pan up/down  [+/-] zoom  [r] refresh  [←/→] tabs  [a] add company to watchlist  [b] buy  [esc] back  [q] quit"
+		help = "[1-5] timeframe  [r] refresh  [h/l/←/→] tabs  [a] add company to watchlist  [b] buy  [esc] back  [q] quit"
 	} else if c.tabs[c.activeTab] == tabLiveUpdate {
-		help = "[r] reconnect  [←/→] tabs  [a] add company to watchlist  [b] buy  [esc] back  [q] quit"
+		help = "[r] reconnect  [h/l/←/→] tabs  [a] add company to watchlist  [b] buy  [esc] back  [q] quit"
 	} else {
 		help = "← → / h l: switch tabs • a: add company to watchlist • b: buy • esc: back • q: quit"
 	}
