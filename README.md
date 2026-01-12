@@ -31,8 +31,9 @@ KayTrade is a modern trading platform designed to provide efficient and reliable
 - **Terminal User Interface**: Easy-to-use TUI for trading operations
 - **Cross-Platform**: Works on Linux, macOS, and *maybe* Windows
 
-## 🏗️ Architecture
 <a name="architecture"/>
+
+## 🏗️ Architecture
 
 KayTrade consists of two main components:
 
@@ -42,8 +43,9 @@ The client application (`kaytrade`) provides the user interface and handles comm
 ### Server
 The server component manages trading logic, data persistence, and client connections.
 
-## 📦 Installation
 <a name="installation"/>
+
+## 📦 Installation
 
 ### Prerequisites
 
@@ -102,8 +104,9 @@ cd client/cmd/kaytrade
 go run kaytrade
 ```
 
-## 🚀 Getting Started
 <a name="getting-started"/>
+
+## 🚀 Getting Started
 
 ### Quick Start
 
@@ -122,8 +125,9 @@ kaytrade --version
 kaytrade -v
 ```
 
-## 📁 Project Structure
 <a name="project-structure"/>
+
+## 📁 Project Structure
 
 ```
 KayTrade/
@@ -141,8 +145,9 @@ KayTrade/
 └── README.md
 ```
 
-## 💻 Usage
 <a name="usage"/>
+
+## 💻 Usage
 
 ### Launching KayTrade
 
@@ -162,8 +167,9 @@ Once launched, navigate the TUI using:
 kaytrade --version    # Display version information
 ```
 
-## 🛠️ Development
 <a name="development"/>
+
+## 🛠️ Development
 
 ### Setting Up Development Environment
 
@@ -222,8 +228,9 @@ If you find a bug or have a suggestion, please open an issue with:
 - Expected vs actual behavior
 - Your environment (OS, Go version, etc.)
 
-## 📄 License
 <a name="license"/>
+
+## 📄 License
 
 MIT license
 
