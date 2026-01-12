@@ -15,13 +15,15 @@ A comprehensive trading platform built with Go, featuring a robust client-server
 - [Contributing](#contributing)
 - [License](#license)
 
-## 🎯 Overview
 <a name="overview"/>
+
+## 🎯 Overview
 
 KayTrade is a modern trading platform designed to provide efficient and reliable trading capabilities. Built entirely in Go, it leverages the language's concurrency features and performance characteristics to deliver a responsive trading experience straight from within your terminal.
 
-## ✨ Features
 <a name="features"/>
+
+## ✨ Features
 
 - **Client-Server Architecture**: Separated concerns with dedicated client and server components
 - **High Performance**: Built with Go for optimal speed and efficiency
@@ -196,8 +198,9 @@ This project follows standard Go conventions:
 - Follow [Effective Go](https://golang.org/doc/effective_go) guidelines
 - Write tests for new features
 
-## 🤝 Contributing
 <a name="contributing"/>
+
+## 🤝 Contributing
 
 **Note**: This repository is currently not accepting contributions as it is part of an ongoing diploma project. After the project is graded and submitted, contributions will be welcomed.
 
