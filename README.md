@@ -15,12 +15,13 @@ A comprehensive trading platform built with Go, featuring a robust client-server
 - [Contributing](#contributing)
 - [License](#license)
 
-<a name="overview"/>
 ## 🎯 Overview
+<a name="overview"/>
 
 KayTrade is a modern trading platform designed to provide efficient and reliable trading capabilities. Built entirely in Go, it leverages the language's concurrency features and performance characteristics to deliver a responsive trading experience straight from within your terminal.
 
 ## ✨ Features
+<a name="features"/>
 
 - **Client-Server Architecture**: Separated concerns with dedicated client and server components
 - **High Performance**: Built with Go for optimal speed and efficiency
@@ -29,6 +30,7 @@ KayTrade is a modern trading platform designed to provide efficient and reliable
 - **Cross-Platform**: Works on Linux, macOS, and *maybe* Windows
 
 ## 🏗️ Architecture
+<a name="architecture"/>
 
 KayTrade consists of two main components:
 
@@ -39,6 +41,7 @@ The client application (`kaytrade`) provides the user interface and handles comm
 The server component manages trading logic, data persistence, and client connections.
 
 ## 📦 Installation
+<a name="installation"/>
 
 ### Prerequisites
 
@@ -98,6 +101,7 @@ go run kaytrade
 ```
 
 ## 🚀 Getting Started
+<a name="getting-started"/>
 
 ### Quick Start
 
@@ -117,6 +121,7 @@ kaytrade -v
 ```
 
 ## 📁 Project Structure
+<a name="project-structure"/>
 
 ```
 KayTrade/
@@ -135,6 +140,7 @@ KayTrade/
 ```
 
 ## 💻 Usage
+<a name="usage"/>
 
 ### Launching KayTrade
 
@@ -155,6 +161,7 @@ kaytrade --version    # Display version information
 ```
 
 ## 🛠️ Development
+<a name="development"/>
 
 ### Setting Up Development Environment
 
@@ -169,6 +176,8 @@ cd KayTrade
 ```sh
 go mod tidy
 ```
+4. Database and cache:
+Install Postgres version 17/18 and Redis/Valkey version 8
 
 ### Running in Development Mode
 
@@ -188,6 +197,7 @@ This project follows standard Go conventions:
 - Write tests for new features
 
 ## 🤝 Contributing
+<a name="contributing"/>
 
 **Note**: This repository is currently not accepting contributions as it is part of an ongoing diploma project. After the project is graded and submitted, contributions will be welcomed.
 
@@ -210,6 +220,7 @@ If you find a bug or have a suggestion, please open an issue with:
 - Your environment (OS, Go version, etc.)
 
 ## 📄 License
+<a name="license"/>
 
 MIT license
 
