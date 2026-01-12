@@ -33,7 +33,7 @@ KayTrade is a modern trading platform designed to provide efficient and reliable
 KayTrade consists of two main components:
 
 ### Client
-The client application (`kay_trade`) provides the user interface and handles communication with the server.
+The client application (`kaytrade`) provides the user interface and handles communication with the server.
 
 ### Server
 The server component manages trading logic, data persistence, and client connections.
@@ -216,10 +216,6 @@ This project is part of a diploma project. Please contact the repository owner f
 ## 🙏 Acknowledgments
 
 This project was developed as part of a diploma project submission.
-
----
-
-**Note**: This is a diploma project. For educational purposes only.
 
 ## 📞 Support
 
