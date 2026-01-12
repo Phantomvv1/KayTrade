@@ -494,12 +494,6 @@ func (m Model) saveRefreshToken() error {
 		return err
 	}
 
-	err = os.MkdirAll(config+"/kaytrade", 0700)
-	if err != nil && !os.IsExist(err) {
-		log.Println(err)
-		return err
-	}
-
 	return os.WriteFile(
 		filepath.Join(config, "/kaytrade", "/kaytrade"),
 		encrypted,
