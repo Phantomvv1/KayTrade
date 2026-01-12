@@ -62,6 +62,7 @@ func (c companyItem) FilterValue() string { return c.company.Name }
 
 func NewWatchlistPage(client *http.Client, tokenStore *basemodel.TokenStore) WatchlistPage {
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	l.KeyMap.Quit.SetKeys("q", "ctrl+c")
 	l.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s", "search")),
