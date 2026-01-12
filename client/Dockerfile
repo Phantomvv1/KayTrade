@@ -1,9 +1,9 @@
 FROM golang:1.25-latest
 
-WORKDIR /kaytrade
+WORKDIR /kaytrade-client
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN go mod tidy
 
 ENV KAYTRADE_ENV=docker
 
