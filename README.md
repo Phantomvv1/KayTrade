@@ -237,7 +237,7 @@ MIT license
 ## 👤 Author
 
 **Phantomvv1**
-- GitHub: [@Phantomvv1](https://github.com/Phantomvv1)
+- GitHub: [Phantomvv1](https://github.com/Phantomvv1)
 
 ## 🙏 Acknowledgments
 
