@@ -42,21 +42,22 @@ The server component manages trading logic, data persistence, and client connect
 
 ### Prerequisites
 
-- Go 1.21 or higher
+- Go 1.25 or higher
 - Git
 
 ### Method 1: Install via `go install` (Recommended)
 
 #### Install Specific Version (v0.1 - Submission Version)
 ```sh
-go install github.com/Phantomvv1/KayTrade/client/cmd/kay_trade@v0.1
+go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade@v0.1
 ```
 
 #### Install Latest Stable Release
 ```sh
-go install github.com/Phantomvv1/KayTrade/client/cmd/kay_trade
-go install github.com/Phantomvv1/KayTrade/client/cmd/kay_trade@latest
+go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade
+go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade@latest
 ```
+Note: The binary will be installed as kaytrade in your $GOPATH/bin directory. 
 
 ### Method 2: Install via docker
 
@@ -83,19 +84,19 @@ cd KayTrade
 
 2. Build the client:
 ```sh
-cd client/cmd/kay_trade
+cd client/cmd/kaytrade
 go build -o kaytrade
 ```
 
 3. Build the server:
 ```sh
-cd ../../../server/cmd/kay_trade
+cd ../../../server/cmd/kaytrade
 go build -o kaytrade-server
 ```
 or
 
 ```sh
-cd ../../../server/cmd/kay_trade
+cd ../../../server/cmd/kaytrade
 go run main.go
 ```
 
@@ -145,6 +146,10 @@ KayTrade/
 kaytrade
 ```
 
+```sh
+kaytrade -v
+```
+
 ## 🛠️ Development
 
 ### Setting Up Development Environment
@@ -164,10 +169,10 @@ go mod tidy
 ### Running in Development Mode
 
 ```sh
-cd server/cmd/kay_trade
+cd server/cmd/kaytrade
 KAYTRADE_ENV=dev go run main.go
 
-cd client/cmd/kay_trade
+cd client/cmd/kaytrade
 go run main.go
 ```
 
@@ -200,7 +205,7 @@ If you find a bug or have a suggestion, please open an issue with:
 
 ## 📄 License
 
-This project is part of a diploma project. Please contact the repository owner for licensing information.
+MIT license
 
 ## 👤 Author
 

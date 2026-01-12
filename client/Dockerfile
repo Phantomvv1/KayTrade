@@ -9,6 +9,6 @@ ENV KAYTRADE_ENV=docker
 
 COPY . .
 
-RUN go build -o client ./cmd/kay_trade
+RUN go build -o client ./cmd/kaytrade
 
 CMD ["./client"]

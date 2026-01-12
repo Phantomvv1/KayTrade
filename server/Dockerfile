@@ -7,6 +7,6 @@ RUN go mod tidy
 
 COPY . .
 
-RUN go build -o server ./cmd/kay_trade
+RUN go build -o server ./cmd/kaytrade
 
 CMD ["./server"]
