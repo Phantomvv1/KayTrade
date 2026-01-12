@@ -54,12 +54,8 @@ go install github.com/Phantomvv1/KayTrade/client/cmd/kay_trade@v0.1
 
 #### Install Latest Stable Release
 ```sh
-go install github.com/Phantomvv1/KayTrade/client/cmd/kay_trade@latest
-```
-
-#### Install from Source (Development Version)
-```sh
 go install github.com/Phantomvv1/KayTrade/client/cmd/kay_trade
+go install github.com/Phantomvv1/KayTrade/client/cmd/kay_trade@latest
 ```
 
 ### Method 2: Install via docker
