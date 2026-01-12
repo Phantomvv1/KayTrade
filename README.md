@@ -233,7 +233,7 @@ If you find a bug or have a suggestion, please open an issue with:
 
 ## 📄 License
 
-MIT license
+This project is part of a diploma project. Please contact the repository owner for licensing information.
 
 ## 👤 Author
 
