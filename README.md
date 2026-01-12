@@ -103,24 +103,22 @@ go run main.go
 
 ### Quick Start
 
-1. **Start the Server**:
+**Just launch the app**:
 ```sh
-# Navigate to server directory
-cd server
-./kaytrade-server
-```
-
-2. **Run the Client**:
-```sh
-# In a new terminal
-kay_trade
+kaytrade
 ```
 
 ### Verify Installation
 
 Check that `kay_trade` is properly installed:
 ```sh
-kay_trade --version
+kaytrade -v
+```
+
+or
+
+```sh
+kaytrade --version
 ```
 
 ## 📁 Project Structure

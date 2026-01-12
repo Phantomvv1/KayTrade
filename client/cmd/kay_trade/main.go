@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -14,9 +15,15 @@ const (
 	envSystem = "system"
 	envDocker = "docker"
 	envDev    = "dev"
+	version   = "0.1"
 )
 
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "-v" || os.Args[1] == "--version") {
+		fmt.Println("KayTrade version " + version)
+		return
+	}
+
 	env := os.Getenv("KAYTRADE_ENV")
 	if env != envDocker && env != envDev {
 		env = envSystem
