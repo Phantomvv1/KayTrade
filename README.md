@@ -55,6 +55,7 @@ go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade@v0.1
 #### Install Latest Stable Release
 ```sh
 go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade
+# or
 go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade@latest
 ```
 > **Note**: The binary will be installed as kaytrade in your $GOPATH/bin directory. 
