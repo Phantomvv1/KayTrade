@@ -112,6 +112,7 @@ func NewBankRelationshipPage(client *http.Client, tokenStore *basemodel.TokenSto
 	l.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			key.NewBinding(key.WithKeys("c", "C"), key.WithHelp("c (create)", "relationship")),
+			key.NewBinding(key.WithKeys("t", "T"), key.WithHelp("t", "new transfer")),
 		}
 	}
 

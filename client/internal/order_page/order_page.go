@@ -142,7 +142,7 @@ func (o OrderPage) View() string {
 	content := lipgloss.JoinVertical(lipgloss.Center, sections...)
 	centeredContent := lipgloss.Place(o.BaseModel.Width, lipgloss.Height(content), lipgloss.Center, lipgloss.Top, content)
 
-	help := helpStyle.Render("esc: back to profile • q: quit")
+	help := helpStyle.Render("esc: back • q: quit")
 	centeredHelp := lipgloss.Place(o.BaseModel.Width, lipgloss.Height(help), lipgloss.Center, lipgloss.Top, help)
 
 	centeredHeader := lipgloss.Place(o.BaseModel.Width, lipgloss.Height(header), lipgloss.Center, lipgloss.Top, header)

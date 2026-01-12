@@ -488,15 +488,8 @@ func (m Model) saveRefreshToken() error {
 		return err
 	}
 
-	// Config dir for now. Will think abouth which is better: config or config
 	config, err := os.UserConfigDir()
 	if err != nil {
-		return err
-	}
-
-	err = os.MkdirAll(config+"/kaytrade", 0700)
-	if err != nil && !os.IsExist(err) {
-		log.Println(err)
 		return err
 	}
 

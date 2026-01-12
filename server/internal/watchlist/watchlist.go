@@ -898,10 +898,10 @@ func GetCompanyInformation(c *gin.Context) {
 					}
 
 					for _, info := range result.information {
-						openingPrice := info[0]["o"].(float64)
-						closingPrice := info[0]["c"].(float64)
-						innerResponse.OpeningPrice = openingPrice
-						innerResponse.ClosingPrice = closingPrice
+						if len(info) != 0 {
+							innerResponse.OpeningPrice = info[0]["o"].(float64)
+							innerResponse.ClosingPrice = info[0]["c"].(float64)
+						}
 					}
 				}
 			}
@@ -925,10 +925,10 @@ func GetCompanyInformation(c *gin.Context) {
 	}
 
 	info := res.information[symbol]
-	openingPrice := info[0]["o"].(float64)
-	closingPrice := info[0]["c"].(float64)
-	response.OpeningPrice = openingPrice
-	response.ClosingPrice = closingPrice
+	if len(info) != 0 {
+		response.OpeningPrice = info[0]["o"].(float64)
+		response.ClosingPrice = info[0]["c"].(float64)
+	}
 
 	c.JSON(http.StatusOK, gin.H{"information": response})
 }
