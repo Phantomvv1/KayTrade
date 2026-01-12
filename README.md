@@ -59,14 +59,14 @@ go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade@latest
 ```
 > **Note**: The binary will be installed as kaytrade in your $GOPATH/bin directory. 
 
-### Method 2: Install via docker
+### Method 2: Install via Docker
 
 1. Clone the repository:
 ```sh
 git clone https://github.com/Phantomvv1/KayTrade
 cd KayTrade
 ```
-2. Go into the client directory and run the Dockerfile with the -it flag:
+2. Build and run the Docker container:
 ```sh
 cd client
 
@@ -86,40 +86,33 @@ cd KayTrade
 ```sh
 cd client/cmd/kaytrade
 go build -o kaytrade
+./kaytrade
 ```
 
-3. Build the server:
-```sh
-cd ../../../server/cmd/kaytrade
-go build -o kaytrade-server
-```
 or
 
 ```sh
-cd ../../../server/cmd/kaytrade
-go run main.go
+cd client/cmd/kaytrade
+go run kaytrade
 ```
 
 ## 🚀 Getting Started
 
 ### Quick Start
 
-**Just launch the app**:
+Simply launch the application:
 ```sh
 kaytrade
 ```
+The TUI will guide you through the trading interface.
 
 ### Verify Installation
 
 Check that `kay_trade` is properly installed:
 ```sh
-kaytrade -v
-```
-
-or
-
-```sh
 kaytrade --version
+# or
+kaytrade -v
 ```
 
 ## 📁 Project Structure
@@ -128,11 +121,13 @@ kaytrade --version
 KayTrade/
 ├── client/                  # Client application
 │   ├── cmd/                 # Command-line interface
-│   │   └── kay_trade/       # Main client executable
+│   │   └── kaytrade/        # Main client executable
 │   ├── internal/            # Client packages
+│   ├── Dockerfile           # Client container definition
 │   └── ...
 ├── server/                  # Server application
 │   ├── cmd/                 # Server entry point
+│   │   └── kaytrade/        # Main server executable
 │   ├── internal/            # Server packages
 │   └── ...
 └── README.md
@@ -140,14 +135,22 @@ KayTrade/
 
 ## 💻 Usage
 
-### Basic Commands
+### Launching KayTrade
 
 ```sh
 kaytrade
 ```
 
+Once launched, navigate the TUI using:
+- Arrow keys or vim keybindings for navigation
+- Enter to select
+- ESC to go back
+- q to quit
+
+### Command-Line Options
+
 ```sh
-kaytrade -v
+kaytrade --version    # Display version information
 ```
 
 ## 🛠️ Development
@@ -157,7 +160,7 @@ kaytrade -v
 1. Fork the repository
 2. Clone your fork:
 ```sh
-git clone https://github.com/YOUR_USERNAME/KayTrade.git
+git clone https://github.com/YOUR_USERNAME/KayTrade
 cd KayTrade
 ```
 
@@ -185,9 +188,11 @@ This project follows standard Go conventions:
 
 ## 🤝 Contributing
 
-At the moment I don't accept contributions due to this being my diploma project. In the future after it gets graded I will start accepting contributions. When that happens please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+**Note**: This repository is currently not accepting contributions as it is part of an ongoing diploma project. After the project is graded and submitted, contributions will be welcomed.
 
-### Contribution Guidelines
+Once contributions are open, feel free to submit Pull Requests. For major changes, please open an issue first to discuss what you would like to change.
+
+### Future Contribution Guidelines
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
