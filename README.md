@@ -62,8 +62,8 @@ go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade@latest
 ```sh
 cd ~
 cd go/bin
-# You have to use sudo since this is a root directory
 
+# You have to use sudo since this is a root directory
 sudo mv kaytrade /bin
 # or
 sudo mv kaytrade /usr/bin
@@ -75,7 +75,12 @@ sudo mv kaytrade /usr/local/go/bin
 
 ### Method 2: Download the binary straight from github
 
-Go to the releases, click on any release you like. Go down and download the binary named kaytrade. That's it.
+Go to the releases, click on any release you like (preferably the last one). Go down and download the binary named kaytrade. After that give it rights to be executed and put it in one of the /bin directorieson your PC as shown in the note above. That's it.
+
+```sh
+chmod +x kaytrade
+./kaytrade -v
+```
 
 ### Method 3: Install via Docker
 
@@ -88,7 +93,7 @@ cd KayTrade
 ```sh
 cd client
 
-docker build -t kaytrade ./client
+docker build -t kaytrade .
 docker run -it --rm kaytrade
 ```
 

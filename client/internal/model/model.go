@@ -468,7 +468,14 @@ func (m Model) extractRefreshToken() (string, error) {
 		return "", err
 	}
 
-	cookie := m.client.Jar.Cookies(u)[0]
+	cookies := m.client.Jar.Cookies(u)
+	cookie := &http.Cookie{}
+	if len(cookies) > 0 {
+		cookie = cookies[0]
+	} else {
+		return "", errors.New("No cookies to extract")
+	}
+
 	if cookie.Name != "refresh" {
 		return "", errors.New("refresh token not found in cookie jar")
 	}
