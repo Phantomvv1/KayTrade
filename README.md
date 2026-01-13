@@ -93,7 +93,7 @@ cd KayTrade
 ```sh
 cd client
 
-docker build -t kaytrade ./client
+docker build -t kaytrade .
 docker run -it --rm kaytrade
 ```
 
