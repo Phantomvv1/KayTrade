@@ -1,4 +1,4 @@
-module github.com/Phantomvv1/KayTrade
+module github.com/Phantomvv1/KayTrade/client
 
 go 1.25.0
 
