@@ -54,11 +54,6 @@ The server component manages trading logic, data persistence, and client connect
 
 ### Method 1: Install via `go install` (Recommended)
 
-#### Install Specific Version (v0.1.2 - Submission Version)
-```sh
-go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade@v0.1.2
-```
-
 #### Install Latest Stable Release
 ```sh
 go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade@latest
@@ -68,6 +63,7 @@ go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade@latest
 cd ~
 cd go/bin
 # You have to use sudo since this is a root directory
+
 sudo mv kaytrade /bin
 # or
 sudo mv kaytrade /usr/bin
@@ -77,7 +73,11 @@ sudo mv kaytrade /usr/local/bin
 sudo mv kaytrade /usr/local/go/bin
 ```
 
-### Method 2: Install via Docker
+### Method 2: Download the binary straight from github
+
+Go to the releases, click on any release you like. Go down and download the binary named kaytrade. That's it.
+
+### Method 3: Install via Docker
 
 1. Clone the repository:
 ```sh
@@ -92,7 +92,7 @@ docker build -t kaytrade ./client
 docker run -it --rm kaytrade
 ```
 
-### Method 3: Build from Source
+### Method 4: Build from Source
 
 1. Clone the repository:
 ```sh
