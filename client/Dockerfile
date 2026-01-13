@@ -1,4 +1,4 @@
-FROM golang:1.25-latest
+FROM golang:1.25
 
 WORKDIR /kaytrade
 

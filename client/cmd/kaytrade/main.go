@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/Phantomvv1/KayTrade/client/internal/model"
+	"github.com/Phantomvv1/KayTrade/client/internal/requests"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -15,7 +16,7 @@ const (
 	envSystem = "system"
 	envDocker = "docker"
 	envDev    = "dev"
-	version   = "0.1"
+	version   = "0.1.2"
 )
 
 func main() {
@@ -28,6 +29,8 @@ func main() {
 	if env != envDocker && env != envDev {
 		env = envSystem
 	}
+
+	setupBaseUrl(env)
 
 	err := makeNeededDirs(env)
 	if err != nil {
@@ -116,4 +119,15 @@ func makeNeededDirs(env string) error {
 	}
 
 	return errors.New("Env not recognized!")
+}
+
+func setupBaseUrl(env string) {
+	switch env {
+	case envDev:
+		return // it already is set for development
+	case envDocker:
+		requests.BaseURL = "http://host.docker.internal:42069"
+	case envSystem:
+		return //example domain: http://kaytrade.com. I will change it when I host the backend
+	}
 }
