@@ -243,7 +243,7 @@ func (s SellPage) View() string {
 		content = lipgloss.JoinVertical(lipgloss.Center, content, "", successStyle.Render("✓ "+s.success))
 	}
 
-	help := helpStyle.Render("j/k/↑/↓: navigate | h/l/←/→: change slider | enter: submit | esc: back | w: watchlist page | i: information page | q: quit")
+	help := helpStyle.Render("j/k/↑/↓: navigate • h/l/←/→: change slider • enter: submit • esc: back • w: watchlist page • i: information page • q: quit")
 
 	headerHeight := lipgloss.Height(header)
 	contentHeight := lipgloss.Height(content)

@@ -219,9 +219,9 @@ func (t TransfersPage) View() string {
 
 	var help string
 	if t.typing {
-		help = helpStyle.Render("ctrl+j/ctrl+k/↑/↓: navigate | h/l/←/→: change direction | enter: submit | esc: stop typing")
+		help = helpStyle.Render("ctrl+j/ctrl+k/↑/↓: navigate • h/l/←/→: change direction • tab: next • enter: submit • esc: stop typing")
 	} else {
-		help = helpStyle.Render("enter: start typing | esc: back | q: quit")
+		help = helpStyle.Render("enter: start typing • esc: back • q: quit")
 	}
 
 	headerHeight := lipgloss.Height(header)

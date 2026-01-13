@@ -400,7 +400,7 @@ func (b BankRelationshipCreationPage) View() string {
 		content = lipgloss.JoinVertical(lipgloss.Center, content, "", successStyle.Render("✓ "+b.success))
 	}
 
-	help := helpStyle.Render("ctrl+j/k/↑/↓: navigate | ctrl+h/l/←/→: change option | esc: stop typing/back | s: switch bank type | enter: submit/type | q: quit")
+	help := helpStyle.Render("ctrl+j/k/↑/↓: navigate • ctrl+h/l/←/→: change option • esc: stop typing/back • s: switch bank type • tab: next • enter: submit/type • q: quit")
 
 	headerHeight := lipgloss.Height(header)
 	contentHeight := lipgloss.Height(content)
