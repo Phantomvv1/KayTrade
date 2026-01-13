@@ -487,7 +487,7 @@ func (b BuyPage) View() string {
 		content = lipgloss.JoinVertical(lipgloss.Center, content, "", successStyle.Render("✓ "+b.success))
 	}
 
-	help := helpStyle.Render("j/k/↑/↓: navigate | h/l/←/→: change slider | enter: submit | esc: back | w: watchlist page | i: information page | q: quit")
+	help := helpStyle.Render("j/k/↑/↓: navigate • h/l/←/→: change slider • enter: submit • esc: back • w: watchlist page • i: information page • q: quit")
 
 	// Calculate vertical spacing
 	headerHeight := lipgloss.Height(header)
