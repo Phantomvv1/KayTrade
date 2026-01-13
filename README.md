@@ -75,7 +75,7 @@ sudo mv kaytrade /usr/local/go/bin
 
 ### Method 2: Download the binary straight from github
 
-Go to the releases, click on any release you like (preferably the last one). Go down and download the binary named kaytrade. After that give it rights to be executed and put it in one of the /bin in your PC as shown in the note above. That's it.
+Go to the releases, click on any release you like (preferably the last one). Go down and download the binary named kaytrade. After that give it rights to be executed and put it in one of the /bin directorieson your PC as shown in the note above. That's it.
 
 ```sh
 chmod +x kaytrade
