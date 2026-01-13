@@ -62,8 +62,8 @@ go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade@latest
 ```sh
 cd ~
 cd go/bin
-# You have to use sudo since this is a root directory
 
+# You have to use sudo since this is a root directory
 sudo mv kaytrade /bin
 # or
 sudo mv kaytrade /usr/bin
