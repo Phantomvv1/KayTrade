@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
-	"github.com/Phantomvv1/KayTrade/internal/messages"
-	"github.com/Phantomvv1/KayTrade/internal/requests"
+	basemodel "github.com/Phantomvv1/KayTrade/client/internal/base_model"
+	"github.com/Phantomvv1/KayTrade/client/internal/messages"
+	"github.com/Phantomvv1/KayTrade/client/internal/requests"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"

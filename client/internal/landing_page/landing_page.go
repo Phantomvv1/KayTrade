@@ -3,8 +3,8 @@ package landingpage
 import (
 	"log"
 
-	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
-	"github.com/Phantomvv1/KayTrade/internal/messages"
+	basemodel "github.com/Phantomvv1/KayTrade/client/internal/base_model"
+	"github.com/Phantomvv1/KayTrade/client/internal/messages"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	figure "github.com/common-nighthawk/go-figure"

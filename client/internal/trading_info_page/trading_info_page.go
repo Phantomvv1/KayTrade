@@ -3,8 +3,8 @@ package tradinginfopage
 import (
 	"strings"
 
-	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
-	"github.com/Phantomvv1/KayTrade/internal/messages"
+	basemodel "github.com/Phantomvv1/KayTrade/client/internal/base_model"
+	"github.com/Phantomvv1/KayTrade/client/internal/messages"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"

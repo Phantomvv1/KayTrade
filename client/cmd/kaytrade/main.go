@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Phantomvv1/KayTrade/internal/model"
+	"github.com/Phantomvv1/KayTrade/client/internal/model"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

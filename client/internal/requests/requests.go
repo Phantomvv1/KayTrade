@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
+	basemodel "github.com/Phantomvv1/KayTrade/client/internal/base_model"
 )
 
 var ErrorTokenExpired = errors.New("Error token has expired")

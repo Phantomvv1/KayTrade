@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/NimbleMarkets/ntcharts/linechart/timeserieslinechart"
-	basemodel "github.com/Phantomvv1/KayTrade/internal/base_model"
-	"github.com/Phantomvv1/KayTrade/internal/messages"
-	"github.com/Phantomvv1/KayTrade/internal/requests"
+	basemodel "github.com/Phantomvv1/KayTrade/client/internal/base_model"
+	"github.com/Phantomvv1/KayTrade/client/internal/messages"
+	"github.com/Phantomvv1/KayTrade/client/internal/requests"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/gorilla/websocket"
