@@ -128,6 +128,6 @@ func setupBaseUrl(env string) {
 	case envDocker:
 		requests.BaseURL = "http://host.docker.internal:42069"
 	case envSystem:
-		requests.BaseURL = "http://kaytrade.com" //example domain. Will change when I host the backend
+		return //example domain: http://kaytrade.com. I will change it when I host the backend
 	}
 }
