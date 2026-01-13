@@ -54,18 +54,28 @@ The server component manages trading logic, data persistence, and client connect
 
 ### Method 1: Install via `go install` (Recommended)
 
-#### Install Specific Version (v0.1 - Submission Version)
+#### Install Specific Version (v0.1.2 - Submission Version)
 ```sh
-go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade@v0.1
+go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade@v0.1.2
 ```
 
 #### Install Latest Stable Release
 ```sh
-go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade
-# or
 go install github.com/Phantomvv1/KayTrade/client/cmd/kaytrade@latest
 ```
-> **Note**: The binary will be installed as kaytrade in your $GOPATH/bin directory. 
+> **Note**: The binary will be installed as kaytrade in your $GOPATH/bin directory. If that is not set up, go will install it in your $HOME/go/bin directory. This means that you won't be able to run it instantly. What you need to do in that case is go into that directory and move the binary to one of the /bin directories on your PC or the bin directory of your go installation. Usually that is /usr/local/go/bin. Here is how you do that:
+```sh
+cd ~
+cd go/bin
+# You have to use sudo since this is a root directory
+sudo mv kaytrade /bin
+# or
+sudo mv kaytrade /usr/bin
+# or
+sudo mv kaytrade /usr/local/bin
+# or
+sudo mv kaytrade /usr/local/go/bin
+```
 
 ### Method 2: Install via Docker
 
