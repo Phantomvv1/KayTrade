@@ -73,28 +73,34 @@ sudo mv kaytrade /usr/local/bin
 sudo mv kaytrade /usr/local/go/bin
 ```
 
-### Method 2: Download the binary straight from github
+### Method 2: Download the app using the install script
+
+You can install KayTrade using the provided `install.sh` script.
+
+1. Clone the repository or download the install script:
+```sh
+git clone https://github.com/Phantomvv1/KayTrade
+cd KayTrade
+```
+
+2. Make the install script executable:
+```sh
+chmod +x install.sh
+```
+
+3. Run the installer:
+```sh
+./install.sh
+```
+This will download the latest released kaytrade binary and install it into /usr/local/bin
+
+### Method 3: Download the binary straight from github
 
 Go to the releases, click on any release you like (preferably the last one). Go down and download the binary named kaytrade. After that give it rights to be executed and put it in one of the /bin directorieson your PC as shown in the note above. That's it.
 
 ```sh
 chmod +x kaytrade
 ./kaytrade -v
-```
-
-### Method 3: Install via Docker
-
-1. Clone the repository:
-```sh
-git clone https://github.com/Phantomvv1/KayTrade
-cd KayTrade
-```
-2. Build and run the Docker container:
-```sh
-cd client
-
-docker build -t kaytrade .
-docker run -it --rm kaytrade
 ```
 
 ### Method 4: Build from Source
@@ -117,6 +123,21 @@ or
 ```sh
 cd client/cmd/kaytrade
 go run kaytrade
+```
+
+### Method 5: Install via Docker
+
+1. Clone the repository:
+```sh
+git clone https://github.com/Phantomvv1/KayTrade
+cd KayTrade
+```
+2. Build and run the Docker container:
+```sh
+cd client
+
+docker build -t kaytrade .
+docker run -it --rm kaytrade
 ```
 
 <a name="getting-started"/>
