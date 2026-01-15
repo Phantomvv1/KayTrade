@@ -22,13 +22,14 @@ type Order struct {
 	ID        string    `json:"id"`
 	UserID    string    `json:"user_id"`
 	Symbol    string    `json:"symbol"`
+	Side      string    `json:"side"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func CreateOrdersTable(conn *pgx.Conn) error {
 	_, err := conn.Exec(context.Background(), "create table if not exists orders(id uuid primary key, user_id uuid references authentication(id) on delete cascade, "+
-		"symbol text, created_at timestamp, updated_at timestamp)")
+		"symbol text, side text, created_at timestamp, updated_at timestamp)")
 	return err
 }
 
@@ -91,6 +92,7 @@ func CreateOrder(c *gin.Context) {
 	createdAt := body["created_at"].(string)
 	updatedAt := body["updated_at"].(string)
 	symbol := body["symbol"].(string)
+	side := body["side"].(string)
 
 	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -104,7 +106,7 @@ func CreateOrder(c *gin.Context) {
 		return
 	}
 
-	_, err = conn.Exec(context.Background(), "insert into orders (id, user_id, symbol, created_at, updated_at) values ($1, $2, $3, $4, $5)", orderID, id, symbol, createdAt, updatedAt)
+	_, err = conn.Exec(context.Background(), "insert into orders (id, user_id, symbol, side, created_at, updated_at) values ($1, $2, $3, $4, $5, $6)", orderID, id, symbol, side, createdAt, updatedAt)
 	if err != nil {
 		ErrorExit(c, http.StatusInternalServerError, "couldn't put the information about your order in the database", err)
 		return
@@ -123,7 +125,7 @@ func GetOrders(c *gin.Context) {
 	}
 	defer conn.Close(context.Background())
 
-	rows, err := conn.Query(context.Background(), "select id, symbol, created_at, updated_at from orders where user_id = $1", id)
+	rows, err := conn.Query(context.Background(), "select id, symbol, side, created_at, updated_at from orders where user_id = $1", id)
 	if err != nil {
 		ErrorExit(c, http.StatusInternalServerError, "couldn't get the information for the orders from the database", err)
 		return
@@ -132,7 +134,7 @@ func GetOrders(c *gin.Context) {
 	orders, err := pgx.CollectRows(rows, func(rows pgx.CollectableRow) (*Order, error) {
 		o := Order{}
 		o.UserID = id
-		err := rows.Scan(&o.ID, &o.Symbol, &o.CreatedAt, &o.UpdatedAt)
+		err := rows.Scan(&o.ID, &o.Symbol, &o.Side, &o.CreatedAt, &o.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
