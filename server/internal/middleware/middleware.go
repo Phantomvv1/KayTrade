@@ -62,10 +62,13 @@ func JSONParserMiddleware(c *gin.Context) {
 		switch k {
 		case "id":
 			c.Set("json_id", v)
+			continue
 		case "accountType":
 			c.Set("json_accountType", v)
+			continue
 		case "email":
 			c.Set("json_email", v)
+			continue
 		case "json_id", "json_accountType", "json_email":
 			continue
 		}
