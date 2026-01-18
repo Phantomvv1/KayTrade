@@ -273,7 +273,7 @@ func (h *Hub) Listen() {
 	for {
 		var body []map[string]any
 		if err := h.ws.ReadJSON(&body); err != nil {
-			h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't subscribe to these symbols"}
+			h.Broadcast <- &Message{Receiver: "all", Message: "Error couldn't read the body"}
 			return
 		}
 
