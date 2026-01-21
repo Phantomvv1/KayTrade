@@ -228,7 +228,7 @@ func (s SearchPage) SendSearchRequest() ([]Asset, error) {
 }
 
 func (s SearchPage) GetCompanyInfo() (*messages.CompanyInfo, error) {
-	item := s.suggestions.Items()[s.suggestions.Cursor()].(asset)
+	item := s.suggestions.SelectedItem().(asset)
 	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/company-information/"+item.asset.Symbol, nil, s.BaseModel.Client, s.BaseModel.TokenStore)
 	if err != nil {
 		return nil, err
