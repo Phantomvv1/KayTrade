@@ -217,7 +217,7 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 
-				w.companies.RemoveItem(w.companies.Cursor())
+				w.companies.RemoveItem(w.companies.Index())
 				if w.companies.Cursor() == len(w.companies.Items()) {
 					w.companies.CursorUp()
 				}
