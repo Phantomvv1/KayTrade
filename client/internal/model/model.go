@@ -500,7 +500,6 @@ func (m Model) saveRefreshToken() error {
 		return err
 	}
 
-	log.Println("Hello???")
 	return os.WriteFile(
 		filepath.Join(config, "/kaytrade", "/kaytrade"),
 		encrypted,
