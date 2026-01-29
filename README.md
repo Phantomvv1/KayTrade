@@ -38,6 +38,7 @@ KayTrade currently uses the **Alpaca Sandbox API** for brokerage integration.
 Due to sandbox restrictions:
 - Only **US-based accounts** can be created
 - Non-US bank accounts and addresses are **not supported** at this time
+- Only **ach relationships and ach transfers** are allowed in sandbox mode
 
 These limitations will be lifted once production Alpaca API access is enabled.
 
