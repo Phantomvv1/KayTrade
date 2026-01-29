@@ -265,6 +265,11 @@ func GetInformationForSymbols(c *gin.Context) {
 		return
 	}
 
+	if len(symbols) == 0 {
+		c.JSON(http.StatusOK, nil)
+		return
+	}
+
 	now := time.Now().UTC()
 	start := ""
 	checkPassed := false
