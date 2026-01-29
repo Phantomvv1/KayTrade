@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
@@ -265,7 +266,17 @@ func LogIn(c *gin.Context) {
 		}
 	}
 
-	if SHA512(information["password"]) != passwordCheck {
+	hashedPassword := SHA512(information["password"])
+	finalPassword := ""
+	for _, r := range hashedPassword {
+		if r > 0 && r < 32 {
+			continue
+		}
+
+		finalPassword += string(r)
+	}
+
+	if finalPassword != passwordCheck {
 		log.Println("Wrong password")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error wrong password"})
 		return
