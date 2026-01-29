@@ -30,7 +30,7 @@ KayTrade is a modern trading platform designed to provide efficient and reliable
 When the KayTrade client is running in **production mode**, it automatically sends requests to the **official hosted KayTrade backend**.  
 You **do not** need to run the server locally unless you are developing or testing changes.
 
-> In development mode, the client can be configured to communicate with a locally running server instance.
+> In development mode, the client is configured to communicate with a locally running server instance.
 
 ### Alpaca Sandbox Limitations
 KayTrade currently uses the **Alpaca Sandbox API** for brokerage integration.
