@@ -268,7 +268,7 @@ func LogIn(c *gin.Context) {
 	hashedPassword := SHA512(information["password"])
 	finalPassword := ""
 	for _, r := range hashedPassword {
-		if r > 0 && r < 32 {
+		if r >= 0 && r <= 32 {
 			continue
 		}
 
