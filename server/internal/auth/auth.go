@@ -171,6 +171,7 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
+	log.Println(acc)
 	password := acc.Password
 	acc.Password = ""
 

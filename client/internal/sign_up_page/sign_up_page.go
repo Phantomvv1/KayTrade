@@ -183,7 +183,7 @@ var (
 
 func NewSignUpPage(client *http.Client, tokenStore *basemodel.TokenStore) SignUpPage {
 	password := textinput.New()
-	password.Placeholder = "Email address"
+	password.Placeholder = "Password"
 	password.Width = inputWidth
 	password.CharLimit = 50
 	password.EchoMode = textinput.EchoPassword
@@ -433,6 +433,15 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return s, nil
 				}
 
+				input := s.currentInput()
+				if input != nil {
+					var updatedInput textinput.Model
+					input.Focus()
+					updatedInput, cmd = input.Update(msg)
+					input.Blur()
+					s.setCurrentInput(updatedInput)
+				}
+
 			case "l", "right":
 				if s.currentPage == identityPage && s.cursor == 8 {
 					s.fundingCursor++
@@ -441,6 +450,15 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 
 					return s, nil
+				}
+
+				input := s.currentInput()
+				if input != nil {
+					var updatedInput textinput.Model
+					input.Focus()
+					updatedInput, cmd = input.Update(msg)
+					input.Blur()
+					s.setCurrentInput(updatedInput)
 				}
 
 			case "enter":
