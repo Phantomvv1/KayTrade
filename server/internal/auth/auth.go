@@ -275,6 +275,8 @@ func LogIn(c *gin.Context) {
 		finalPassword += string(r)
 	}
 
+	log.Println(finalPassword, passwordCheck)
+	log.Println(len(finalPassword) == len(passwordCheck))
 	if finalPassword != passwordCheck {
 		log.Println("Wrong password")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error wrong password"})
