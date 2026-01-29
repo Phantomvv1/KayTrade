@@ -5,6 +5,7 @@ A comprehensive trading platform built with Go, featuring a robust client-server
 ## 📋 Table of Contents
 
 - [Overview](#overview)
+- [Important Notes](#important_notes)
 - [Features](#features)
 - [Architecture](#architecture)
 - [Installation](#installation)
@@ -20,6 +21,26 @@ A comprehensive trading platform built with Go, featuring a robust client-server
 ## 🎯 Overview
 
 KayTrade is a modern trading platform designed to provide efficient and reliable trading capabilities. Built entirely in Go, it leverages the language's concurrency features and performance characteristics to deliver a responsive trading experience straight from within your terminal.
+
+<a name="important_notes"/>
+
+## ⚠️ Important Notes
+
+### Production Server Usage
+When the KayTrade client is running in **production mode**, it automatically sends requests to the **official hosted KayTrade backend**.  
+You **do not** need to run the server locally unless you are developing or testing changes.
+
+> In development mode, the client can be configured to communicate with a locally running server instance.
+
+### Alpaca Sandbox Limitations
+KayTrade currently uses the **Alpaca Sandbox API** for brokerage integration.
+
+Due to sandbox restrictions:
+- Only **US-based accounts** can be created
+- Non-US bank accounts and addresses are **not supported** at this time
+
+These limitations will be lifted once production Alpaca API access is enabled.
+
 
 <a name="features"/>
 
