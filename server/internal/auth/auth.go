@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
