@@ -188,9 +188,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentPage = msg.Page
 		model := m.getModelFromPageNumber()
 		return m, model.Init()
-	case messages.PageSwitchWithoutInitMsg:
-		m.currentPage = msg.Page
-		return m, nil
 	case messages.ReloadMsg:
 		m.Reload(msg.Page)
 		return m, nil

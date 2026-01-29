@@ -276,7 +276,7 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				c.ws.Close()
 			}
 			return c, func() tea.Msg {
-				return messages.PageSwitchWithoutInitMsg{
+				return messages.SmartPageSwitchMsg{
 					Page: c.PrevPage,
 				}
 			}
@@ -527,7 +527,7 @@ func (c *CompanyPage) handleChartKeys(key string) (tea.Model, tea.Cmd) {
 			c.ws.Close()
 		}
 		return *c, func() tea.Msg {
-			return messages.PageSwitchWithoutInitMsg{
+			return messages.SmartPageSwitchMsg{
 				Page: c.PrevPage,
 			}
 		}
@@ -642,7 +642,7 @@ func (c *CompanyPage) handleLiveChartKeys(key string) (tea.Model, tea.Cmd) {
 			c.ws.Close()
 		}
 		return *c, func() tea.Msg {
-			return messages.PageSwitchWithoutInitMsg{
+			return messages.SmartPageSwitchMsg{
 				Page: c.PrevPage,
 			}
 		}
