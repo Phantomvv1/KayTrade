@@ -348,7 +348,11 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "a", "A":
-			return c, tea.Batch(c.addCompanyToWatchlist())
+			return c, tea.Batch(c.addCompanyToWatchlist(), func() tea.Msg {
+				return messages.ReloadMsg{
+					Page: messages.WatchlistPageNumber,
+				}
+			})
 
 		case "b", "B":
 			return c, func() tea.Msg {
@@ -1027,7 +1031,7 @@ func (c *CompanyPage) fetchDataCmd() tea.Cmd {
 }
 
 func (c *CompanyPage) connectWebSocket() tea.Cmd {
-	url := fmt.Sprintf("ws://localhost:42069/data/stocks/live/%s", c.CompanyInfo.Symbol)
+	url := fmt.Sprintf("ws://%s/data/stocks/live/%s", requests.BaseURL, c.CompanyInfo.Symbol)
 
 	ws, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {

@@ -96,7 +96,7 @@ func NewModel() Model {
 		return model
 	}
 
-	u, err := url.Parse("http://localhost:42069")
+	u, err := url.Parse(requests.BaseURL)
 	if err != nil {
 		model.landingPage.LogIn = true
 		return model
@@ -108,7 +108,7 @@ func NewModel() Model {
 		Path:  "/",
 	}})
 
-	body, err := requests.MakeRequest(http.MethodPost, "http://localhost:42069/refresh", nil, client, model.tokenStore)
+	body, err := requests.MakeRequest(http.MethodPost, requests.BaseURL+"/refresh", nil, client, model.tokenStore)
 	if err != nil {
 		log.Println(err)
 		model.landingPage.LogIn = true
@@ -457,13 +457,16 @@ func (m *Model) Reloaded(page int) bool {
 
 		return reloaded
 
+	case messages.SearchPageNumber:
+		return true
+
 	default:
 		return false
 	}
 }
 
 func (m Model) extractRefreshToken() (string, error) {
-	u, err := url.Parse("http://localhost:42069")
+	u, err := url.Parse(requests.BaseURL)
 	if err != nil {
 		return "", err
 	}
@@ -500,6 +503,7 @@ func (m Model) saveRefreshToken() error {
 		return err
 	}
 
+	log.Println("Hello???")
 	return os.WriteFile(
 		filepath.Join(config, "/kaytrade", "/kaytrade"),
 		encrypted,

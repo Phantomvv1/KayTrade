@@ -253,7 +253,7 @@ func (l LoginPage) submit() tea.Msg {
 	}
 
 	reader := bytes.NewReader(reqBody)
-	body, err := requests.MakeRequest(http.MethodPost, requests.BaseURL+"/log-in", reader, l.BaseModel.Client, &basemodel.TokenStore{Token: ""})
+	body, err := requests.MakeRequest(http.MethodPost, requests.BaseURL+"/log-in", reader, l.BaseModel.Client, l.BaseModel.TokenStore)
 	if err != nil {
 		log.Println(err)
 		return messages.PageSwitchMsg{
