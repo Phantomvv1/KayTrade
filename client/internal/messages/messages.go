@@ -35,10 +35,6 @@ type LoginSuccessMsg struct {
 	Page  int
 }
 
-type PageSwitchWithoutInitMsg struct {
-	Page int
-}
-
 type ReloadMsg struct {
 	Page int
 }

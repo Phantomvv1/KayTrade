@@ -42,7 +42,7 @@ func MakeRequest(method string, urlString string, reader io.Reader, client *http
 		if info["error"] == ErrorTokenExpired.Error() {
 			log.Println("Refreshing")
 
-			body, err := MakeRequest(http.MethodPost, "http://localhost:42069/refresh", nil, client, TokenStore)
+			body, err := MakeRequest(http.MethodPost, BaseURL+"refresh", nil, client, TokenStore)
 			if err != nil {
 				return nil, err
 			}
@@ -51,7 +51,7 @@ func MakeRequest(method string, urlString string, reader io.Reader, client *http
 
 			TokenStore.Token = info["token"]
 
-			u, err := url.Parse("http://localhost:42069")
+			u, err := url.Parse(BaseURL)
 			if err != nil {
 				return nil, err
 			}
