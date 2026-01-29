@@ -266,18 +266,13 @@ func LogIn(c *gin.Context) {
 	}
 
 	hashedPassword := SHA512(information["password"])
-	finalPassword := ""
-	for _, r := range hashedPassword {
-		if r >= 0 && r <= 32 {
-			continue
+	for i, r := range hashedPassword {
+		if r != []rune(passwordCheck)[i] {
+			log.Printf("Index: %d\nRune: %v", i, r)
 		}
-
-		finalPassword += string(r)
 	}
 
-	log.Println(finalPassword, passwordCheck)
-	log.Println(len(finalPassword) == len(passwordCheck))
-	if finalPassword != passwordCheck {
+	if hashedPassword != passwordCheck {
 		log.Println("Wrong password")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error wrong password"})
 		return
