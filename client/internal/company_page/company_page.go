@@ -1049,7 +1049,7 @@ func (c *CompanyPage) padBars(response BarsResponse, duration time.Duration) Bar
 	lastBar := response.Bars[c.CompanyInfo.Symbol][len(response.Bars[c.CompanyInfo.Symbol])-1]
 	now := time.Now().UTC().Truncate(duration)
 
-	for lastBar.Timestamp.Truncate(duration).Before(now) || lastBar.Timestamp.Truncate(duration).Equal(now) {
+	for lastBar.Timestamp.Truncate(duration).Before(now) {
 		lastBar.Timestamp = lastBar.Timestamp.Add(duration)
 		response.Bars[c.CompanyInfo.Symbol] = append(response.Bars[c.CompanyInfo.Symbol], lastBar)
 	}
