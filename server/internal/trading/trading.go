@@ -38,31 +38,31 @@ func CreateOrder(c *gin.Context) {
 
 	var reader *bytes.Reader
 
-	if gin.Mode() == "release" {
-		reqBody, err := io.ReadAll(c.Request.Body)
-		if err != nil {
-			ErrorExit(c, http.StatusInternalServerError, "couldn't read the request body", err)
-			return
-		}
-
-		var info map[string]any
-		err = json.Unmarshal(reqBody, &info)
-		if err != nil {
-			ErrorExit(c, http.StatusInternalServerError, "couldn't unmarshal the request body", err)
-			return
-		}
-
-		info["commission_type"] = "bps"
-		info["commission"] = "15"
-
-		reqBody, err = json.Marshal(info)
-		if err != nil {
-			ErrorExit(c, http.StatusInternalServerError, "couldn't marshal the request body again", err)
-			return
-		}
-
-		reader = bytes.NewReader(reqBody)
-	}
+	// if gin.Mode() == "release" {
+	// 	reqBody, err := io.ReadAll(c.Request.Body)
+	// 	if err != nil {
+	// 		ErrorExit(c, http.StatusInternalServerError, "couldn't read the request body", err)
+	// 		return
+	// 	}
+	//
+	// 	var info map[string]any
+	// 	err = json.Unmarshal(reqBody, &info)
+	// 	if err != nil {
+	// 		ErrorExit(c, http.StatusInternalServerError, "couldn't unmarshal the request body", err)
+	// 		return
+	// 	}
+	//
+	// 	info["commission_type"] = "bps"
+	// 	info["commission"] = "15"
+	//
+	// 	reqBody, err = json.Marshal(info)
+	// 	if err != nil {
+	// 		ErrorExit(c, http.StatusInternalServerError, "couldn't marshal the request body again", err)
+	// 		return
+	// 	}
+	//
+	// 	reader = bytes.NewReader(reqBody)
+	// }
 
 	headers := BasicAuth()
 
