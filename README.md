@@ -10,6 +10,7 @@ A comprehensive trading platform built with Go, featuring a robust client-server
 - [Architecture](#architecture)
 - [Installation](#installation)
 - [Getting Started](#getting-started)
+- [Sign-up Examples](#sign-up-examples)
 - [Project Structure](#project-structure)
 - [Usage](#usage)
 - [Development](#development)
@@ -182,6 +183,23 @@ kaytrade --version
 # or
 kaytrade -v
 ```
+
+<a name="sign-up-examples"/>
+
+## 📝 Sign-Up Example Values (Sandbox)
+
+Account creation in KayTrade requires valid-looking data due to **Alpaca Sandbox API** constraints.  
+To avoid frustration during your first sign-up, you may use the following **example values**:
+
+> ⚠️ These values are **examples only** and are intended for **sandbox/testing purposes**.
+
+### Example Input Values
+
+- **Phone Number**: `+15556667788`
+- **State**: `CA`
+- **Postal Code**: `94401`
+- **Tax ID Type**: `USA_SSN` or `NATIONAL_ID`
+- **Tax ID**: `666-55-4321`
 
 <a name="project-structure"/>
 
