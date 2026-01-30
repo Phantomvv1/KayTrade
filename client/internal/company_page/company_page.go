@@ -1021,6 +1021,21 @@ func (c *CompanyPage) fetchDataCmd() tea.Cmd {
 			return fetchDataMsg{err: err}
 		}
 
+		switch c.timeFrame {
+		case TimeFrameMinute:
+			response = c.padBars(response, time.Minute)
+		case TimeFrameHour:
+			response = c.padBars(response, time.Hour)
+		case TimeFrameDay:
+			response = c.padBars(response, time.Hour*24)
+		case TimeFrameWeek:
+			response = c.padBars(response, time.Hour*24*7)
+		case TimeFrameMonth:
+			response = c.padBars(response, time.Hour*24*30)
+
+		default:
+		}
+
 		data, ok := response.Bars[c.CompanyInfo.Symbol]
 		if !ok || len(data) == 0 {
 			return fetchDataMsg{err: fmt.Errorf("no data available for symbol %s", c.CompanyInfo.Symbol)}
@@ -1028,6 +1043,18 @@ func (c *CompanyPage) fetchDataCmd() tea.Cmd {
 
 		return fetchDataMsg{data: data}
 	}
+}
+
+func (c *CompanyPage) padBars(response BarsResponse, duration time.Duration) BarsResponse {
+	lastBar := response.Bars[c.CompanyInfo.Symbol][len(response.Bars[c.CompanyInfo.Symbol])-1]
+	now := time.Now().UTC().Truncate(duration)
+
+	for lastBar.Timestamp.Truncate(duration).Before(now) || lastBar.Timestamp.Truncate(duration).Equal(now) {
+		lastBar.Timestamp = lastBar.Timestamp.Add(duration)
+		response.Bars[c.CompanyInfo.Symbol] = append(response.Bars[c.CompanyInfo.Symbol], lastBar)
+	}
+
+	return response
 }
 
 func (c *CompanyPage) connectWebSocket() tea.Cmd {
