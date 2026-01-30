@@ -210,15 +210,20 @@ func SignUp(c *gin.Context) {
 
 	reader := bytes.NewReader(req)
 
-	body, err := SendRequest[AlpacaAccount](http.MethodPost, BaseURL+Accounts, reader, errs, headers)
+	body, err := SendRequest[any](http.MethodPost, BaseURL+Accounts, reader, errs, headers)
 	if err != nil {
 		RequestExit(c, body, err, "unable to make an account for the user")
 		return
 	}
 
-	id := body.ID
-	name := body.Identity.GivenName + " " + body.Identity.FamilyName
-	email := body.Contact.Email
+	bodyAcc, ok := body.(AlpacaAccount)
+	if !ok {
+		c.JSON(http.StatusFailedDependency, gin.H{"error": "Error the returned body is not of the correct type. Please try again"})
+	}
+
+	id := bodyAcc.ID
+	name := bodyAcc.Identity.GivenName + " " + bodyAcc.Identity.FamilyName
+	email := bodyAcc.Contact.Email
 
 	hashedPassword := SHA512(password)
 	_, err = conn.Exec(context.Background(), "insert into authentication (id, full_name, email, password, type) values ($1, $2, $3, $4, $5)",

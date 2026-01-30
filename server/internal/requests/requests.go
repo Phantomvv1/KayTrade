@@ -68,11 +68,13 @@ func SendRequest[T any](method, url string, body io.Reader, errs map[int]string,
 			return zero, err
 		}
 
+		if msg, ok := errMap["message"].(string); ok {
+			return zero, errors.New(msg)
+		}
+
 		if errMsg := errs[res.StatusCode]; errMsg != "" {
 			return zero, errors.New(errMsg)
 		}
-
-		return zero, errors.New(errMap["message"].(string))
 	}
 
 	resBody, err := io.ReadAll(res.Body)
