@@ -85,6 +85,7 @@ func NewWatchlistPage(client *http.Client, tokenStore *basemodel.TokenStore) Wat
 		companies:      l,
 		spinner:        s,
 		emptyWatchlist: false,
+		loaded:         false,
 		focusedList:    true,
 		filtering:      false,
 		Reloaded:       false,
@@ -191,6 +192,10 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			case "enter":
+				if w.emptyWatchlist {
+					return w, nil
+				}
+
 				item := w.companies.SelectedItem()
 				i := item.(companyItem)
 				return w, func() tea.Msg {
@@ -222,6 +227,10 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					w.companies.CursorUp()
 				}
 
+				if len(w.companies.Items()) == 0 {
+					w.emptyWatchlist = true
+				}
+
 			case "d", "D":
 				if len(w.companies.Items()) == 0 {
 					return w, nil
@@ -238,6 +247,7 @@ func (w WatchlistPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 				w.companies.SetItems([]list.Item{})
+				w.emptyWatchlist = true
 
 			case "p", "P":
 				return w, func() tea.Msg {
@@ -355,13 +365,20 @@ func (w WatchlistPage) View() string {
 
 	} else {
 		msg := lipgloss.NewStyle().
-			Padding(1, 1).
-			MarginLeft(20).
 			Render("There are no companies in your watchlist.\nAdd some in order to see them here.")
 
-		content = lipgloss.JoinHorizontal(lipgloss.Center,
-			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).Render(msg),
-			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).Render(right),
+		help := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#626262")).
+			Render("s: search • p: profile page • b: bank relationships page • q: quit")
+
+		left := lipgloss.NewStyle().
+			MarginTop(5).
+			MarginLeft(20).
+			Render(lipgloss.JoinVertical(lipgloss.Center, msg, "\n\n\n\n\n", help))
+
+		content = lipgloss.JoinHorizontal(lipgloss.Top,
+			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).Render(left),
+			lipgloss.NewStyle().Width(w.BaseModel.Width/2-2).MarginLeft(20).Render(right),
 		)
 	}
 
@@ -391,4 +408,7 @@ func (w WatchlistPage) removeAllCompaniesFromWatchlist() error {
 func (w *WatchlistPage) Reload() {
 	w.companies.SetItems([]list.Item{})
 	w.Reloaded = true
+	w.emptyWatchlist = false
+	w.loaded = false
+	w.filtering = false
 }
