@@ -18,6 +18,10 @@ var upgrader websocket.Upgrader
 type TimeFrame string
 
 func (t TimeFrame) ValidTimeFrame() bool {
+	if len(t) == 0 {
+		return false
+	}
+
 	index := 0
 	for i, char := range t {
 		if char < '0' || char > '9' {
