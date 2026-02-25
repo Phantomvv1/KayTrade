@@ -28,11 +28,11 @@ func createTestContext(method, url string, body []byte) (*gin.Context, *httptest
 func TestAdminOnlyMiddleware_Allowed(t *testing.T) {
 	c, w := createTestContext("GET", "/", nil)
 
-	c.Set("accountType", auth.Admin)
+	c.Set("accountType", byte(auth.Admin))
 
 	AdminOnlyMiddleware(c)
 
-	if w.Code != 0 {
+	if w.Code != http.StatusOK {
 		t.Fatalf("expected no abort, got status %d", w.Code)
 	}
 }
@@ -40,7 +40,7 @@ func TestAdminOnlyMiddleware_Allowed(t *testing.T) {
 func TestAdminOnlyMiddleware_Forbidden(t *testing.T) {
 	c, w := createTestContext("GET", "/", nil)
 
-	c.Set("accountType", byte(0))
+	c.Set("accountType", byte(auth.User))
 
 	AdminOnlyMiddleware(c)
 
@@ -60,7 +60,7 @@ func TestJSONParserMiddleware_Valid(t *testing.T) {
 
 	JSONParserMiddleware(c)
 
-	if w.Code != 0 {
+	if w.Code != http.StatusOK {
 		t.Fatalf("unexpected abort")
 	}
 
@@ -90,7 +90,7 @@ func TestSymbolsParserMiddleware_Valid(t *testing.T) {
 
 	SymbolsParserMiddleware(c)
 
-	if w.Code != 0 {
+	if w.Code != http.StatusOK {
 		t.Fatalf("unexpected abort")
 	}
 
