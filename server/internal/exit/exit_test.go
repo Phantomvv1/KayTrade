@@ -88,7 +88,7 @@ func TestRequestExit_NilBodyWithError(t *testing.T) {
 func TestRequestExit_DefaultCase(t *testing.T) {
 	c, w := createTestContext()
 
-	err := errors.New("Some error")
+	err := errors.New("custom message")
 
 	RequestExit(c, gin.H{"x": 1}, err, "custom message")
 
