@@ -862,62 +862,11 @@ func GetCompanyInformation(c *gin.Context) {
 	response, err := getInfoAndLogo(symbol)
 	if err != nil {
 		if errors.Is(err, missingInfo) {
-
-			res := make(chan result)
-			go getLogo(symbol, res)
-			go getPriceInformation([]string{symbol}, start, res)
-
-			innerResponse := CompanyInfo{Symbol: symbol}
-			for range 2 {
-				result := <-res
-
-				if result.result == 0 {
-					if result.err != nil {
-						ErrorExit(c, http.StatusFailedDependency, "couldn't get the logo", result.err) // change that later
-						return
-					}
-
-					company := result.logo["company"].(map[string]any)
-					innerResponse.Logo = chooseLogo(result.logo)
-					innerResponse.Name = result.logo["name"].(string)
-					innerResponse.Domain = result.logo["domain"].(string)
-					innerResponse.Description = result.logo["description"].(string)
-					innerResponse.IsNSFW = result.logo["isNsfw"].(bool)
-					innerResponse.History = result.logo["longDescription"].(string)
-					foundedYear, ok := company["foundedYear"].(float64)
-					if !ok {
-						innerResponse.FoundedYear = 0
-					} else {
-						innerResponse.FoundedYear = int(foundedYear)
-					}
-
-					err := cacheInfo(innerResponse)
-					if err != nil {
-						log.Println(err)
-						log.Println("Couldn't cache the information about " + innerResponse.Symbol)
-					}
-				} else {
-					if result.err != nil {
-						ErrorExit(c, http.StatusFailedDependency, "couldn't get the opening and closing price", result.err)
-						return
-					}
-
-					for _, info := range result.information {
-						if len(info) != 0 {
-							innerResponse.OpeningPrice = info[0]["o"].(float64)
-							innerResponse.ClosingPrice = info[0]["c"].(float64)
-						}
-					}
-				}
-			}
-
-			c.JSON(http.StatusOK, gin.H{"information": innerResponse})
+			fetchAndCacheResponse(c, symbol, start)
 			return
-
 		}
 
-		log.Println(err)
-		ErrorExit(c, http.StatusInternalServerError, "couldn't check if the information about this company is cached", err)
+		fetchAndCacheResponse(c, symbol, start)
 		return
 	}
 
@@ -936,4 +885,56 @@ func GetCompanyInformation(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"information": response})
+}
+
+func fetchAndCacheResponse(c *gin.Context, symbol string, start string) {
+	res := make(chan result)
+	go getLogo(symbol, res)
+	go getPriceInformation([]string{symbol}, start, res)
+
+	innerResponse := CompanyInfo{Symbol: symbol}
+	for range 2 {
+		result := <-res
+
+		if result.result == 0 {
+			if result.err != nil {
+				ErrorExit(c, http.StatusFailedDependency, "couldn't get the logo", result.err) // change that later
+				return
+			}
+
+			company := result.logo["company"].(map[string]any)
+			innerResponse.Logo = chooseLogo(result.logo)
+			innerResponse.Name = result.logo["name"].(string)
+			innerResponse.Domain = result.logo["domain"].(string)
+			innerResponse.Description = result.logo["description"].(string)
+			innerResponse.IsNSFW = result.logo["isNsfw"].(bool)
+			innerResponse.History = result.logo["longDescription"].(string)
+			foundedYear, ok := company["foundedYear"].(float64)
+			if !ok {
+				innerResponse.FoundedYear = 0
+			} else {
+				innerResponse.FoundedYear = int(foundedYear)
+			}
+
+			err := cacheInfo(innerResponse)
+			if err != nil {
+				log.Println(err)
+				log.Println("Couldn't cache the information about " + innerResponse.Symbol)
+			}
+		} else {
+			if result.err != nil {
+				ErrorExit(c, http.StatusFailedDependency, "couldn't get the opening and closing price", result.err)
+				return
+			}
+
+			for _, info := range result.information {
+				if len(info) != 0 {
+					innerResponse.OpeningPrice = info[0]["o"].(float64)
+					innerResponse.ClosingPrice = info[0]["c"].(float64)
+				}
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"information": innerResponse})
 }
