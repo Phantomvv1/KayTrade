@@ -82,11 +82,11 @@ func SendRequest[T any](method, url string, body io.Reader, errs map[int]string,
 		return zero, err
 	}
 
-	h := res.Header["Content-Type"][0]
+	h := res.Header.Get("Content-Type")
 	h, _, _ = strings.Cut(h, ";")
 	if h == "text/plain" {
 		log.Println(string(resBody))
-		return zero, errors.New("Unkown error")
+		return zero, errors.New("Unknown error")
 	}
 
 	var resJson T
