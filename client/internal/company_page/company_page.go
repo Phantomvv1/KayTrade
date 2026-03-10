@@ -1047,18 +1047,17 @@ func (c *CompanyPage) fetchDataCmd() tea.Cmd {
 
 func (c *CompanyPage) padBars(response BarsResponse, duration time.Duration) BarsResponse {
 	lastBar := response.Bars[c.CompanyInfo.Symbol][len(response.Bars[c.CompanyInfo.Symbol])-1]
-	now := time.Now().UTC().Truncate(duration)
+	lastBar.Timestamp = time.Now().UTC()
 
-	for lastBar.Timestamp.Truncate(duration).Before(now) {
-		lastBar.Timestamp = lastBar.Timestamp.Add(duration)
-		response.Bars[c.CompanyInfo.Symbol] = append(response.Bars[c.CompanyInfo.Symbol], lastBar)
-	}
+	response.Bars[c.CompanyInfo.Symbol] = append(response.Bars[c.CompanyInfo.Symbol], lastBar)
 
 	return response
 }
 
 func (c *CompanyPage) connectWebSocket() tea.Cmd {
-	url := fmt.Sprintf("ws://%s/data/stocks/live/%s", requests.BaseURL, c.CompanyInfo.Symbol)
+	host, _ := strings.CutPrefix(requests.BaseURL, "http://")
+	log.Println(host)
+	url := fmt.Sprintf("ws://%s/data/stocks/live/%s", host, c.CompanyInfo.Symbol)
 
 	ws, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
