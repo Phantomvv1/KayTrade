@@ -55,6 +55,7 @@ func NewSearchPage(client *http.Client, tokenStore *basemodel.TokenStore) Search
 			key.NewBinding(key.WithKeys("ctrl+k", "up"), key.WithHelp("ctrl+k/↑", "up")),
 			key.NewBinding(key.WithKeys("ctrl+j", "down"), key.WithHelp("ctrl+j/↓", "down")),
 			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
+			key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "switch search parameter")),
 			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
 		}
 	}
