@@ -442,7 +442,7 @@ func getInfoAndLogo(symbol string) (*CompanyInfo, error) {
 	if !time.Now().UTC().After(companyInfo.expirationDate) {
 		return companyInfo, nil
 	} else {
-		return nil, errors.New("The information for this company has expired")
+		return nil, missingInfo
 	}
 }
 
