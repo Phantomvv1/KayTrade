@@ -32,6 +32,7 @@ import (
 	signuppage "github.com/Phantomvv1/KayTrade/client/internal/sign_up_page"
 	tradinginfopage "github.com/Phantomvv1/KayTrade/client/internal/trading_info_page"
 	transferspage "github.com/Phantomvv1/KayTrade/client/internal/transfers_page"
+	viewtransferspage "github.com/Phantomvv1/KayTrade/client/internal/view_transfers_page"
 	watchlistpage "github.com/Phantomvv1/KayTrade/client/internal/watchlist_page"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -53,6 +54,7 @@ type Model struct {
 	bankRelationshipPage         bankrelationshippage.BankRelationshipPage
 	bankRelationshipCreationPage bankrelationshipcreationpage.BankRelationshipCreationPage
 	transfersPage                transferspage.TransfersPage
+	viewTransfersPage            viewtransferspage.ViewTransfersPage
 	client                       *http.Client
 	tokenStore                   *basemodel.TokenStore
 	currentPage                  int
@@ -84,6 +86,7 @@ func NewModel() Model {
 		bankRelationshipPage:         bankrelationshippage.NewBankRelationshipPage(client, tokenStore),
 		bankRelationshipCreationPage: bankrelationshipcreationpage.NewBankRelationship(client, tokenStore),
 		transfersPage:                transferspage.NewTransfersPage(client, tokenStore),
+		viewTransfersPage:            viewtransferspage.New(client, tokenStore),
 		client:                       client,
 		tokenStore:                   tokenStore,
 		currentPage:                  messages.LandingPageNumber,
@@ -259,6 +262,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.TransfersPageNumber:
 		page, cmd = m.transfersPage.Update(msg)
 		m.transfersPage = page.(transferspage.TransfersPage)
+	case messages.ViewTransfersPage:
+		page, cmd = m.viewTransfersPage.Update(msg)
+		m.viewTransfersPage = page.(viewtransferspage.ViewTransfersPage)
 
 	default:
 		if m.currentPage != messages.ErrorPageNumber {
@@ -306,6 +312,8 @@ func (m Model) View() string {
 		return m.bankRelationshipCreationPage.View()
 	case messages.TransfersPageNumber:
 		return m.transfersPage.View()
+	case messages.ViewTransfersPage:
+		return m.viewTransfersPage.View()
 
 	default:
 		return m.errorPage.View()
@@ -360,6 +368,9 @@ func (m *Model) setSize(width, height int) {
 
 	m.transfersPage.BaseModel.Width = width
 	m.transfersPage.BaseModel.Height = height
+
+	m.viewTransfersPage.BaseModel.Width = width
+	m.viewTransfersPage.BaseModel.Height = height
 }
 
 func (m *Model) getModelFromPageNumber() tea.Model {
@@ -396,6 +407,8 @@ func (m *Model) getModelFromPageNumber() tea.Model {
 		return m.bankRelationshipCreationPage
 	case messages.TransfersPageNumber:
 		return m.transfersPage
+	case messages.ViewTransfersPage:
+		return m.viewTransfersPage
 	default:
 		return nil
 	}
@@ -423,6 +436,8 @@ func (m *Model) Reload(page int) {
 		m.sellPage.Reload()
 	case messages.BankRelationshipPageNumber:
 		m.bankRelationshipPage.Reload()
+	case messages.ViewTransfersPage:
+		m.viewTransfersPage.Reload()
 	default:
 		return
 	}

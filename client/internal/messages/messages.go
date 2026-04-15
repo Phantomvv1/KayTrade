@@ -16,6 +16,7 @@ const (
 	BankRelationshipPageNumber
 	BankRelationshipCreationPageNumber
 	TransfersPageNumber
+	ViewTransfersPage
 	ErrorPageNumber
 )
 
