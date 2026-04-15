@@ -29,7 +29,6 @@ type Transfer struct {
 	ID                    string    `json:"id"`
 	RelationshipID        string    `json:"relationship_id"`
 	BankID                string    `json:"bank_id"`
-	AccountID             string    `json:"account_id"`
 	Type                  string    `json:"type"`
 	Status                string    `json:"status"`
 	Reason                string    `json:"reason"`
@@ -43,30 +42,26 @@ type Transfer struct {
 }
 
 func (t Transfer) FilterValue() string {
-	return t.ID + " " + t.Type + " " + t.Status
+	return t.CreatedAt.Format("2006-01-02 15:04")
 }
 
 func (t Transfer) Title() string {
-	return fmt.Sprintf("%s %s  %s  $%s", t.CreatedAt.Format("2006-01-02 15:04"), t.Direction, t.Type, t.Amount)
+	return fmt.Sprintf("%s %s  %s  $%s", t.CreatedAt.Format("2006-01-02 15:04"), t.Direction[:3], t.Type, t.Amount)
 }
 
 func (t Transfer) Description() string {
 	statusSymbol := ""
 	switch t.Status {
-	case "COMPLETED":
+	case "COMPLETE":
 		statusSymbol = "✓"
 	case "QUEUED":
 		statusSymbol = "⋯"
-	case "FAILED":
+	case "REJECTED":
 		statusSymbol = "✗"
 	default:
 		statusSymbol = "•"
 	}
-	accountID := t.AccountID
-	if len(accountID) > 8 {
-		accountID = accountID[:8] + "..."
-	}
-	return fmt.Sprintf("%s %s | Account: %s", statusSymbol, t.Status, accountID)
+	return fmt.Sprintf("%s %s", statusSymbol, t.Status)
 }
 
 type TransfersLoadedMsg struct {
@@ -82,6 +77,8 @@ type ViewTransfersPage struct {
 	spinner   spinner.Model
 	err       error
 	Reloaded  bool
+	filtering bool
+	hasFilter bool
 }
 
 func New(client *http.Client, tokenStore *basemodel.TokenStore) ViewTransfersPage {
@@ -165,7 +162,7 @@ func (t ViewTransfersPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			t.transfers.SetItems(items)
-			t.transfers.SetSize(t.BaseModel.Width/5, (3*t.BaseModel.Height)/2)
+			t.transfers.SetSize(t.BaseModel.Width/3, t.BaseModel.Height/2)
 		}
 
 		return t, nil
@@ -182,6 +179,28 @@ func (t ViewTransfersPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q":
 			return t, func() tea.Msg {
 				return messages.QuitMsg{}
+			}
+
+		case "/":
+			t.filtering = true
+
+		case "enter":
+			if t.filtering {
+				t.filtering = false
+				t.hasFilter = true
+			}
+
+		case "esc":
+			if !t.filtering && !t.hasFilter {
+				return t, func() tea.Msg {
+					return messages.SmartPageSwitchMsg{
+						Page: messages.BankRelationshipPageNumber,
+					}
+				}
+			} else if t.filtering {
+				t.filtering = false
+			} else if t.hasFilter {
+				t.hasFilter = false
 			}
 		}
 	}
