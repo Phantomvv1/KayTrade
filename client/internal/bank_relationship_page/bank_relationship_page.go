@@ -111,8 +111,10 @@ func NewBankRelationshipPage(client *http.Client, tokenStore *basemodel.TokenSto
 	l.Title = "Bank Relationships"
 	l.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
+			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
 			key.NewBinding(key.WithKeys("c", "C"), key.WithHelp("c (create)", "relationship")),
-			key.NewBinding(key.WithKeys("t", "T"), key.WithHelp("t", "new transfer")),
+			key.NewBinding(key.WithKeys("t", "T"), key.WithHelp("t", "view transfers")),
+			key.NewBinding(key.WithKeys("n", "N"), key.WithHelp("n", "new transfer")),
 		}
 	}
 
@@ -217,6 +219,13 @@ func (b BankRelationshipPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "t", "T":
+			return b, func() tea.Msg {
+				return messages.SmartPageSwitchMsg{
+					Page: messages.ViewTransfersPage,
+				}
+			}
+
+		case "n", "N":
 			bank := b.bankRelationships.SelectedItem().(bankRelationshipItem)
 			relType := strings.ToLower(strings.Split(bank.Title(), " - ")[1])
 			switch relType {
