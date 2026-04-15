@@ -7,7 +7,9 @@ import (
 	"time"
 
 	basemodel "github.com/Phantomvv1/KayTrade/client/internal/base_model"
+	"github.com/Phantomvv1/KayTrade/client/internal/messages"
 	"github.com/Phantomvv1/KayTrade/client/internal/requests"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -79,6 +81,7 @@ type ViewTransfersPage struct {
 	loaded    bool
 	spinner   spinner.Model
 	err       error
+	Reloaded  bool
 }
 
 func New(client *http.Client, tokenStore *basemodel.TokenStore) ViewTransfersPage {
@@ -99,6 +102,7 @@ func New(client *http.Client, tokenStore *basemodel.TokenStore) ViewTransfersPag
 		BorderForeground(purple)
 
 	l := list.New([]list.Item{}, delegate, 0, 0)
+	l.DisableQuitKeybindings()
 	l.Title = ""
 	l.SetFilteringEnabled(true)
 	l.Styles.Title = lipgloss.NewStyle().
@@ -110,12 +114,19 @@ func New(client *http.Client, tokenStore *basemodel.TokenStore) ViewTransfersPag
 	l.Styles.HelpStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#626262"))
 
+	l.AdditionalFullHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+		}
+	}
+
 	return ViewTransfersPage{
 		BaseModel: basemodel.BaseModel{Client: client, TokenStore: tokenStore},
 		transfers: l,
 		titleBar:  "TRANSFERS",
 		loaded:    false,
 		spinner:   s,
+		Reloaded:  true,
 	}
 }
 
@@ -152,8 +163,11 @@ func (t ViewTransfersPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			for i, transfer := range msg.transfers {
 				items[i] = transfer
 			}
+
 			t.transfers.SetItems(items)
+			t.transfers.SetSize(t.BaseModel.Width/5, (3*t.BaseModel.Height)/2)
 		}
+
 		return t, nil
 
 	case spinner.TickMsg:
@@ -165,12 +179,13 @@ func (t ViewTransfersPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "q", "esc":
-			return t, tea.Quit
+		case "q":
+			return t, func() tea.Msg {
+				return messages.QuitMsg{}
+			}
 		}
 	}
 
-	// Update the list
 	if t.loaded && t.err == nil {
 		t.transfers, cmd = t.transfers.Update(msg)
 	}
@@ -212,10 +227,7 @@ func (t ViewTransfersPage) View() string {
 		msg := lipgloss.NewStyle().
 			Padding(1, 1).
 			Render("No transfers found.\nYour transfer history will appear here.")
-		help := lipgloss.NewStyle().
-			Foreground(gray).
-			Render("q: quit • esc: back")
-		content := lipgloss.JoinVertical(lipgloss.Left, msg, "", help)
+		content := lipgloss.JoinVertical(lipgloss.Left, msg, "")
 		centerContent := lipgloss.Place(t.BaseModel.Width, t.BaseModel.Height-6, lipgloss.Center, lipgloss.Center, content)
 		return header + centerContent
 	}
@@ -228,11 +240,21 @@ func (t ViewTransfersPage) View() string {
 		Render(t.transfers.View())
 
 	header = lipgloss.PlaceHorizontal(t.BaseModel.Width, lipgloss.Center, header)
-	return header + listView
+
+	centeredList := lipgloss.Place(
+		t.BaseModel.Width,
+		t.BaseModel.Height-6,
+		lipgloss.Center,
+		lipgloss.Center,
+		listView,
+	)
+
+	return header + centeredList
 }
 
 func (t *ViewTransfersPage) Reload() {
 	t.loaded = false
 	t.err = nil
 	t.transfers.SetItems([]list.Item{})
+	t.Reloaded = true
 }

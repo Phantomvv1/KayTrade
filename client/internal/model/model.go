@@ -469,6 +469,14 @@ func (m *Model) Reloaded(page int) bool {
 
 		return reloaded
 
+	case messages.ViewTransfersPage:
+		reloaded := m.viewTransfersPage.Reloaded
+		if reloaded {
+			m.bankRelationshipPage.Reloaded = false
+		}
+
+		return reloaded
+
 	case messages.SearchPageNumber:
 		return true
 
