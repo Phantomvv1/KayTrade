@@ -138,13 +138,11 @@ func (d DocumentsPage) loadDocuments() tea.Msg {
 		return DocumentsLoadedMsg{err: err}
 	}
 
-	log.Println(documents)
 	err = d.parseDateToTime(documents)
 	if err != nil {
 		return DocumentsLoadedMsg{err: err}
 	}
 
-	log.Println(documents)
 	return DocumentsLoadedMsg{documents: documents}
 }
 
@@ -173,9 +171,9 @@ func (d *DocumentsPage) getLinkToDownloadDocument(document Document) (string, er
 	}
 	req.Header.Set("Authorization", "Bearer "+d.BaseModel.TokenStore.Token)
 
-	d.BaseModel.Client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
+	// d.BaseModel.Client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+	// 	return http.ErrUseLastResponse
+	// }
 
 	resp, err := d.BaseModel.Client.Do(req)
 	if err != nil {
@@ -183,8 +181,8 @@ func (d *DocumentsPage) getLinkToDownloadDocument(document Document) (string, er
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-	log.Println(string(body))
+	body, err := io.ReadAll(resp.Body)
+	log.Println(string(body), err)
 
 	if errors.Is(err, requests.ErrorTokenExpired) {
 		_, _ = requests.MakeRequest(http.MethodGet, requests.BaseURL+"/documents/download/"+document.ID, nil, d.BaseModel.Client, d.BaseModel.TokenStore) // refresh the token
@@ -209,7 +207,7 @@ func (d *DocumentsPage) downloadDocument(document Document) tea.Cmd {
 		if err != nil {
 			return DocumentDownloadedMsg{err: err}
 		}
-		downloadResp, err := http.Get(downloadURL)
+		downloadResp, err := d.BaseModel.Client.Get(downloadURL)
 		if err != nil {
 			return DocumentDownloadedMsg{err: err}
 		}
