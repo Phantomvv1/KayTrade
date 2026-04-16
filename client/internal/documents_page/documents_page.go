@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -24,11 +25,12 @@ type Document struct {
 	Type    string `json:"type"`
 	Name    string `json:"name,omitempty"`
 	SubType string `json:"sub_type"`
-	Date    string `json:"date"`
+	DateStr string `json:"date"`
+	date    time.Time
 }
 
 func (d Document) FilterValue() string {
-	return d.Type + " " + d.SubType + " " + d.Name + " " + d.Date
+	return d.date.Format("2006-01-02 15:04")
 }
 
 func (d Document) Title() string {
@@ -37,7 +39,7 @@ func (d Document) Title() string {
 		name = d.Type
 	}
 
-	return fmt.Sprintf("%s - %s", name, d.Date)
+	return fmt.Sprintf("%s - %s", name, d.date.Format(time.DateOnly))
 }
 
 func (d Document) Description() string {
@@ -133,25 +135,48 @@ func (d DocumentsPage) loadDocuments() tea.Msg {
 		return DocumentsLoadedMsg{err: err}
 	}
 
+	documents, err = d.parseDateToTime(documents)
+	if err != nil {
+		return DocumentsLoadedMsg{err: err}
+	}
+
 	return DocumentsLoadedMsg{documents: documents}
 }
 
-func (d DocumentsPage) downloadDocument(documentID string, documentName string) tea.Cmd {
+func (d DocumentsPage) parseDateToTime(documents []Document) ([]Document, error) {
+	result := make([]Document, len(documents))
+	for _, document := range documents {
+		var err error
+		document.date, err = time.Parse(time.DateOnly, document.DateStr)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, document)
+	}
+
+	return result, nil
+}
+
+func (d DocumentsPage) downloadDocument(document Document) tea.Cmd {
 	return func() tea.Msg {
 		// d.BaseModel.Client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		// 	return http.ErrUseLastResponse
 		// }
 
-		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/documents/download/"+documentID, nil, d.BaseModel.Client, d.BaseModel.TokenStore)
+		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/documents/download/"+document.ID, nil, d.BaseModel.Client, d.BaseModel.TokenStore)
 		if err != nil {
 			return DocumentDownloadedMsg{err: err}
 		}
 
-		filename := documentName
+		filename := document.Name
 		if filename == "" {
-			filename = fmt.Sprintf("%s", documentID)
+			filename = document.Type
 		}
-		filename = filename + ".pdf"
+
+		if document.Type == "trade_confirmation_json" {
+			filename = filename + ".pdf"
+		}
 
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
@@ -187,6 +212,10 @@ func (d DocumentsPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		d.loaded = true
 		d.err = msg.err
 		if msg.err == nil {
+			slices.SortFunc(msg.documents, func(a Document, b Document) int {
+				return -a.date.Compare(b.date)
+			})
+
 			items := make([]list.Item, len(msg.documents))
 			for i, document := range msg.documents {
 				items[i] = document
@@ -195,6 +224,7 @@ func (d DocumentsPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			d.documents.SetItems(items)
 			d.documents.SetSize(d.BaseModel.Width/4, (d.BaseModel.Height*3)/4)
 		}
+
 		return d, nil
 
 	case DocumentDownloadedMsg:
@@ -245,7 +275,7 @@ func (d DocumentsPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					d.downloadMsg = fmt.Sprintf("Downloading %s...", doc.Title())
 					return d, tea.Batch(
 						d.spinner.Tick,
-						d.downloadDocument(doc.ID, doc.Name),
+						d.downloadDocument(doc),
 					)
 				}
 			}
