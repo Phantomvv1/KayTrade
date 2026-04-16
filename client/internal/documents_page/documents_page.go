@@ -46,7 +46,7 @@ func (d Document) Title() string {
 }
 
 func (d Document) Description() string {
-	return fmt.Sprintf("%s | %s", d.Type, d.SubType)
+	return fmt.Sprintf("%s", d.Type)
 }
 
 type DocumentsLoadedMsg struct {
@@ -138,27 +138,28 @@ func (d DocumentsPage) loadDocuments() tea.Msg {
 		return DocumentsLoadedMsg{err: err}
 	}
 
-	documents, err = d.parseDateToTime(documents)
+	log.Println(documents)
+	err = d.parseDateToTime(documents)
 	if err != nil {
 		return DocumentsLoadedMsg{err: err}
 	}
 
+	log.Println(documents)
 	return DocumentsLoadedMsg{documents: documents}
 }
 
-func (d DocumentsPage) parseDateToTime(documents []Document) ([]Document, error) {
-	result := make([]Document, len(documents))
-	for _, document := range documents {
+func (d DocumentsPage) parseDateToTime(documents []Document) error {
+	for i, document := range documents {
 		var err error
 		document.date, err = time.Parse(time.DateOnly, document.DateStr)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		result = append(result, document)
+		documents[i] = document
 	}
 
-	return result, nil
+	return nil
 }
 
 func (d *DocumentsPage) getLinkToDownloadDocument(document Document) (string, error) {
@@ -181,6 +182,9 @@ func (d *DocumentsPage) getLinkToDownloadDocument(document Document) (string, er
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	log.Println(string(body))
 
 	if errors.Is(err, requests.ErrorTokenExpired) {
 		_, _ = requests.MakeRequest(http.MethodGet, requests.BaseURL+"/documents/download/"+document.ID, nil, d.BaseModel.Client, d.BaseModel.TokenStore) // refresh the token
