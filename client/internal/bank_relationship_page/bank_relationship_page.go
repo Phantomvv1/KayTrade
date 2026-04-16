@@ -221,7 +221,7 @@ func (b BankRelationshipPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "t", "T":
 			return b, func() tea.Msg {
 				return messages.SmartPageSwitchMsg{
-					Page: messages.ViewTransfersPage,
+					Page: messages.ViewTransfersPageNumber,
 				}
 			}
 

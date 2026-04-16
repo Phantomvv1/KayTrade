@@ -467,6 +467,13 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return p, nil
 				}
 
+			case "d", "D":
+				return p, func() tea.Msg {
+					return messages.SmartPageSwitchMsg{
+						Page: messages.DocumentsPageNumber,
+					}
+				}
+
 			default:
 				var cmd tea.Cmd
 				if p.orders.FilterInput.Focused() {
