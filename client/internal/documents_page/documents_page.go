@@ -2,7 +2,10 @@ package documentspage
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -158,15 +161,63 @@ func (d DocumentsPage) parseDateToTime(documents []Document) ([]Document, error)
 	return result, nil
 }
 
-func (d DocumentsPage) downloadDocument(document Document) tea.Cmd {
-	return func() tea.Msg {
-		// d.BaseModel.Client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		// 	return http.ErrUseLastResponse
-		// }
+func (d *DocumentsPage) getLinkToDownloadDocument(document Document) (string, error) {
+	d.BaseModel.Client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
 
-		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/documents/download/"+document.ID, nil, d.BaseModel.Client, d.BaseModel.TokenStore)
+	req, err := http.NewRequest(http.MethodGet, requests.BaseURL+"/documents/download/"+document.ID, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+d.BaseModel.TokenStore.Token)
+
+	d.BaseModel.Client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	resp, err := d.BaseModel.Client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if errors.Is(err, requests.ErrorTokenExpired) {
+		_, _ = requests.MakeRequest(http.MethodGet, requests.BaseURL+"/documents/download/"+document.ID, nil, d.BaseModel.Client, d.BaseModel.TokenStore) // refresh the token
+		return d.getLinkToDownloadDocument(document)
+	}
+
+	if resp.StatusCode != http.StatusMovedPermanently && resp.StatusCode != http.StatusFound {
+		return "", fmt.Errorf("expected redirect, got status %d", resp.StatusCode)
+	}
+
+	downloadURL := resp.Header.Get("Location")
+	if downloadURL == "" {
+		return "", fmt.Errorf("no redirect URL in response")
+	}
+
+	return downloadURL, nil
+}
+
+func (d *DocumentsPage) downloadDocument(document Document) tea.Cmd {
+	return func() tea.Msg {
+		downloadURL, err := d.getLinkToDownloadDocument(document)
 		if err != nil {
 			return DocumentDownloadedMsg{err: err}
+		}
+		downloadResp, err := http.Get(downloadURL)
+		if err != nil {
+			return DocumentDownloadedMsg{err: err}
+		}
+		defer downloadResp.Body.Close()
+
+		if downloadResp.StatusCode != http.StatusOK {
+			return DocumentDownloadedMsg{err: fmt.Errorf("download failed with status %d", downloadResp.StatusCode)}
+		}
+
+		body, err := io.ReadAll(downloadResp.Body)
+		if err != nil {
+			return DocumentDownloadedMsg{err: errors.New("Error: unable to read the body of the download request")}
 		}
 
 		filename := document.Name
@@ -241,6 +292,7 @@ func (d DocumentsPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 
 	case clearDownloadMsg:
+		log.Println(d.downloadMsg)
 		d.downloadMsg = ""
 		return d, nil
 
@@ -343,7 +395,8 @@ func (d DocumentsPage) View() string {
 			Render(d.spinner.View() + " " + d.downloadMsg)
 	} else if d.downloadMsg != "" {
 		color := green
-		if len(d.downloadMsg) > 0 && strings.SplitAfter(d.downloadMsg, " ")[0] == "Download" {
+		splitDownloadMsg := strings.Split(d.downloadMsg, " ")
+		if len(splitDownloadMsg) >= 2 && splitDownloadMsg[0] == "Download" && splitDownloadMsg[1] == "failed:" {
 			color = red
 		}
 
@@ -363,17 +416,23 @@ func (d DocumentsPage) View() string {
 
 	availableHeight := d.BaseModel.Height - headerHeight
 
+	body := listView
+	if statusBar != "" {
+		body = lipgloss.JoinVertical(
+			lipgloss.Center,
+			statusBar,
+			"",
+			listView,
+		)
+	}
+
 	content := lipgloss.Place(
 		d.BaseModel.Width,
 		availableHeight,
 		lipgloss.Center,
 		lipgloss.Center,
-		listView,
+		body,
 	)
-
-	if statusBar != "" {
-		content = lipgloss.JoinVertical(lipgloss.Center, statusBar, "", content)
-	}
 
 	return header + content
 }
