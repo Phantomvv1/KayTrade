@@ -175,7 +175,9 @@ func (d DocumentsPage) downloadDocument(document Document) tea.Cmd {
 		}
 
 		if document.Type == "trade_confirmation_json" {
-			filename = filename + ".pdf"
+			filename += ".json"
+		} else {
+			filename += ".pdf"
 		}
 
 		homeDir, err := os.UserHomeDir()
