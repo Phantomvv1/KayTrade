@@ -1,6 +1,8 @@
 package documents
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
@@ -36,7 +38,7 @@ func DownloadDocument(c *gin.Context) {
 		404: "Document is not found",
 	}
 
-	req, err := http.NewRequest(http.MethodGet, BaseURL+Accounts+id+"/"+Documents+documentID, nil)
+	req, err := http.NewRequest(http.MethodGet, BaseURL+Accounts+id+"/"+Documents+documentID+"/download", nil)
 	if err != nil {
 		ErrorExit(c, http.StatusFailedDependency, "couldn't create the request", err)
 		return
@@ -71,7 +73,19 @@ func DownloadDocument(c *gin.Context) {
 		return
 
 	case http.StatusOK:
-		c.JSON(http.StatusOK, res.Body)
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			ErrorExit(c, http.StatusInternalServerError, "unable to read the body of the request", err)
+			return
+		}
+
+		var data any
+		if err := json.Unmarshal(body, &data); err != nil {
+			ErrorExit(c, http.StatusInternalServerError, "invalid JSON from upstream", err)
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"result": data})
 		return
 
 	default:
