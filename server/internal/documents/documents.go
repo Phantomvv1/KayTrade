@@ -1,7 +1,6 @@
 package documents
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 
@@ -79,13 +78,7 @@ func DownloadDocument(c *gin.Context) {
 			return
 		}
 
-		var data any
-		if err := json.Unmarshal(body, &data); err != nil {
-			ErrorExit(c, http.StatusInternalServerError, "invalid JSON from upstream", err)
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"result": data})
+		c.Data(http.StatusOK, "application/json", body)
 		return
 
 	default:

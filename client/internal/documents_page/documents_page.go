@@ -2,9 +2,7 @@ package documentspage
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -160,71 +158,16 @@ func (d DocumentsPage) parseDateToTime(documents []Document) error {
 	return nil
 }
 
-func (d *DocumentsPage) getLinkToDownloadDocument(document Document) (string, error) {
-	d.BaseModel.Client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
-
-	req, err := http.NewRequest(http.MethodGet, requests.BaseURL+"/documents/download/"+document.ID, nil)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Authorization", "Bearer "+d.BaseModel.TokenStore.Token)
-
-	// d.BaseModel.Client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-	// 	return http.ErrUseLastResponse
-	// }
-
-	resp, err := d.BaseModel.Client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	log.Println(string(body), err)
-
-	if errors.Is(err, requests.ErrorTokenExpired) {
-		_, _ = requests.MakeRequest(http.MethodGet, requests.BaseURL+"/documents/download/"+document.ID, nil, d.BaseModel.Client, d.BaseModel.TokenStore) // refresh the token
-		return d.getLinkToDownloadDocument(document)
-	}
-
-	if resp.StatusCode != http.StatusMovedPermanently && resp.StatusCode != http.StatusFound {
-		return "", fmt.Errorf("expected redirect, got status %d", resp.StatusCode)
-	}
-
-	downloadURL := resp.Header.Get("Location")
-	if downloadURL == "" {
-		return "", fmt.Errorf("no redirect URL in response")
-	}
-
-	return downloadURL, nil
-}
-
 func (d *DocumentsPage) downloadDocument(document Document) tea.Cmd {
 	return func() tea.Msg {
-		downloadURL, err := d.getLinkToDownloadDocument(document)
+		body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/documents/download/"+document.ID, nil, d.BaseModel.Client, d.BaseModel.TokenStore)
 		if err != nil {
 			return DocumentDownloadedMsg{err: err}
-		}
-		downloadResp, err := d.BaseModel.Client.Get(downloadURL)
-		if err != nil {
-			return DocumentDownloadedMsg{err: err}
-		}
-		defer downloadResp.Body.Close()
-
-		if downloadResp.StatusCode != http.StatusOK {
-			return DocumentDownloadedMsg{err: fmt.Errorf("download failed with status %d", downloadResp.StatusCode)}
-		}
-
-		body, err := io.ReadAll(downloadResp.Body)
-		if err != nil {
-			return DocumentDownloadedMsg{err: errors.New("Error: unable to read the body of the download request")}
 		}
 
 		filename := document.Name
 		if filename == "" {
-			filename = document.Type
+			filename = document.Type + "_" + document.date.Format(time.DateOnly)
 		}
 
 		if document.Type == "trade_confirmation_json" {
