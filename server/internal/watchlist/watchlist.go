@@ -276,6 +276,8 @@ func GetInformationForSymbols(c *gin.Context) {
 	if now.Hour() < 13 || now.Hour() >= 20 { // market opens at 13:30 UTC and closes at 20:00 UTC
 		if now.Weekday() == time.Monday {
 			start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
+		} else if now.Weekday() == time.Sunday {
+			start = now.AddDate(0, 0, -2).Truncate(time.Hour * 24).Format(time.RFC3339)
 		} else {
 			start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
 		}
@@ -285,6 +287,8 @@ func GetInformationForSymbols(c *gin.Context) {
 	if now.Hour() == 13 && now.Minute() < 30 {
 		if now.Weekday() == time.Monday {
 			start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
+		} else if now.Weekday() == time.Sunday {
+			start = now.AddDate(0, 0, -2).Truncate(time.Hour * 24).Format(time.RFC3339)
 		} else {
 			start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
 		}
@@ -842,6 +846,8 @@ func GetCompanyInformation(c *gin.Context) {
 	if now.Hour() < 13 || now.Hour() >= 20 { // market opens at 13:30 UTC and closes at 20:00 UTC
 		if now.Weekday() == time.Monday {
 			start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
+		} else if now.Weekday() == time.Sunday {
+			start = now.AddDate(0, 0, -2).Truncate(time.Hour * 24).Format(time.RFC3339)
 		} else {
 			start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
 		}
@@ -851,6 +857,8 @@ func GetCompanyInformation(c *gin.Context) {
 	if now.Hour() == 13 && now.Minute() < 30 {
 		if now.Weekday() == time.Monday {
 			start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
+		} else if now.Weekday() == time.Sunday {
+			start = now.AddDate(0, 0, -2).Truncate(time.Hour * 24).Format(time.RFC3339)
 		} else {
 			start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
 		}
@@ -902,13 +910,36 @@ func fetchAndCacheResponse(c *gin.Context, symbol string, start string) {
 				return
 			}
 
+			log.Println(result.logo)
+
+			ok := true
 			company := result.logo["company"].(map[string]any)
 			innerResponse.Logo = chooseLogo(result.logo)
-			innerResponse.Name = result.logo["name"].(string)
-			innerResponse.Domain = result.logo["domain"].(string)
-			innerResponse.Description = result.logo["description"].(string)
-			innerResponse.IsNSFW = result.logo["isNsfw"].(bool)
-			innerResponse.History = result.logo["longDescription"].(string)
+			innerResponse.Name, ok = result.logo["name"].(string)
+			if !ok {
+				innerResponse.Name = ""
+			}
+
+			innerResponse.Domain, ok = result.logo["domain"].(string)
+			if !ok {
+				innerResponse.Domain = ""
+			}
+
+			innerResponse.Description, ok = result.logo["description"].(string)
+			if !ok {
+				innerResponse.Description = ""
+			}
+
+			innerResponse.IsNSFW, ok = result.logo["isNsfw"].(bool)
+			if !ok {
+				innerResponse.IsNSFW = false
+			}
+
+			innerResponse.History, ok = result.logo["longDescription"].(string)
+			if !ok {
+				innerResponse.History = ""
+			}
+
 			foundedYear, ok := company["foundedYear"].(float64)
 			if !ok {
 				innerResponse.FoundedYear = 0

@@ -20,6 +20,12 @@ const (
 )
 
 func main() {
+	defer func() {
+		err := recover()
+		log.Println(err)
+		log.Println(1)
+	}()
+
 	if len(os.Args) > 1 && (os.Args[1] == "-v" || os.Args[1] == "--version") {
 		fmt.Println("KayTrade version " + version)
 		return

@@ -335,6 +335,9 @@ func GetHistoricalAuctions(c *gin.Context) {
 		if now.Weekday() == time.Monday {
 			start += now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
 			end += now.AddDate(0, 0, -2).Truncate(time.Hour * 24).Format(time.RFC3339)
+		} else if now.Weekday() == time.Sunday {
+			start += now.AddDate(0, 0, -2).Truncate(time.Hour * 24).Format(time.RFC3339)
+			end += now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
 		} else {
 			start += now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
 			end += now.Truncate(time.Hour * 24).Format(time.RFC3339)
@@ -344,6 +347,9 @@ func GetHistoricalAuctions(c *gin.Context) {
 		if now.Weekday() == time.Monday {
 			start += now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
 			end += now.AddDate(0, 0, -2).Truncate(time.Hour * 24).Format(time.RFC3339)
+		} else if now.Weekday() == time.Sunday {
+			start += now.AddDate(0, 0, -2).Truncate(time.Hour * 24).Format(time.RFC3339)
+			end += now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
 		} else {
 			start += now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
 			end += now.Truncate(time.Hour * 24).Format(time.RFC3339)
