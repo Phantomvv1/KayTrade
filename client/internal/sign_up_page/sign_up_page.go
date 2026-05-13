@@ -797,9 +797,13 @@ func (s SignUpPage) View() string {
 		)
 	}
 
-	help := helpStyle.Render(
-		"↑/↓: move • ctrl+h / ctrl+l: change page • enter: submit/type • esc: stop typing/back • q: quit",
-	)
+	help := "↑/↓: move • ctrl+h / ctrl+l: change page • enter: submit/type • esc: stop typing/back • q: quit"
+
+	if s.currentPage == contactPage {
+		help += " • ctrl+e: view password"
+	}
+
+	help = helpStyle.Render(help)
 
 	finalContent := ""
 	if s.currentPage != identityPage {
