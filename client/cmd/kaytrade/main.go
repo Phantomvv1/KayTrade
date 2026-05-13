@@ -22,7 +22,9 @@ const (
 func main() {
 	defer func() {
 		err := recover()
-		log.Println(err)
+		if err != nil {
+			log.Println(err)
+		}
 	}()
 
 	if len(os.Args) > 1 && (os.Args[1] == "-v" || os.Args[1] == "--version") {
