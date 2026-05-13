@@ -1,6 +1,7 @@
 package documents
 
 import (
+	"io"
 	"net/http"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
@@ -36,7 +37,7 @@ func DownloadDocument(c *gin.Context) {
 		404: "Document is not found",
 	}
 
-	req, err := http.NewRequest(http.MethodGet, BaseURL+Accounts+id+"/"+Documents+documentID, nil)
+	req, err := http.NewRequest(http.MethodGet, BaseURL+Accounts+id+"/"+Documents+documentID+"/download", nil)
 	if err != nil {
 		ErrorExit(c, http.StatusFailedDependency, "couldn't create the request", err)
 		return
@@ -71,7 +72,13 @@ func DownloadDocument(c *gin.Context) {
 		return
 
 	case http.StatusOK:
-		c.JSON(http.StatusOK, res.Body)
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			ErrorExit(c, http.StatusInternalServerError, "unable to read the body of the request", err)
+			return
+		}
+
+		c.Data(http.StatusOK, "application/json", body)
 		return
 
 	default:

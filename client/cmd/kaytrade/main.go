@@ -16,10 +16,15 @@ const (
 	envSystem = "system"
 	envDocker = "docker"
 	envDev    = "dev"
-	version   = "0.2.0"
+	version   = "0.3.0"
 )
 
 func main() {
+	defer func() {
+		err := recover()
+		log.Println(err)
+	}()
+
 	if len(os.Args) > 1 && (os.Args[1] == "-v" || os.Args[1] == "--version") {
 		fmt.Println("KayTrade version " + version)
 		return

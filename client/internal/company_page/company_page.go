@@ -1041,6 +1041,8 @@ func (c *CompanyPage) fetchDataCmd() tea.Cmd {
 			return fetchDataMsg{err: fmt.Errorf("no data available for symbol %s", c.CompanyInfo.Symbol)}
 		}
 
+		log.Println(response.Bars[c.CompanyInfo.Symbol])
+
 		return fetchDataMsg{data: data}
 	}
 }

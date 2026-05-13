@@ -128,6 +128,7 @@ type SignUpPage struct {
 	fundingSelected      map[int]bool
 	err                  string
 	success              string
+	showingPassword      bool
 }
 
 var (
@@ -211,6 +212,7 @@ func NewSignUpPage(client *http.Client, tokenStore *basemodel.TokenStore) SignUp
 		currentPage:          contactPage,
 		typing:               true,
 		cursor:               0,
+		showingPassword:      false,
 	}
 }
 
@@ -459,6 +461,20 @@ func (s SignUpPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					updatedInput, cmd = input.Update(msg)
 					input.Blur()
 					s.setCurrentInput(updatedInput)
+				}
+
+			case "ctrl+e":
+				if s.currentPage == contactPage {
+					if s.cursor == 1 {
+						if s.showingPassword {
+							s.password.EchoMode = textinput.EchoPassword
+							s.password.EchoCharacter = '•'
+							s.showingPassword = false
+						} else {
+							s.password.EchoMode = textinput.EchoNormal
+							s.showingPassword = true
+						}
+					}
 				}
 
 			case "enter":
@@ -781,9 +797,13 @@ func (s SignUpPage) View() string {
 		)
 	}
 
-	help := helpStyle.Render(
-		"↑/↓: move • ctrl+h / ctrl+l: change page • enter: submit/type • esc: stop typing/back • q: quit",
-	)
+	help := "↑/↓: move • ctrl+h / ctrl+l: change page • enter: submit/type • esc: stop typing/back • q: quit"
+
+	if s.currentPage == contactPage {
+		help += " • ctrl+e: view password"
+	}
+
+	help = helpStyle.Render(help)
 
 	finalContent := ""
 	if s.currentPage != identityPage {
