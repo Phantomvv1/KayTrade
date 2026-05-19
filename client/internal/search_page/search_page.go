@@ -95,7 +95,7 @@ func (s SearchPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case time.Time:
 		if s.searchUpdate && s.searchField.Value() != "" {
 			s.searchUpdate = false
-			return s, tea.Batch(s.SearchCmd(), s.tick)
+			return s, tea.Batch(s.searchCmdAsync(), s.tick)
 		}
 
 		return s, s.tick
@@ -211,23 +211,6 @@ func (s SearchPage) View() string {
 	)
 }
 
-func (s SearchPage) SendSearchRequest() ([]Asset, error) {
-	arr := strings.Split(s.searchField.Placeholder, " ")
-	value := strings.ReplaceAll(s.searchField.Value(), " ", "+")
-	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/search?"+arr[2]+"="+value, nil, s.BaseModel.Client, s.BaseModel.TokenStore)
-	if err != nil {
-		return nil, err
-	}
-
-	var response map[string][]Asset
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		return nil, err
-	}
-
-	return response["result"], nil
-}
-
 func (s SearchPage) GetCompanyInfo() (*messages.CompanyInfo, error) {
 	item := s.suggestions.SelectedItem().(asset)
 	body, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/company-information/"+item.asset.Symbol, nil, s.BaseModel.Client, s.BaseModel.TokenStore)
@@ -251,23 +234,41 @@ func (s *SearchPage) Reload() {
 	s.name = false
 }
 
-func (s SearchPage) SearchCmd() tea.Cmd {
-	info, err := s.SendSearchRequest()
-	if err != nil {
-		return func() tea.Msg {
+func (s SearchPage) searchCmdAsync() tea.Cmd {
+	searchValue := s.searchField.Value()
+
+	return func() tea.Msg {
+		arr := strings.Split(s.searchField.Placeholder, " ")
+		value := strings.ReplaceAll(searchValue, " ", "+")
+
+		body, err := requests.MakeRequest(
+			http.MethodGet,
+			requests.BaseURL+"/search?"+arr[2]+"="+value,
+			nil,
+			s.BaseModel.Client,
+			s.BaseModel.TokenStore,
+		)
+		if err != nil {
 			return messages.PageSwitchMsg{
 				Page: messages.ErrorPageNumber,
 				Err:  err,
 			}
 		}
-	}
 
-	var res []list.Item
-	for _, item := range info {
-		res = append(res, asset{asset: item})
-	}
+		var response map[string][]Asset
+		err = json.Unmarshal(body, &response)
+		if err != nil {
+			return messages.PageSwitchMsg{
+				Page: messages.ErrorPageNumber,
+				Err:  err,
+			}
+		}
 
-	return func() tea.Msg {
+		var res []list.Item
+		for _, item := range response["result"] {
+			res = append(res, asset{asset: item})
+		}
+
 		return itemMsg{
 			items: res,
 		}
