@@ -1,19 +1,13 @@
 package model
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"github.com/zalando/go-keyring"
-	"io"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"os"
-	"path/filepath"
 
 	bankrelationshipcreationpage "github.com/Phantomvv1/KayTrade/client/internal/bank_relationship_creation_page"
 	bankrelationshippage "github.com/Phantomvv1/KayTrade/client/internal/bank_relationship_page"
@@ -96,7 +90,7 @@ func NewModel() Model {
 		currentPage:                  messages.LandingPageNumber,
 	}
 
-	refreshToken, err := readAndDecryptAESGCM([]byte(os.Getenv("ENCRYPTION_KEY")))
+	refreshToken, err := readRefreshToken()
 	if err != nil {
 		log.Println(err)
 		model.landingPage.LogIn = true
@@ -537,9 +531,13 @@ func (m Model) saveRefreshToken() error {
 	}
 
 	err = keyring.Delete("kaytrade", "refresh_token")
-	if err != nil {
+	if err != nil && !errors.Is(err, keyring.ErrNotFound) {
 		return err
 	}
 
 	return keyring.Set("kaytrade", "refresh_token", token)
+}
+
+func readRefreshToken() (string, error) {
+	return keyring.Get("kaytrade", "refresh_token")
 }
