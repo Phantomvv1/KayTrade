@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"github.com/zalando/go-keyring"
 	"io"
 	"log"
 	"net/http"
@@ -535,77 +536,10 @@ func (m Model) saveRefreshToken() error {
 		return err
 	}
 
-	key := []byte(os.Getenv("ENCRYPTION_KEY"))
-	encrypted, err := encryptAESGCM([]byte(token), key)
+	err = keyring.Delete("kaytrade", "refresh_token")
 	if err != nil {
 		return err
 	}
 
-	config, err := os.UserConfigDir()
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(
-		filepath.Join(config, "/kaytrade", "/kaytrade"),
-		encrypted,
-		0600,
-	)
-}
-
-func encryptAESGCM(plaintext []byte, key []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, err
-	}
-
-	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
-	return ciphertext, nil
-}
-
-func readAndDecryptAESGCM(key []byte) (string, error) {
-	config, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
-	}
-
-	cipherText, err := os.ReadFile(config + "/kaytrade" + "/kaytrade")
-	if err != nil {
-		return "", err
-	}
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	nonceSize := gcm.NonceSize()
-	if len(cipherText) < nonceSize {
-		return "", errors.New("ciphertext too short")
-	}
-
-	nonce := cipherText[:nonceSize]
-	encrypted := cipherText[nonceSize:]
-
-	plaintext, err := gcm.Open(nil, nonce, encrypted, nil)
-	if err != nil {
-		return "", err
-	}
-
-	return string(plaintext), nil
+	return keyring.Set("kaytrade", "refresh_token", token)
 }
