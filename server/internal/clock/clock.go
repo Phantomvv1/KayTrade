@@ -2,7 +2,6 @@ package clock
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -100,4 +99,28 @@ func GetLastMarketOpenDay(market string) (*time.Time, error) {
 	}
 
 	return nil, errors.New("Error: wasn't able to find the last day the given stock market was open")
+}
+
+func IsStockMarketOpen(market string) (bool, error) {
+	headers := BasicAuth()
+
+	baseUrl := []byte(BaseURL)
+	baseUrl[len(baseUrl)-2] = '2'
+	body, err := SendRequest[map[string][]map[string]any](http.MethodGet, string(baseUrl)+Clock+"?markets="+market, nil, nil, headers)
+	if err != nil {
+		return false, err
+	}
+
+	isMarketDay := body["clocks"][0]["is_market_day"].(bool)
+	marketPhase := body["clocks"][0]["phase"].(string)
+
+	if !isMarketDay {
+		return false, nil
+	}
+
+	if marketPhase != "core" {
+		return false, nil
+	}
+
+	return true, nil
 }
