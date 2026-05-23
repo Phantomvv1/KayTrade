@@ -1,7 +1,9 @@
 package clock
 
 import (
+	"log"
 	"net/http"
+	"strings"
 
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
 	. "github.com/Phantomvv1/KayTrade/internal/requests"
@@ -10,8 +12,13 @@ import (
 
 func GetClock(c *gin.Context) {
 	headers := BasicAuth()
+	marketsArr := c.QueryArray("markets")
+	markets := strings.Join(marketsArr, ",")
 
-	body, err := SendRequest[any](http.MethodGet, BaseURL+Clock, nil, nil, headers)
+	baseUrl := []byte(BaseURL)
+	baseUrl[len(baseUrl)-2] = '2'
+	log.Println(string(baseUrl))
+	body, err := SendRequest[any](http.MethodGet, string(baseUrl)+Clock+"?markets="+markets, nil, nil, headers)
 	if err != nil {
 		RequestExit(c, body, err, "coludn't get the clock")
 		return
