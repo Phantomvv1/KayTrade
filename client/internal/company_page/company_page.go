@@ -1087,7 +1087,7 @@ func (c *CompanyPage) listenWebSocket() tea.Cmd {
 		}
 
 		if errMsg, ok := msg["error"].(string); ok {
-			return wsErrorMsg{err: fmt.Errorf(errMsg)}
+			return wsErrorMsg{err: fmt.Errorf("There was an error: %s", errMsg)}
 		}
 
 		msgBytes, err := json.Marshal(msg)
