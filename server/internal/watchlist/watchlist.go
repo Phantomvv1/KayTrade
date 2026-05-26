@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Phantomvv1/KayTrade/internal/clock"
 	. "github.com/Phantomvv1/KayTrade/internal/exit"
 	. "github.com/Phantomvv1/KayTrade/internal/requests"
 	"github.com/agnivade/levenshtein"
@@ -39,6 +40,7 @@ type CompanyInfo struct {
 type Asset struct {
 	Symbol     string `json:"symbol"`
 	Name       string `json:"name"`
+	Exchange   string `json:"exchange"`
 	distance   int
 	Expiration *time.Time `json:"expiration,omitempty"`
 }
@@ -270,31 +272,51 @@ func GetInformationForSymbols(c *gin.Context) {
 		return
 	}
 
-	now := time.Now().UTC()
-	start := ""
-	checkPassed := false
-	if now.Hour() < 13 || now.Hour() >= 20 { // market opens at 13:30 UTC and closes at 20:00 UTC
-		if now.Weekday() == time.Monday {
-			start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
-		} else if now.Weekday() == time.Sunday {
-			start = now.AddDate(0, 0, -2).Truncate(time.Hour * 24).Format(time.RFC3339)
-		} else {
-			start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
+	assets, err := getAssets()
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't get the assets", err)
+		return
+	}
+
+	// Assign symbols to their respective exchanges and also get all the different exchanges
+	exchanges := []string{}
+	for _, symbol := range symbols {
+		index := slices.IndexFunc(assets, func(e Asset) bool {
+			if e.Symbol == symbol {
+				return true
+			}
+
+			return false
+		})
+
+		exchanges = append(exchanges, assets[index].Exchange)
+	}
+
+	// Get the last startDate the given exchanges were open
+	days := make(map[string]string)
+	startDate := time.Time{}
+	for _, exchange := range exchanges {
+		open, err := clock.IsStockMarketOpen(exchange)
+		if err != nil {
+			ErrorExit(c, http.StatusInternalServerError, "couldn't check if the given exchange is open", err)
+			return
 		}
 
-		checkPassed = true
-	}
-	if now.Hour() == 13 && now.Minute() < 30 {
-		if now.Weekday() == time.Monday {
-			start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
-		} else if now.Weekday() == time.Sunday {
-			start = now.AddDate(0, 0, -2).Truncate(time.Hour * 24).Format(time.RFC3339)
-		} else {
-			start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
+		if !open {
+			for _, exchange := range exchanges {
+				day, err := clock.GetLastMarketOpenDay(exchange)
+				if err != nil {
+					ErrorExit(c, http.StatusInternalServerError, "couldn't get the last day the exchange a stock is trading in was open", err)
+					return
+				}
+
+				if startDate.After(*day) || startDate.IsZero() {
+					startDate = *day
+				}
+
+				days[exchange] = day.Format(time.RFC3339)
+			}
 		}
-		checkPassed = true
-	} else if !checkPassed {
-		start = time.Now().UTC().Truncate(24 * time.Hour).Format(time.RFC3339)
 	}
 
 	// Check for cached symbols
@@ -314,7 +336,7 @@ func GetInformationForSymbols(c *gin.Context) {
 	}
 
 	res := make(chan result)
-	go getPriceInformation(symbols, start, res)
+	go getPriceInformation(symbols, startDate.Format(time.RFC3339), res)
 	for _, symbol := range uncachedSymbols {
 		go getLogo(symbol, res)
 	}
@@ -391,12 +413,12 @@ func GetInformationForSymbols(c *gin.Context) {
 
 			for symbol, info := range result.information {
 				if index := containsSymbol(response, symbol); index != -1 {
-					openingPrice := info[0]["o"].(float64)
-					closingPrice := info[0]["c"].(float64)
+					openingPrice := info[len(info)-1]["o"].(float64)
+					closingPrice := info[len(info)-1]["c"].(float64)
 					response[index].OpeningPrice = openingPrice
 					response[index].ClosingPrice = closingPrice
 				} else {
-					response = append(response, CompanyInfo{Symbol: symbol, OpeningPrice: info[0]["o"].(float64), ClosingPrice: info[0]["c"].(float64)})
+					response = append(response, CompanyInfo{Symbol: symbol, OpeningPrice: info[len(info)-1]["o"].(float64), ClosingPrice: info[len(info)-1]["c"].(float64)})
 				}
 			}
 

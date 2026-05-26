@@ -94,6 +94,7 @@ func GetLastMarketOpenDay(market string) (*time.Time, error) {
 		}
 
 		if now.After(startTs) {
+			startTs = startTs.Truncate(time.Hour * 24)
 			return &startTs, nil
 		}
 	}
