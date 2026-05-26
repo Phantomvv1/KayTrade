@@ -23,6 +23,7 @@ func NewRouter() *gin.Engine {
 	r.POST("/log-in", LogIn)
 	r.POST("/refresh", Refresh)
 	r.GET("/clock", clock.GetClock)
+	r.GET("/calendar/:market", clock.GetCalendar)
 	r.GET("/search", AuthMiddleware, watchlist.SearchCompanies)
 	r.GET("/company-information/:symbol", AuthMiddleware, watchlist.GetCompanyInformation)
 
