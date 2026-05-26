@@ -319,6 +319,10 @@ func GetInformationForSymbols(c *gin.Context) {
 		}
 	}
 
+	if startDate.IsZero() {
+		startDate = time.Now().UTC().Truncate(time.Hour * 24)
+	}
+
 	// Check for cached symbols
 	var response []CompanyInfo
 	var uncachedSymbols []string
@@ -862,31 +866,39 @@ func cleanAssets(assets []Asset) []Asset {
 func GetCompanyInformation(c *gin.Context) {
 	symbol := c.Param("symbol")
 
-	now := time.Now().UTC()
-	start := ""
-	checkPassed := false
-	if now.Hour() < 13 || now.Hour() >= 20 { // market opens at 13:30 UTC and closes at 20:00 UTC
-		if now.Weekday() == time.Monday {
-			start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
-		} else if now.Weekday() == time.Sunday {
-			start = now.AddDate(0, 0, -2).Truncate(time.Hour * 24).Format(time.RFC3339)
-		} else {
-			start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
+	assets, err := getAssets()
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't get the assets", err)
+		return
+	}
+
+	index := slices.IndexFunc(assets, func(e Asset) bool {
+		if e.Symbol == symbol {
+			return true
 		}
 
-		checkPassed = true
+		return false
+	})
+
+	exchange := assets[index].Exchange
+
+	open, err := clock.IsStockMarketOpen(exchange)
+	if err != nil {
+		ErrorExit(c, http.StatusInternalServerError, "couldn't check if the given exchange is open", err)
+		return
 	}
-	if now.Hour() == 13 && now.Minute() < 30 {
-		if now.Weekday() == time.Monday {
-			start = now.AddDate(0, 0, -3).Truncate(time.Hour * 24).Format(time.RFC3339)
-		} else if now.Weekday() == time.Sunday {
-			start = now.AddDate(0, 0, -2).Truncate(time.Hour * 24).Format(time.RFC3339)
-		} else {
-			start = now.AddDate(0, 0, -1).Truncate(time.Hour * 24).Format(time.RFC3339)
+
+	start := ""
+	if !open {
+		day, err := clock.GetLastMarketOpenDay(exchange)
+		if err != nil {
+			ErrorExit(c, http.StatusInternalServerError, "couldn't get the last day the exchange a stock is trading in was open", err)
+			return
 		}
-		checkPassed = true
-	} else if !checkPassed {
-		start = time.Now().UTC().Truncate(24 * time.Hour).Format(time.RFC3339)
+
+		start = day.Format(time.RFC3339)
+	} else {
+		start = time.Now().UTC().Truncate(time.Hour * 24).Format(time.RFC3339)
 	}
 
 	response, err := getInfoAndLogo(symbol)
@@ -910,8 +922,8 @@ func GetCompanyInformation(c *gin.Context) {
 
 	info := res.information[symbol]
 	if len(info) != 0 {
-		response.OpeningPrice = info[0]["o"].(float64)
-		response.ClosingPrice = info[0]["c"].(float64)
+		response.OpeningPrice = info[len(info)-1]["o"].(float64)
+		response.ClosingPrice = info[len(info)-1]["c"].(float64)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"information": response})
@@ -982,8 +994,8 @@ func fetchAndCacheResponse(c *gin.Context, symbol string, start string) {
 
 			for _, info := range result.information {
 				if len(info) != 0 {
-					innerResponse.OpeningPrice = info[0]["o"].(float64)
-					innerResponse.ClosingPrice = info[0]["c"].(float64)
+					innerResponse.OpeningPrice = info[len(info)-1]["o"].(float64)
+					innerResponse.ClosingPrice = info[len(info)-1]["c"].(float64)
 				}
 			}
 		}
