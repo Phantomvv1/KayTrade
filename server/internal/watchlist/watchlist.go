@@ -944,8 +944,6 @@ func fetchAndCacheResponse(c *gin.Context, symbol string, start string) {
 				return
 			}
 
-			log.Println(result.logo)
-
 			ok := true
 			company := result.logo["company"].(map[string]any)
 			innerResponse.Logo = chooseLogo(result.logo)
