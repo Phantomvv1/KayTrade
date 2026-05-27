@@ -1021,33 +1021,18 @@ func (c *CompanyPage) fetchDataCmd() tea.Cmd {
 			return fetchDataMsg{err: err}
 		}
 
-		switch c.timeFrame {
-		case TimeFrameMinute:
-			response = c.padBars(response, time.Minute)
-		case TimeFrameHour:
-			response = c.padBars(response, time.Hour)
-		case TimeFrameDay:
-			response = c.padBars(response, time.Hour*24)
-		case TimeFrameWeek:
-			response = c.padBars(response, time.Hour*24*7)
-		case TimeFrameMonth:
-			response = c.padBars(response, time.Hour*24*30)
-
-		default:
-		}
+		response = c.padBars(response)
 
 		data, ok := response.Bars[c.CompanyInfo.Symbol]
 		if !ok || len(data) == 0 {
 			return fetchDataMsg{err: fmt.Errorf("no data available for symbol %s", c.CompanyInfo.Symbol)}
 		}
 
-		log.Println(response.Bars[c.CompanyInfo.Symbol])
-
 		return fetchDataMsg{data: data}
 	}
 }
 
-func (c *CompanyPage) padBars(response BarsResponse, duration time.Duration) BarsResponse {
+func (c *CompanyPage) padBars(response BarsResponse) BarsResponse {
 	lastBar := response.Bars[c.CompanyInfo.Symbol][len(response.Bars[c.CompanyInfo.Symbol])-1]
 	lastBar.Timestamp = time.Now().UTC()
 

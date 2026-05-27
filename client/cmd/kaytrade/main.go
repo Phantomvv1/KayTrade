@@ -16,13 +16,22 @@ const (
 	envSystem = "system"
 	envDocker = "docker"
 	envDev    = "dev"
-	version   = "0.3.2"
+	version   = "0.3.3"
 )
 
 func main() {
 	defer func() {
-		err := recover()
+		recErr := recover()
+
+		file, err := setupLogger(os.Getenv("KAYTRADE_ENV"))
 		if err != nil {
+			return
+		}
+		defer file.Close()
+
+		log.SetOutput(file)
+
+		if recErr != nil {
 			log.Println(err)
 		}
 	}()
