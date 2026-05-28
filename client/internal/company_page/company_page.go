@@ -1043,7 +1043,6 @@ func (c *CompanyPage) padBars(response BarsResponse) BarsResponse {
 
 func (c *CompanyPage) connectWebSocket() tea.Cmd {
 	host, _ := strings.CutPrefix(requests.BaseURL, "http://")
-	log.Println(host)
 	url := fmt.Sprintf("ws://%s/data/stocks/live/%s", host, c.CompanyInfo.Symbol)
 
 	ws, _, err := websocket.DefaultDialer.Dial(url, nil)

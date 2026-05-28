@@ -155,6 +155,7 @@ func (s SellPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.success = ""
 			if err := s.submitOrder(); err != nil {
 				s.err = err.Error()
+				return s, nil
 			} else {
 				s.success = "Order submitted successfully!"
 			}

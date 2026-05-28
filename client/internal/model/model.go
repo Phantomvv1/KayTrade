@@ -482,7 +482,7 @@ func (m *Model) Reloaded(page int) bool {
 	case messages.ViewTransfersPageNumber:
 		reloaded := m.viewTransfersPage.Reloaded
 		if reloaded {
-			m.bankRelationshipPage.Reloaded = false
+			m.viewTransfersPage.Reloaded = false
 		}
 
 		return reloaded
