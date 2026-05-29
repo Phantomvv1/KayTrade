@@ -186,6 +186,7 @@ func NewProfilePage(client *http.Client, tokenStore *basemodel.TokenStore) Profi
 			key.NewBinding(key.WithKeys("ctrl+l", "ctrl+right"), key.WithHelp("ctrl+l/→", "switch list")),
 			key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s (sell)", "position")),
 			key.NewBinding(key.WithKeys("c"), key.WithHelp("c (cancel)", "order")),
+			key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "refresh")),
 		}
 	}
 
@@ -474,6 +475,10 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 
+			case "r", "R":
+				p.Reload()
+				return p, p.fetchProfileData
+
 			default:
 				var cmd tea.Cmd
 				if p.orders.FilterInput.Focused() {
@@ -506,8 +511,8 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		p.orders.SetSize(p.BaseModel.Width/2-46, p.BaseModel.Height-16)
-		p.positions.SetSize(p.BaseModel.Width/3-30, p.BaseModel.Height-16)
+		p.orders.SetSize(p.BaseModel.Width/3, (2*p.BaseModel.Height)/3)
+		p.positions.SetSize(p.BaseModel.Width/6, (2*p.BaseModel.Height)/3)
 
 		return p, nil
 	}
