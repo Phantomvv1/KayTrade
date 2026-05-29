@@ -492,6 +492,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case profileDataMsg:
 		p.loading = false
+		p.Reloaded = false
 		if msg.err != nil {
 			return p, func() tea.Msg {
 				return messages.PageSwitchMsg{
