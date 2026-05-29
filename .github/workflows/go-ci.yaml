@@ -26,7 +26,7 @@ jobs:
           cache-dependency-path: server/go.sum
 
       - name: Download dependencies
-        run: go mod tidy
+        run: go mod download
 
       - name: Run go vet
         run: go vet ./...
@@ -56,7 +56,7 @@ jobs:
           cache-dependency-path: client/go.sum
 
       - name: Download dependencies
-        run: go mod tidy
+        run: go mod download
 
       - name: Run go vet
         run: go vet ./...
