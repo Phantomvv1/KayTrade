@@ -119,7 +119,7 @@ func RateLimiterMiddleware(c *gin.Context) {
 		mu.Lock()
 		rateLimiter, ok = rateLimitMap[ip]
 		if !ok {
-			rateLimiter = rate.NewLimiter(rate.Every(time.Second), 30)
+			rateLimiter = rate.NewLimiter(rate.Limit(30), 30)
 			rateLimitMap[ip] = rateLimiter
 		}
 		mu.Unlock()
