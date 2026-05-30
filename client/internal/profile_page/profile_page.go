@@ -186,6 +186,7 @@ func NewProfilePage(client *http.Client, tokenStore *basemodel.TokenStore) Profi
 			key.NewBinding(key.WithKeys("ctrl+l", "ctrl+right"), key.WithHelp("ctrl+l/→", "switch list")),
 			key.NewBinding(key.WithKeys("s", "S"), key.WithHelp("s (sell)", "position")),
 			key.NewBinding(key.WithKeys("c"), key.WithHelp("c (cancel)", "order")),
+			key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "refresh")),
 		}
 	}
 
@@ -474,6 +475,10 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 
+			case "r", "R":
+				p.Reload()
+				return p, p.fetchProfileData
+
 			default:
 				var cmd tea.Cmd
 				if p.orders.FilterInput.Focused() {
@@ -487,6 +492,7 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case profileDataMsg:
 		p.loading = false
+		p.Reloaded = false
 		if msg.err != nil {
 			return p, func() tea.Msg {
 				return messages.PageSwitchMsg{
@@ -506,8 +512,8 @@ func (p ProfilePage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		p.orders.SetSize(p.BaseModel.Width/2-46, p.BaseModel.Height-16)
-		p.positions.SetSize(p.BaseModel.Width/3-30, p.BaseModel.Height-16)
+		p.orders.SetSize(p.BaseModel.Width/3, (2*p.BaseModel.Height)/3)
+		p.positions.SetSize(p.BaseModel.Width/6, (2*p.BaseModel.Height)/3)
 
 		return p, nil
 	}
@@ -591,7 +597,7 @@ func (p ProfilePage) renderPersonalInfo() string {
 		rows = append(rows, p.renderField("Funding Source", strings.Join(p.alpacaAccount.Identity.FundingSource, ", ")))
 	}
 
-	return boxStyle.Width(50).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
+	return boxStyle.Width(p.BaseModel.Width / 4).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 func (p ProfilePage) renderTradingAccount() string {
@@ -611,7 +617,7 @@ func (p ProfilePage) renderTradingAccount() string {
 	rows = append(rows, p.renderField("Accrued Fees", "$"+p.tradingDetails.AccruedFees))
 	rows = append(rows, p.renderField("Currency", p.tradingDetails.Currency))
 
-	return boxStyle.Width(50).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
+	return boxStyle.Width(p.BaseModel.Width / 5).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 func (p ProfilePage) renderContactInfo() string {
@@ -645,7 +651,7 @@ func (p ProfilePage) renderContactInfo() string {
 		rows = append(rows, p.renderField("Email", p.alpacaAccount.TrustedContact.EmailAddress))
 	}
 
-	return boxStyle.Width(50).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
+	return boxStyle.Width(p.BaseModel.Width / 4).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 func (p ProfilePage) renderAccountSettings() string {
@@ -675,7 +681,7 @@ func (p ProfilePage) renderAccountSettings() string {
 		rows = append(rows, p.renderField("Member Since", formatted))
 	}
 
-	return boxStyle.Width(50).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
+	return boxStyle.Width(p.BaseModel.Width / 5).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 func (p ProfilePage) renderField(label, value string) string {

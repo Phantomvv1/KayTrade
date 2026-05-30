@@ -265,6 +265,7 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			if c.ws != nil {
 				c.ws.Close()
+				c.liveConnected = false
 			}
 			return c, func() tea.Msg {
 				return messages.QuitMsg{}
@@ -274,6 +275,7 @@ func (c CompanyPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if c.ws != nil {
 				c.ws.WriteMessage(websocket.TextMessage, []byte("exit"))
 				c.ws.Close()
+				c.liveConnected = false
 			}
 			return c, func() tea.Msg {
 				return messages.SmartPageSwitchMsg{
