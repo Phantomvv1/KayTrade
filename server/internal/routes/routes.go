@@ -2,6 +2,7 @@ package routes
 
 import (
 	"net/http"
+	"os"
 
 	. "github.com/Phantomvv1/KayTrade/internal/auth"
 	"github.com/Phantomvv1/KayTrade/internal/clock"
@@ -16,7 +17,12 @@ import (
 
 func NewRouter() *gin.Engine {
 	r := gin.Default()
-	r.Use(RateLimiterMiddleware)
+
+	if os.Getenv("RATE_LIMITER") == "redis" {
+		r.Use(RedisRateLimiterMiddlewareSetup())
+	} else {
+		r.Use(RateLimiterMiddleware)
+	}
 
 	r.Any("/", func(c *gin.Context) { c.JSON(http.StatusOK, nil) })
 	r.POST("/sign-up", SignUp)
