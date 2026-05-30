@@ -597,7 +597,7 @@ func (p ProfilePage) renderPersonalInfo() string {
 		rows = append(rows, p.renderField("Funding Source", strings.Join(p.alpacaAccount.Identity.FundingSource, ", ")))
 	}
 
-	return boxStyle.Width(50).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
+	return boxStyle.Width(p.BaseModel.Width / 4).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 func (p ProfilePage) renderTradingAccount() string {
@@ -617,7 +617,7 @@ func (p ProfilePage) renderTradingAccount() string {
 	rows = append(rows, p.renderField("Accrued Fees", "$"+p.tradingDetails.AccruedFees))
 	rows = append(rows, p.renderField("Currency", p.tradingDetails.Currency))
 
-	return boxStyle.Width(50).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
+	return boxStyle.Width(p.BaseModel.Width / 5).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 func (p ProfilePage) renderContactInfo() string {
@@ -651,7 +651,7 @@ func (p ProfilePage) renderContactInfo() string {
 		rows = append(rows, p.renderField("Email", p.alpacaAccount.TrustedContact.EmailAddress))
 	}
 
-	return boxStyle.Width(50).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
+	return boxStyle.Width(p.BaseModel.Width / 4).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 func (p ProfilePage) renderAccountSettings() string {
@@ -681,7 +681,7 @@ func (p ProfilePage) renderAccountSettings() string {
 		rows = append(rows, p.renderField("Member Since", formatted))
 	}
 
-	return boxStyle.Width(50).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
+	return boxStyle.Width(p.BaseModel.Width / 5).Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
 func (p ProfilePage) renderField(label, value string) string {
