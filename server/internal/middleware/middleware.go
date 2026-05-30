@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	ratelimit "github.com/JGLTechnologies/gin-rate-limit"
 	. "github.com/Phantomvv1/KayTrade/internal/auth"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/time/rate"
 )
 
@@ -116,7 +119,7 @@ func RateLimiterMiddleware(c *gin.Context) {
 		mu.Lock()
 		rateLimiter, ok = rateLimitMap[ip]
 		if !ok {
-			rateLimiter = rate.NewLimiter(rate.Every(time.Second), 30)
+			rateLimiter = rate.NewLimiter(rate.Limit(30), 30)
 			rateLimitMap[ip] = rateLimiter
 		}
 		mu.Unlock()
@@ -128,4 +131,29 @@ func RateLimiterMiddleware(c *gin.Context) {
 	}
 
 	c.Next()
+}
+
+func keyFunc(c *gin.Context) string {
+	return c.ClientIP()
+}
+
+func errorHandler(c *gin.Context, info ratelimit.Info) {
+	c.JSON(http.StatusTooManyRequests, gin.H{"error": "Error too many requests are being sent"})
+}
+
+func RedisRateLimiterMiddlewareSetup() gin.HandlerFunc {
+	store := ratelimit.RedisStore(&ratelimit.RedisOptions{
+		RedisClient: redis.NewClient(&redis.Options{
+			Addr: os.Getenv("REDIS_URL"),
+		}),
+		Rate:  time.Second,
+		Limit: 30,
+	})
+
+	mw := ratelimit.RateLimiter(store, &ratelimit.Options{
+		ErrorHandler: errorHandler,
+		KeyFunc:      keyFunc,
+	})
+
+	return mw
 }
