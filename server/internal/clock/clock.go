@@ -125,3 +125,13 @@ func IsStockMarketOpen(market string) (bool, error) {
 
 	return true, nil
 }
+
+func GetLastMarketOpenDayEndpoint(c *gin.Context) {
+	day, err := GetLastMarketOpenDay("NYSE")
+	if err != nil {
+		ErrorExit(c, http.StatusFailedDependency, "couldn't get the last day te given market was open", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": day.Format(time.RFC3339)})
+}
