@@ -983,7 +983,20 @@ func (c *CompanyPage) fetchDataCmd() tea.Cmd {
 		start := ""
 		switch c.timeFrame {
 		case TimeFrameMinute:
-			start = time.Now().UTC().Add(-time.Hour * 24).Format(time.RFC3339) // 1 day
+			resp, err := requests.MakeRequest(http.MethodGet, requests.BaseURL+"/last-market-open-day", nil, c.BaseModel.Client, c.BaseModel.TokenStore)
+			if err != nil {
+				log.Println(err)
+				return fetchDataMsg{err: err}
+			}
+
+			var data map[string]time.Time
+			err = json.Unmarshal(resp, &data)
+			if err != nil {
+				log.Println(err)
+				return fetchDataMsg{err: err}
+			}
+
+			start = data["result"].Format(time.RFC3339)
 			log.Println("Minute")
 		case TimeFrameHour:
 			log.Println("Hour")
