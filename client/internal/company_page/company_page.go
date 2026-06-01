@@ -1036,10 +1036,6 @@ func (c *CompanyPage) fetchDataCmd() tea.Cmd {
 			return fetchDataMsg{err: err}
 		}
 
-		if c.timeFrame == TimeFrameMinute {
-			log.Println(response)
-		}
-
 		response = c.padBars(response)
 
 		data, ok := response.Bars[c.CompanyInfo.Symbol]
