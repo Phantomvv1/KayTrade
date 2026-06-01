@@ -6,7 +6,7 @@ REPO="Phantomvv1/KayTrade"
 BINARY="kaytrade"
 INSTALL_DIR="/usr/local/bin"
 
-URL="https://github.com/$REPO/releases/download/v0.3.5/$BINARY"
+URL="https://github.com/$REPO/releases/download/v0.3.6/$BINARY"
 
 echo "📦 Installing $BINARY (latest release)"
 echo "⬇️ Downloading from:"

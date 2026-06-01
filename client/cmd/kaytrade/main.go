@@ -16,7 +16,7 @@ const (
 	envSystem = "system"
 	envDocker = "docker"
 	envDev    = "dev"
-	version   = "0.3.5"
+	version   = "0.3.6"
 )
 
 func main() {
